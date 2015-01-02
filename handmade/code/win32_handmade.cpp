@@ -27,6 +27,8 @@ typedef int16_t int16;
 typedef int32_t int32;
 typedef int64_t int64;
 
+typedef int32 bool32;
+
 struct win32_offscreen_buffer
 {
   BITMAPINFO info;
@@ -60,8 +62,8 @@ struct win32_window_dimension {
 typedef X_INPUT_GET_STATE(x_input_get_state);
 typedef X_INPUT_SET_STATE(x_input_set_state);
 // We generate stub functions for those methods
-X_INPUT_GET_STATE(XInputGetStateStub) { return(0); }
-X_INPUT_SET_STATE(XInputSetStateStub) { return(0); }
+X_INPUT_GET_STATE(XInputGetStateStub) { return(ERROR_DEVICE_NOT_CONNECTED); }
+X_INPUT_SET_STATE(XInputSetStateStub) { return(ERROR_DEVICE_NOT_CONNECTED); }
 // We generate global pointers to the functions and at first we assign them
 // to the harmless stubs. This way the game won't crash if the dll is not loaded.
 global_variable x_input_get_state *DynamicXInputGetState = XInputGetStateStub;
@@ -75,13 +77,15 @@ global_variable x_input_set_state *DynamicXInputSetState = XInputSetStateStub;
 internal void
 Win32LoadXInput()
 {
-  // We use xinput1_3.dll because it is more widespread installed
-  // in Windows machines than xinput1_3.dll
-  HMODULE XInputLibrary = LoadLibrary("xinput1_3.dll");
+  // We try to load 1.4 first (Windows 8), and then we try 1.3
+  HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
+  if(!XInputLibrary) { LoadLibraryA("xinput1_3.dll"); }
   if(XInputLibrary)
   {
     XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
+    if(!XInputGetState) { XInputGetState = XInputGetStateStub; }
     XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
+    if(!XInputSetState) { XInputSetState = XInputSetStateStub; }
   }
 }
 
@@ -99,18 +103,25 @@ Win32GetWindowDimension(HWND windowHandle)
 }
 
 //TODO:(Cristián): This is a global for now
-global_variable bool gRunning;
+global_variable bool32 gRunning;
 global_variable win32_offscreen_buffer gBackBuffer;
-
+/**
+ * Writes a 'weird' gradient into a memory buffer
+ * @param *buffer A pointer to the buffer info struct. We can pass it by reference also
+ *                because the struct does not contain the buffer itself, but a pointer, so
+ *                this method does not ACTUALLY modify the struct, but the memory it points to.
+ *                We pass a pointer in order to not copy a fairly big structure into memory via
+ *                the stack.
+ */
 internal void
-Win32RenderWeirdGradient(win32_offscreen_buffer buffer, int blueOffset, int greenOffset)
+Win32RenderWeirdGradient(win32_offscreen_buffer *buffer, int blueOffset, int greenOffset)
 {
   // TODO(Cristián): Let's see what the optimizer does if it is passed by reference
   // instead of a pointer.
-  int bitmapWidth = buffer.width;
-  int bitmapHeight = buffer.height;
-  int pitch = buffer.pitch;
-  void *memory = buffer.memory;
+  int bitmapWidth = buffer->width;
+  int bitmapHeight = buffer->height;
+  int pitch = buffer->pitch;
+  void *memory = buffer->memory;
 
   uint8* row = (uint8 *)memory;
   for(int y = 0;
@@ -140,7 +151,7 @@ Win32RenderWeirdGradient(win32_offscreen_buffer buffer, int blueOffset, int gree
 
 /**
  * (Re)Creates a Device Independent Bitmap to match the current window size
- * @param buffer  A pointer to the win32_offscreen_buffer. It is important that it is
+ * @param *buffer A pointer to the win32_offscreen_buffer. It is important that it is
  *                a pointer because it will modify the buffer and the changes must endure.
  *                (This makes it difficult to the compiler to inline, but is les error-prone).
  */
@@ -186,9 +197,16 @@ Win32ResizeDIBSection(win32_offscreen_buffer *buffer, int width, int height)
   //TODO:(Cristián): Probably clear screen to black
 }
 
+/**
+ * Transfer our buffer into windows via StretchDIBits syscall.
+ * @param *buffer A pointer to the buffer info struct. We use a pointer because
+ *                it is a fairly big struct so that if the compiler doesn't inline
+ *                the code, it would require a 'big' memory copy in the stack. So
+ *                we send the pointer even though we do not modify the origin struct.
+ */
 internal void
 Win32TransferBufferToWindows(HDC deviceContext,
-                             win32_offscreen_buffer buffer,
+                             win32_offscreen_buffer *buffer,
                              int windowWidth, int windowHeight)
 {
   // TODO(Cristián): aspect ratio correction
@@ -201,9 +219,9 @@ Win32TransferBufferToWindows(HDC deviceContext,
     x, y, originWidth, originHeight,
     */
     0, 0, windowWidth, windowHeight,
-    0, 0, buffer.width, buffer.height,
-    buffer.memory,
-    &buffer.info,
+    0, 0, buffer->width, buffer->height,
+    buffer->memory,
+    &buffer->info,
     DIB_RGB_COLORS, SRCCOPY);
 }
 
@@ -214,8 +232,7 @@ LRESULT CALLBACK
 Win32MainWindowCallback(HWND windowHandle,
                         UINT message,
                         WPARAM wParam,
-                        LPARAM lParam
-)
+                        LPARAM lParam)
 {
   LRESULT result = 0;
   switch(message)
@@ -237,6 +254,59 @@ Win32MainWindowCallback(HWND windowHandle,
         //TODO:(Cristián): Handle this with an error - Recreate window?
         gRunning = false;
       } break;
+    // We use the switch to grab all the keys messages into one block
+    // (they all cascade into WM_KEYUP)
+    case WM_SYSKEYDOWN:
+    case WM_SYSKEYUP:
+    case WM_KEYDOWN:
+    case WM_KEYUP:
+      {
+        uint32 vKeyCode = wParam;
+        // Here we force the booleans to be 0 or 1 because
+        // we want the case where the both are active to be ignored,
+        // Without the forcing, both active can actually be different
+        // and we would enter anyway
+        bool keyWasDown = (lParam & (1 << 30) != 0);
+        bool keyIsDown = ((lParam & (1 << 31) == 0));
+        // We ignore the key that keeps pressed
+        if(keyWasDown != keyIsDown)
+        {
+          if(vKeyCode == 'W')
+          {
+          }
+          else if(vKeyCode == 'A')
+          {
+          }
+          else if(vKeyCode == 'S')
+          {
+          }
+          else if(vKeyCode == 'D')
+          {
+          }
+          else if(vKeyCode == VK_UP)
+          {
+          }
+          else if(vKeyCode == VK_DOWN)
+          {
+          }
+          else if(vKeyCode == VK_LEFT)
+          {
+          }
+          else if(vKeyCode == VK_RIGHT)
+          {
+          }
+          else if(vKeyCode == VK_ESCAPE)
+          {
+          }
+          else if(vKeyCode == VK_SPACE)
+          {
+          }
+          else // All other keys are treated by default
+          {
+            result = DefWindowProc(windowHandle, message, wParam, lParam);
+          }
+        }
+      } break;
     case WM_PAINT:
       {
         // We get the windows paint device context (and its dimensions)
@@ -254,7 +324,7 @@ Win32MainWindowCallback(HWND windowHandle,
         */
         win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
         Win32TransferBufferToWindows(deviceContext,
-                                     gBackBuffer,
+                                     &gBackBuffer,
                                      dimension.width, dimension.height);
         EndPaint(windowHandle, &paint);
       } break;
@@ -281,7 +351,7 @@ WinMain(HINSTANCE hInstance,
   Win32LoadXInput();
 
   // In C++, 0 Initialization of a struct is as follows
-  WNDCLASS windowClass = {};
+  WNDCLASSA windowClass = {};
   windowClass.style = CS_HREDRAW|CS_VREDRAW|CS_OWNDC;
   windowClass.lpfnWndProc = Win32MainWindowCallback;
   windowClass.hInstance = hInstance;
@@ -361,20 +431,20 @@ WinMain(HINSTANCE hInstance,
             // TODO(Cristián): See if controllerState.swPacketNumber incrementes too rapidly
             // We import the whole gamepad state
             XINPUT_GAMEPAD *pad = &controllerState.Gamepad;
-            bool up = (pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
-            bool down = (pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-            bool left = (pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
-            bool right = (pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
-            bool start = (pad->wButtons & XINPUT_GAMEPAD_START);
-            bool back = (pad->wButtons & XINPUT_GAMEPAD_BACK);
-            bool leftThumb = (pad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
-            bool rightThumb = (pad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
-            bool leftShoulder = (pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
-            bool rightShoulder = (pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
-            bool aButton = (pad->wButtons & XINPUT_GAMEPAD_A);
-            bool bButton = (pad->wButtons & XINPUT_GAMEPAD_B);
-            bool yButton = (pad->wButtons & XINPUT_GAMEPAD_Y);
-            bool xButton = (pad->wButtons & XINPUT_GAMEPAD_X);
+            bool32 up = (pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+            bool32 down = (pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+            bool32 left = (pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+            bool32 right = (pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+            bool32 start = (pad->wButtons & XINPUT_GAMEPAD_START);
+            bool32 back = (pad->wButtons & XINPUT_GAMEPAD_BACK);
+            bool32 leftThumb = (pad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
+            bool32 rightThumb = (pad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
+            bool32 leftShoulder = (pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+            bool32 rightShoulder = (pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+            bool32 aButton = (pad->wButtons & XINPUT_GAMEPAD_A);
+            bool32 bButton = (pad->wButtons & XINPUT_GAMEPAD_B);
+            bool32 yButton = (pad->wButtons & XINPUT_GAMEPAD_Y);
+            bool32 xButton = (pad->wButtons & XINPUT_GAMEPAD_X);
 
             // We inport the sticks
             int16 leftThumbX = pad->sThumbLX;
@@ -387,8 +457,8 @@ WinMain(HINSTANCE hInstance,
             int16 rightTrigger = pad->bRightTrigger;
 
             // We assign acceleration
-            blueOffset += leftThumbX / 4096;
-            greenOffset -= leftThumbY / 4096; // We invert the Y because the screen is also inverted
+            blueOffset += leftThumbX >> 12;
+            greenOffset -= leftThumbY >> 12; // We invert the Y because the screen is also inverted
 
             XINPUT_VIBRATION xInputVibration = {};
             xInputVibration.wLeftMotorSpeed = aButton ? 65535 : 0;
@@ -403,11 +473,11 @@ WinMain(HINSTANCE hInstance,
  
         }
 
-        Win32RenderWeirdGradient(gBackBuffer, blueOffset, greenOffset);
+        Win32RenderWeirdGradient(&gBackBuffer, blueOffset, greenOffset);
 
         win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
         Win32TransferBufferToWindows(deviceContext,
-                                     gBackBuffer,
+                                     &gBackBuffer,
                                      dimension.width, dimension.height);
         //blueOffset++;
         //greenOffset += 2;
