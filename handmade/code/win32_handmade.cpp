@@ -44,6 +44,15 @@ struct win32_window_dimension {
   int height;
 };
 
+/******** GLOBAL VARIABLES **********/
+
+global_variable bool32 gRunning;
+global_variable win32_offscreen_buffer gBackBuffer;
+global_variable LPDIRECTSOUNDBUFFER gSecondaryBuffer;
+
+// TODO(Cristián): Remove this as a global variable
+global_variable int32 gToneHz = 440;
+
 /**
  * We make a windows binding ourselves. We this we bypass an import librabry.
  * We do this in the case of XInput because the required library changes according to
@@ -83,6 +92,8 @@ Win32LoadXInput()
   if(!XInputLibrary) { LoadLibraryA("xinput1_3.dll"); }
   if(!XInputLibrary) { return; } // TODO(Cristián): Diagnostics
 
+  // Here we make a 'late-binding', where we go look at the address of library
+  // loaded dynamically
   XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
   if(!XInputGetState) { XInputGetState = XInputGetStateStub; }
   XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
@@ -91,12 +102,23 @@ Win32LoadXInput()
   // TODO(Cristián): Diagnostics
 }
 
-
+/**
+ * We create our DirectSound API handler pointer.
+ */
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter)
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
+/**
+ * We initialize the Direct Sound buffers.
+ * The first (or primary) is merely a handle and initialization of the memory in the sound card.
+ * The second is the actual buffer in memory the system will be writing into to create sound.
+ */
 internal void
-Win32InitDirectSound(HWND windowHandle, int32 samplesPerSecond, int32 bufferSize)
+Win32InitDirectSound(HWND windowHandle,
+                     int32 samplesPerSecond,
+                     int32 bytesPerSample,
+                     int32 nChannels,
+                     int32 bufferLength)
 {
   // NOTE(Cristián): Load the library
   HMODULE DirectSoundLibrary = LoadLibraryA("dsound.dll");
@@ -107,6 +129,20 @@ Win32InitDirectSound(HWND windowHandle, int32 samplesPerSecond, int32 bufferSize
     GetProcAddress(DirectSoundLibrary, "DirectSoundCreate");
 
   // TODO(Cristián): Check that this works on XP - DirectSound 8 or 7
+  /**
+   * What happens here is that Windows gives us a LPDIRECTSOUND object that is defined
+   * in the dsound.h file. Afterwards we don't need to call GetProcAddress to get the calls
+   * to the DirectSound object methods because we make use of its vTable.
+   *
+   * Basically, this object has it's methods defined as virtual methods. This means that
+   * it has a method to a global table associated with the class (or struct) that has all the
+   * pointers to its virtual methods. This way we can get the pointers to the methods by referencing
+   * the vTable.
+   *
+   * This means that at RUNTIME we can get the pointers to the functions of the object without
+   * having to actually have its definitions compiled. This is the standard way Microsoft implements
+   * its COM (Component Object Model) layer in order to send functions outside the 'dll boundary'
+   */
   LPDIRECTSOUND directSound;
   if(!directSoundCreate || !SUCCEEDED(directSoundCreate(0, &directSound, 0)))
   {
@@ -118,18 +154,22 @@ Win32InitDirectSound(HWND windowHandle, int32 samplesPerSecond, int32 bufferSize
     return; // TODO(Cristián): Diagnostics
   }
 
+  int32 bufferSize = bufferLength * nChannels * samplesPerSecond * bytesPerSample;
+
   // We set the format for the buffers
   WAVEFORMATEX waveFormat = {};
   waveFormat.wFormatTag = WAVE_FORMAT_PCM;
-  waveFormat.nChannels = 2;
-  waveFormat.wBitsPerSample = 16;
+  waveFormat.nChannels = nChannels;
+  waveFormat.wBitsPerSample = bytesPerSample << 3; // *8
   // Size (in bytes) of a sample block
-  waveFormat.nBlockAlign = (waveFormat.nChannels * waveFormat.wBitsPerSample) / 8;
+  waveFormat.nBlockAlign = (waveFormat.nChannels * bytesPerSample);
   waveFormat.nSamplesPerSec = samplesPerSecond;
   waveFormat.nAvgBytesPerSec = waveFormat.nBlockAlign * waveFormat.nSamplesPerSec;
   waveFormat.cbSize = 0;
 
   // "Create" a primary buffer
+  // This buffer is a handle to the sound card which Windows will write according to
+  // our data in the secondary buffer
   DSBUFFERDESC bufferDescription = {};
   bufferDescription.dwSize = sizeof(bufferDescription);
   // TODO(Cristián): See if we need DSBCAPS_GLOBALFOCUS
@@ -142,14 +182,14 @@ Win32InitDirectSound(HWND windowHandle, int32 samplesPerSecond, int32 bufferSize
   }
   if(!SUCCEEDED(primaryBuffer->SetFormat(&waveFormat))) { return; } // TODO(Cristián): Diagnostics
 
-  // NOTE(Cristián): "Create" a secondary buffer
+  // "Create" a secondary buffer
   DSBUFFERDESC secBufferDescription = {};
   secBufferDescription.dwSize = sizeof(secBufferDescription);
   secBufferDescription.dwFlags = 0;
   secBufferDescription.dwBufferBytes = bufferSize;
   secBufferDescription.lpwfxFormat = &waveFormat;
-  LPDIRECTSOUNDBUFFER secondaryBuffer;
-  if(!SUCCEEDED(directSound->CreateSoundBuffer(&secBufferDescription, &secondaryBuffer, 0)))
+  // The gSecondaryBuffer pointer is defined globally
+  if(!SUCCEEDED(directSound->CreateSoundBuffer(&secBufferDescription, &gSecondaryBuffer, 0)))
   {
     return; // TODO(Cristián): Diagnostics
   }
@@ -170,9 +210,6 @@ Win32GetWindowDimension(HWND windowHandle)
   return(result);
 }
 
-//TODO:(Cristián): This is a global for now
-global_variable bool32 gRunning;
-global_variable win32_offscreen_buffer gBackBuffer;
 /**
  * Writes a 'weird' gradient into a memory buffer
  * @param *buffer A pointer to the buffer info struct. We can pass it by reference also
@@ -359,9 +396,11 @@ Win32MainWindowCallback(HWND windowHandle,
           }
           else if(vKeyCode == VK_LEFT)
           {
+            gToneHz -= 2;
           }
           else if(vKeyCode == VK_RIGHT)
           {
+            gToneHz += 2;
           }
           else if(vKeyCode == VK_ESCAPE)
           {
@@ -451,8 +490,23 @@ WinMain(HINSTANCE hInstance,
       // get one device context and use it forever, because we don't need to return it.
       HDC deviceContext = GetDC(windowHandle);
 
-      int samplesPerSecond = 48000; // 48 kHz
-      Win32InitDirectSound(windowHandle, samplesPerSecond, 2 * samplesPerSecond * sizeof(int16));
+      int32 samplesPerSecond = 48000; // 48 kHz
+      int32 nChannels = 2;  // Stereo Sound
+      int32 bytesPerSample = 2;
+      int32 bytesPerBlock = nChannels * bytesPerSample;
+      int32 bufferLength = 1;
+      int32 bufferSize = bufferLength * samplesPerSecond * bytesPerBlock;
+
+      // An index that counts how many samples we've outputed. We can use the module operator
+      // to make a running index of our buffer
+      uint32 runningBlockIndex = 0;
+      Win32InitDirectSound(windowHandle, samplesPerSecond, bytesPerSample, nChannels, bufferLength);
+
+      // NOTE(Cristián): Test Code
+      gSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+      int32 toneVolume = 5000;
+      int32 squareWavePeriod = samplesPerSecond / gToneHz;
+      int32 halfSquareWavePeriod = squareWavePeriod / 2;
 
       // ** MESSAGE LOOP **
       // We retrieve the messages from windows via the message queue
@@ -542,17 +596,89 @@ WinMain(HINSTANCE hInstance,
           {
             // NOTE(Cristián): The controller is not available
           }
- 
+
         }
 
         Win32RenderWeirdGradient(&gBackBuffer, blueOffset, greenOffset);
-
         win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
         Win32TransferBufferToWindows(deviceContext,
                                      &gBackBuffer,
                                      dimension.width, dimension.height);
-        //blueOffset++;
-        //greenOffset += 2;
+
+        // We get the cursor IN BYTES of where the system is playing and writing in the
+        // sound buffer
+        DWORD playCursor;
+        DWORD writeCursor;
+        if(!SUCCEEDED(gSecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor)))
+        {
+          // If we can't get the current position, then the buffer died
+          continue;
+        }
+
+        DWORD bytesToWrite;
+        DWORD byteToLock = (runningBlockIndex * bytesPerBlock) % bufferSize;
+        if(byteToLock <= playCursor) { bytesToWrite = playCursor - byteToLock; }
+        else { bytesToWrite = bufferSize - (byteToLock - playCursor); }
+
+        VOID *region1;
+        DWORD region1Size;
+        VOID *region2;
+        DWORD region2Size;
+        if(!SUCCEEDED(gSecondaryBuffer->Lock(byteToLock, bytesToWrite,
+                               &region1, &region1Size,
+                               &region2, &region2Size,
+                               0)))
+        {
+          // If we can't lock the buffer, then the buffer died
+          continue;
+        }
+
+        /**
+         * We write into the buffer by writing and advancing the output pointer
+         * We make two writes because we created 2 channels, which makes the buffer to look like this:
+         * [int16 int16] [int16 int16] ...
+         * [LEFT  RIGHT] [LEFT  RIGHT] ...
+         * [  SAMPLE   ] [  SAMPLE   ] ...
+         *
+         */
+
+        // TODO(Cristián): Remove this hz update
+        squareWavePeriod = samplesPerSecond / gToneHz;
+        halfSquareWavePeriod = squareWavePeriod / 2;
+
+        // We cast the region pointer into int16 pointers (it is a DWORD) so we can
+        // write into each channel of the sound buffer
+        int16 *sampleOut = (int16 *)region1;
+        int32 region1SampleCount = region1Size / bytesPerBlock;
+        // TODO(Cristián): Assert that region sizes are valid (sample multiple)
+        for(int32 sampleIndex = 0;
+            sampleIndex < region1SampleCount;
+            sampleIndex++)
+        {
+          // We check into which part of the square Cycle we are
+          int16 sampleValue = ((runningBlockIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
+
+          *sampleOut++ = sampleValue;
+          *sampleOut++ = sampleValue;
+          runningBlockIndex++;
+        }
+        sampleOut = (int16 *)region2;
+        int32 region2SampleCount = region2Size / bytesPerBlock;
+        // TODO(Cristián): Assert that region sizes are valid (sample multiple)
+        for(int32 sampleIndex = 0;
+            sampleIndex < region2SampleCount;
+            sampleIndex++)
+        {
+          // We check into which part of the square Cycle we are
+          int16 sampleValue = ((runningBlockIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
+
+          *sampleOut++ = sampleValue;
+          *sampleOut++ = sampleValue;
+          runningBlockIndex++;
+        }
+
+        gSecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
+
       }
     }
     else
