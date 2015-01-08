@@ -8,27 +8,11 @@
     ===================================================================== */
 
 #include <windows.h>
-#include <stdint.h>
-#include <xinput.h>
 #include <dsound.h>
 
-// We rename static to some aliases to make more transparent the use of each
-#define internal static           // Makes functions scoped to the 'translation unit'
-#define global_variable static    // A variable available to all (or many) scopes
-#define local_persist static      // A scoped-variable that survives such scope
-
-// Convenient typedef taken from stdint.h
-typedef uint8_t uint8;
-typedef uint16_t uint16;
-typedef uint32_t uint32;
-typedef uint64_t uint64;
-
-typedef int8_t int8;
-typedef int16_t int16;
-typedef int32_t int32;
-typedef int64_t int64;
-
-typedef int32 bool32;
+// Defines our own common types
+#include "common_types.h"
+#include "x_input_wrapper.cpp"
 
 struct win32_offscreen_buffer
 {
@@ -52,55 +36,6 @@ global_variable LPDIRECTSOUNDBUFFER gSecondaryBuffer;
 
 // TODO(Cristián): Remove this as a global variable
 global_variable int32 gToneHz = 440;
-
-/**
- * We make a windows binding ourselves. We this we bypass an import librabry.
- * We do this in the case of XInput because the required library changes according to
- * the version of Windows the user is using, so we would like the game to function
- * independent of the dll that's really required.
- *
- * What we do is we define types that serve as pointers to the functions we are trying
- * to override. The we define global variables of such types, so we have global pointers
- * that point to the functions in the Windows API.
- * Then we define there global variables as the real meaning of XInput methods, so we
- * never use the ones defined in xinput.h
- */
-// We define a macro that generates the methods definition
-#define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE *pState)
-#define X_INPUT_SET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration)
-// We generate the types for the pointers of the methods
-typedef X_INPUT_GET_STATE(x_input_get_state);
-typedef X_INPUT_SET_STATE(x_input_set_state);
-// We generate stub functions for those methods
-X_INPUT_GET_STATE(XInputGetStateStub) { return(ERROR_DEVICE_NOT_CONNECTED); }
-X_INPUT_SET_STATE(XInputSetStateStub) { return(ERROR_DEVICE_NOT_CONNECTED); }
-// We generate global pointers to the functions and at first we assign them
-// to the harmless stubs. This way the game won't crash if the dll is not loaded.
-global_variable x_input_get_state *DynamicXInputGetState = XInputGetStateStub;
-global_variable x_input_set_state *DynamicXInputSetState = XInputSetStateStub;
-#define XInputGetState DynamicXInputGetState
-#define XInputSetState DynamicXInputSetState
-
-/**
- * Tries to load the XInput libraries
- */
-internal void
-Win32LoadXInput()
-{
-  // We try to load 1.4 first (Windows 8), and then we try 1.3
-  HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
-  if(!XInputLibrary) { LoadLibraryA("xinput1_3.dll"); }
-  if(!XInputLibrary) { return; } // TODO(Cristián): Diagnostics
-
-  // Here we make a 'late-binding', where we go look at the address of library
-  // loaded dynamically
-  XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
-  if(!XInputGetState) { XInputGetState = XInputGetStateStub; }
-  XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
-  if(!XInputSetState) { XInputSetState = XInputSetStateStub; }
-
-  // TODO(Cristián): Diagnostics
-}
 
 /**
  * We create our DirectSound API handler pointer.
@@ -555,40 +490,16 @@ WinMain(HINSTANCE hInstance,
           if(XInputGetState(controllerIndex, &controllerState) == ERROR_SUCCESS) // Amazing success key code name
           {
             // TODO(Cristián): See if controllerState.swPacketNumber incrementes too rapidly
-            // We import the whole gamepad state
-            XINPUT_GAMEPAD *pad = &controllerState.Gamepad;
-            bool32 up = (pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
-            bool32 down = (pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-            bool32 left = (pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
-            bool32 right = (pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
-            bool32 start = (pad->wButtons & XINPUT_GAMEPAD_START);
-            bool32 back = (pad->wButtons & XINPUT_GAMEPAD_BACK);
-            bool32 leftThumb = (pad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
-            bool32 rightThumb = (pad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
-            bool32 leftShoulder = (pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
-            bool32 rightShoulder = (pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
-            bool32 aButton = (pad->wButtons & XINPUT_GAMEPAD_A);
-            bool32 bButton = (pad->wButtons & XINPUT_GAMEPAD_B);
-            bool32 yButton = (pad->wButtons & XINPUT_GAMEPAD_Y);
-            bool32 xButton = (pad->wButtons & XINPUT_GAMEPAD_X);
 
-            // We inport the sticks
-            int16 leftThumbX = pad->sThumbLX;
-            int16 leftThumbY = pad->sThumbLY;
-            int16 rightThumbX = pad->sThumbRX;
-            int16 rightThumbY = pad->sThumbRY;
-
-            // We import the triggers
-            int16 leftTrigger = pad->bLeftTrigger;
-            int16 rightTrigger = pad->bRightTrigger;
+            x_input_gamepad_state gamepadState = GetGamepadState(&controllerState);
 
             // We assign acceleration
-            blueOffset += leftThumbX >> 12;
-            greenOffset -= leftThumbY >> 12; // We invert the Y because the screen is also inverted
+            blueOffset += gamepadState.leftThumbX >> 12;
+            greenOffset -= gamepadState.leftThumbY >> 12; // We invert the Y because the screen is also inverted
 
             XINPUT_VIBRATION xInputVibration = {};
-            xInputVibration.wLeftMotorSpeed = aButton ? 65535 : 0;
-            xInputVibration.wRightMotorSpeed = bButton ? 65535 : 0;
+            xInputVibration.wLeftMotorSpeed = gamepadState.aButton ? 65535 : 0;
+            xInputVibration.wRightMotorSpeed = gamepadState.bButton ? 65535 : 0;
 
             XInputSetState(controllerIndex, &xInputVibration);
           }
