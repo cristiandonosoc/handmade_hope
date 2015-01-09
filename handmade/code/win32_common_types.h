@@ -11,8 +11,8 @@
 
     ===================================================================== */
 
-#ifndef _COMMON_TYPES_INCLUDED
-#define _COMMON_TYPES_INCLUDED
+#ifndef _WIN32_COMMON_TYPES_INCLUDED
+#define _WIN32_COMMON_TYPES_INCLUDED
 
 #include <stdint.h>
 

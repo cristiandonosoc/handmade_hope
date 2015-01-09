@@ -10,9 +10,9 @@
 #include <windows.h>
 
 // Defines our own common types
-#include "common_types.h"
-#include "x_input_wrapper.cpp"
-#include "graphics_wrapper.cpp"
+#include "win32_common_types.h"
+#include "win32_x_input_wrapper.cpp"
+#include "win32_graphics_wrapper.cpp"
 #include "win32_direct_sound_wrapper.cpp"
 
 

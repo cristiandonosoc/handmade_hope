@@ -11,8 +11,8 @@
 
     ===================================================================== */
 
-#ifndef _X_INPUT_WRAPPER_INCLUDED
-#define _X_INPUT_WRAPPER_INCLUDED
+#ifndef _WIN32_X_INPUT_WRAPPER_INCLUDED
+#define _WIN32_X_INPUT_WRAPPER_INCLUDED
 
 #include <windows.h>
 #include <xinput.h>

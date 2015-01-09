@@ -11,8 +11,8 @@
 
     ===================================================================== */
 
-#ifndef _GRAPHICS_WRAPPER_INCLUDED
-#define _GRAPHICS_WRAPPER_INCLUDED
+#ifndef _WIN32_GRAPHICS_WRAPPER_INCLUDED
+#define _WIN32_GRAPHICS_WRAPPER_INCLUDED
 
 #include <windows.h>
 #include "common_types.h"
