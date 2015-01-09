@@ -14,6 +14,7 @@
 #ifndef _X_INPUT_WRAPPER_INCLUDED
 #define _X_INPUT_WRAPPER_INCLUDED
 
+#include <windows.h>
 #include <xinput.h>
 #include "common_types.h"
 
