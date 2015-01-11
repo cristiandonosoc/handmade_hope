@@ -16,19 +16,52 @@
 
 #include <windows.h>
 #include <dsound.h>
-#include "common_types.h"
+#include "win32_common_types.h"
 
-/******** GLOBAL VARIABLES **********/
-// TODO(Cristián): Remove this as a global variable
-global_variable int32 gToneHz = 440;
+#include <math.h> // TODO(Cristián): Remove
 
+#define PI32 3.14159265359f
 
 /******** DIRECT SOUND CONFIG *******/
 global_variable LPDIRECTSOUNDBUFFER gSecondaryBuffer;
-global_variable uint32 gRunningBlockIndex;
-global_variable int32 gBytesPerBlock;
-global_variable int32 gBufferSize;
-global_variable int32 gSamplesPerSecond;
+
+struct win32_sound_output
+{
+  private:
+  int32 toneHz = 440;
+  int32 samplesPerSecond;
+  int32 wavePeriod;
+
+  public:
+  // Variables
+  int16 toneVolume = 7000;
+
+  // Buffer Definition
+  int32 bytesPerBlock;
+  int32 bufferSize;
+  int32 runningBlockIndex;
+
+  int32 GetWavePeriod() { return this->wavePeriod; }
+
+  void SetSamplesPerSecond(int32 samplesPerSecond)
+  {
+    this->samplesPerSecond = samplesPerSecond;
+    this->wavePeriod = this->samplesPerSecond / this->toneHz;
+  }
+
+  void SetBufferToneHz(int32 toneHz)
+  {
+    this->toneHz = toneHz;
+    this->wavePeriod = this->samplesPerSecond / this->toneHz;
+  }
+  void ModifyBufferToneHz(int32 diff)
+  {
+    this->SetBufferToneHz(this->toneHz + diff);
+  }
+};
+
+// Global Sound Buffer Management
+global_variable win32_sound_output gSoundOutput;
 
 /**
  * We create our DirectSound API handler pointer.
@@ -82,10 +115,9 @@ Win32InitDirectSound(HWND windowHandle,
     return; // TODO(Cristián): Diagnostics
   }
 
-  // We set the global variables
-  gSamplesPerSecond = samplesPerSecond;
-  gBytesPerBlock = nChannels * bytesPerSample;
-  gBufferSize = bufferLength * nChannels * samplesPerSecond * bytesPerSample;
+  gSoundOutput.SetSamplesPerSecond(samplesPerSecond);
+  gSoundOutput.bytesPerBlock = nChannels * bytesPerSample;
+  gSoundOutput.bufferSize = bufferLength * nChannels * samplesPerSecond * bytesPerSample;
 
   // We set the format for the buffers
   WAVEFORMATEX waveFormat = {};
@@ -93,7 +125,7 @@ Win32InitDirectSound(HWND windowHandle,
   waveFormat.nChannels = nChannels;
   waveFormat.wBitsPerSample = bytesPerSample << 3; // *8
   // Size (in bytes) of a sample block
-  waveFormat.nBlockAlign = gBytesPerBlock;
+  waveFormat.nBlockAlign = gSoundOutput.bytesPerBlock;
   waveFormat.nSamplesPerSec = samplesPerSecond;
   waveFormat.nAvgBytesPerSec = waveFormat.nBlockAlign * waveFormat.nSamplesPerSec;
   waveFormat.cbSize = 0;
@@ -117,7 +149,7 @@ Win32InitDirectSound(HWND windowHandle,
   DSBUFFERDESC secBufferDescription = {};
   secBufferDescription.dwSize = sizeof(secBufferDescription);
   secBufferDescription.dwFlags = 0;
-  secBufferDescription.dwBufferBytes = gBufferSize;
+  secBufferDescription.dwBufferBytes = gSoundOutput.bufferSize;
   secBufferDescription.lpwfxFormat = &waveFormat;
   // The gSecondaryBuffer pointer is defined globally
   if(!SUCCEEDED(directSound->CreateSoundBuffer(&secBufferDescription, &gSecondaryBuffer, 0)))
@@ -129,7 +161,13 @@ Win32InitDirectSound(HWND windowHandle,
 }
 
 internal void
-Win32RunDirectSoundSample(int32 toneHz, uint32 toneVolume)
+Win32FillSoundBuffer(win32_sound_output *soundOutput, DWORD playCursor, DWORD writeCursor)
+{
+
+}
+
+internal void
+Win32RunDirectSoundSample(win32_sound_output *soundOutput)
 {
   // We get the cursor IN BYTES of where the system is playing and writing in the
   // sound buffer
@@ -142,9 +180,15 @@ Win32RunDirectSoundSample(int32 toneHz, uint32 toneVolume)
   }
 
   DWORD bytesToWrite;
-  DWORD byteToLock = (gRunningBlockIndex * gBytesPerBlock) % gBufferSize;
-  if(byteToLock <= playCursor) { bytesToWrite = playCursor - byteToLock; }
-  else { bytesToWrite = gBufferSize - (byteToLock - playCursor); }
+  DWORD byteToLock =
+    (soundOutput->runningBlockIndex * soundOutput->bytesPerBlock) % soundOutput->bufferSize;
+  // TODO(Cristián): We need better intelligence
+  if(byteToLock == playCursor)
+  {
+    //bytesToWrite = soundOutput->bufferSize;
+  }
+  else if(byteToLock < playCursor) { bytesToWrite = playCursor - byteToLock; }
+  else { bytesToWrite = soundOutput->bufferSize - (byteToLock - playCursor); }
 
   VOID *region1;
   DWORD region1Size;
@@ -168,39 +212,37 @@ Win32RunDirectSoundSample(int32 toneHz, uint32 toneVolume)
    *
    */
 
-  // TODO(Cristián): Remove this from the loop
-  int32 squareWavePeriod = gSamplesPerSecond / gToneHz;
-  int32 halfSquareWavePeriod = squareWavePeriod >> 1;
-
   // We cast the region pointer into int16 pointers (it is a DWORD) so we can
   // write into each channel of the sound buffer
   int16 *sampleOut = (int16 *)region1;
-  int32 region1SampleCount = region1Size / gBytesPerBlock;
+  int32 region1SampleCount = region1Size / soundOutput->bytesPerBlock;
   // TODO(Cristián): Assert that region sizes are valid (sample multiple)
   for(int32 sampleIndex = 0;
       sampleIndex < region1SampleCount;
       sampleIndex++)
   {
-    // We check into which part of the square Cycle we are
-    int16 sampleValue = ((gRunningBlockIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
+    real32 t = 2 * PI32 * ((real32)soundOutput->runningBlockIndex / (real32)soundOutput->GetWavePeriod());
+    real32 sineValue = sinf(t);
+    int16 sampleValue = (int16)(sineValue * soundOutput->toneVolume);
 
     *sampleOut++ = sampleValue;
     *sampleOut++ = sampleValue;
-    gRunningBlockIndex++;
+    soundOutput->runningBlockIndex++;
   }
   sampleOut = (int16 *)region2;
-  int32 region2SampleCount = region2Size / gBytesPerBlock;
+  int32 region2SampleCount = region2Size / soundOutput->bytesPerBlock;
   // TODO(Cristián): Assert that region sizes are valid (sample multiple)
   for(int32 sampleIndex = 0;
       sampleIndex < region2SampleCount;
       sampleIndex++)
   {
-    // We check into which part of the square Cycle we are
-    int16 sampleValue = ((gRunningBlockIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
+    real32 t = 2 * PI32 * ((real32)soundOutput->runningBlockIndex / (real32)soundOutput->GetWavePeriod());
+    real32 sineValue = sinf(t);
+    int16 sampleValue = (int16)(sineValue * soundOutput->toneVolume);
 
     *sampleOut++ = sampleValue;
     *sampleOut++ = sampleValue;
-    gRunningBlockIndex++;
+    soundOutput->runningBlockIndex++;
   }
 
   gSecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);

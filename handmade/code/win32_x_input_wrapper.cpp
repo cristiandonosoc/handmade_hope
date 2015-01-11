@@ -16,7 +16,7 @@
 
 #include <windows.h>
 #include <xinput.h>
-#include "common_types.h"
+#include "win32_common_types.h"
 
 /**
  * Struct that contains all the booleans and values for the gamepad

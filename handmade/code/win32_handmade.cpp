@@ -15,7 +15,6 @@
 #include "win32_graphics_wrapper.cpp"
 #include "win32_direct_sound_wrapper.cpp"
 
-
 /**
  * The callback to be received from the Win32 Window call
  */
@@ -82,11 +81,11 @@ Win32MainWindowCallback(HWND windowHandle,
           }
           else if(vKeyCode == VK_LEFT)
           {
-            gToneHz -= 2;
+            gSoundOutput.ModifyBufferToneHz(-2);
           }
           else if(vKeyCode == VK_RIGHT)
           {
-            gToneHz += 2;
+            gSoundOutput.ModifyBufferToneHz(2);
           }
           else if(vKeyCode == VK_ESCAPE)
           {
@@ -130,6 +129,7 @@ Win32MainWindowCallback(HWND windowHandle,
   }
   return(result);
 }
+
 
 /**
  * Main entrance for the program from the C-Runtime Library
@@ -189,9 +189,10 @@ WinMain(HINSTANCE hInstance,
       Win32InitDirectSound(windowHandle, samplesPerSecond, bytesPerSample, nChannels, bufferLength);
 
       // NOTE(Cristián): Test Code
+      int32 toneVolume = 7000;
+      Win32RunDirectSoundSample(&gSoundOutput);
       Win32PlayDirectSound();
 
-      int32 toneVolume = 7000;
 
       // ** MESSAGE LOOP **
       // We retrieve the messages from windows via the message queue
@@ -266,7 +267,7 @@ WinMain(HINSTANCE hInstance,
                                      &gBackBuffer,
                                      dimension.width, dimension.height);
 
-        Win32RunDirectSoundSample(gToneHz, toneVolume);
+        Win32RunDirectSoundSample(&gSoundOutput);
 
       }
     }
@@ -282,3 +283,5 @@ WinMain(HINSTANCE hInstance,
 
   return(0);
 }
+
+

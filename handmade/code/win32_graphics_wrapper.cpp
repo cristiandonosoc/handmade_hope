@@ -15,7 +15,7 @@
 #define _WIN32_GRAPHICS_WRAPPER_INCLUDED
 
 #include <windows.h>
-#include "common_types.h"
+#include "win32_common_types.h"
 
 struct win32_offscreen_buffer
 {
