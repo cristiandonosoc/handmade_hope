@@ -17,8 +17,9 @@
 #include <windows.h>
 #include <dsound.h>
 #include "win32_common_types.h"
+#include <stdio.h>
 
-#include <math.h> // TODO(Cristián): Remove
+#include <math.h> // TODO(Cristián): Implement our own sine function
 
 #define PI32 3.14159265359f
 
@@ -40,9 +41,9 @@ struct win32_sound_output
   int32 bytesPerBlock;
   int32 bufferSize;
   int32 runningBlockIndex;
+  real32 tSine;
 
   int32 GetWavePeriod() { return this->wavePeriod; }
-
   void SetSamplesPerSecond(int32 samplesPerSecond)
   {
     this->samplesPerSecond = samplesPerSecond;
@@ -159,35 +160,8 @@ Win32InitDirectSound(HWND windowHandle,
 }
 
 internal void
-Win32FillSoundBuffer(win32_sound_output *soundOutput, DWORD playCursor, DWORD writeCursor)
+Win32FillSoundBuffer(win32_sound_output *soundOutput, DWORD byteToLock, DWORD bytesToWrite)
 {
-
-}
-
-internal void
-Win32RunDirectSoundSample(win32_sound_output *soundOutput)
-{
-  // We get the cursor IN BYTES of where the system is playing and writing in the
-  // sound buffer
-  DWORD playCursor;
-  DWORD writeCursor;
-  if(!SUCCEEDED(gSecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor)))
-  {
-    // If we can't get the current position, then the buffer died
-    return;
-  }
-
-  DWORD bytesToWrite;
-  DWORD byteToLock =
-    (soundOutput->runningBlockIndex * soundOutput->bytesPerBlock) % soundOutput->bufferSize;
-  // TODO(Cristián): We need better intelligence
-  if(byteToLock == playCursor)
-  {
-    //bytesToWrite = soundOutput->bufferSize;
-  }
-  else if(byteToLock < playCursor) { bytesToWrite = playCursor - byteToLock; }
-  else { bytesToWrite = soundOutput->bufferSize - (byteToLock - playCursor); }
-
   VOID *region1;
   DWORD region1Size;
   VOID *region2;
@@ -210,40 +184,78 @@ Win32RunDirectSoundSample(win32_sound_output *soundOutput)
    *
    */
 
+  char buffer[200];
+  sprintf(buffer, "Wave Period is %d\n", soundOutput->GetWavePeriod());
+  OutputDebugStringA(buffer);
+  sprintf(buffer, "Sine Change is %f\n", 2 * PI32 / (real32)soundOutput->GetWavePeriod());
+  OutputDebugStringA(buffer);
+
   // We cast the region pointer into int16 pointers (it is a DWORD) so we can
   // write into each channel of the sound buffer
-  int16 *sampleOut = (int16 *)region1;
+  int16 *sample1Out = (int16 *)region1;
   int32 region1SampleCount = region1Size / soundOutput->bytesPerBlock;
   // TODO(Cristián): Assert that region sizes are valid (sample multiple)
   for(int32 sampleIndex = 0;
       sampleIndex < region1SampleCount;
       sampleIndex++)
   {
-    real32 t = 2 * PI32 * ((real32)soundOutput->runningBlockIndex / (real32)soundOutput->GetWavePeriod());
-    real32 sineValue = sinf(t);
+    real32 sineValue = sinf(soundOutput->tSine);
     int16 sampleValue = (int16)(sineValue * soundOutput->toneVolume);
 
-    *sampleOut++ = sampleValue;
-    *sampleOut++ = sampleValue;
+    *sample1Out++ = sampleValue;
+    *sample1Out++ = sampleValue;
     soundOutput->runningBlockIndex++;
+
+    soundOutput->tSine += 2 * PI32 / (real32)soundOutput->GetWavePeriod();
   }
-  sampleOut = (int16 *)region2;
+
+  int16 *sample2Out = (int16 *)region2;
   int32 region2SampleCount = region2Size / soundOutput->bytesPerBlock;
   // TODO(Cristián): Assert that region sizes are valid (sample multiple)
   for(int32 sampleIndex = 0;
       sampleIndex < region2SampleCount;
       sampleIndex++)
   {
-    real32 t = 2 * PI32 * ((real32)soundOutput->runningBlockIndex / (real32)soundOutput->GetWavePeriod());
-    real32 sineValue = sinf(t);
+    real32 sineValue = sinf(soundOutput->tSine);
     int16 sampleValue = (int16)(sineValue * soundOutput->toneVolume);
 
-    *sampleOut++ = sampleValue;
-    *sampleOut++ = sampleValue;
+    *sample2Out++ = sampleValue;
+    *sample2Out++ = sampleValue;
     soundOutput->runningBlockIndex++;
+
+    soundOutput->tSine += 2 * PI32 / (real32)soundOutput->GetWavePeriod();
   }
 
+
+
+
   gSecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
+}
+
+internal void
+Win32RunDirectSoundSample(win32_sound_output *soundOutput)
+{
+  // We get the cursor IN BYTES of where the system is playing and writing in the
+  // sound buffer
+  DWORD playCursor;
+  DWORD writeCursor;
+  if(!SUCCEEDED(gSecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor)))
+  {
+    // If we can't get the current position, then the buffer died
+    return;
+  }
+
+  // We basically write from the last point we wrote until the playCursor
+  DWORD bytesToWrite;
+  DWORD byteToLock =
+    (soundOutput->runningBlockIndex * soundOutput->bytesPerBlock) % soundOutput->bufferSize;
+  // TODO(Cristián): Change to a lower latenxy offset from the playCursor
+  //                 Right now we have 1 buffer latency
+  if(byteToLock <= playCursor) { bytesToWrite = playCursor - byteToLock; }
+  else { bytesToWrite = soundOutput->bufferSize - (byteToLock - playCursor); }
+
+  Win32FillSoundBuffer(soundOutput, byteToLock, bytesToWrite);
+
 }
 
 internal void

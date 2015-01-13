@@ -125,7 +125,6 @@ Win32MainWindowCallback(HWND windowHandle,
       } break;
     default:
       {
-        //OutputDebugStringA("DEFAULT CASE\n");
         // In this case, we let windows handle the default result for this message
         result = DefWindowProc(windowHandle, message, wParam, lParam);
       } break;
@@ -192,10 +191,8 @@ WinMain(HINSTANCE hInstance,
       Win32InitDirectSound(windowHandle, &gSoundOutput, samplesPerSecond, bytesPerSample, nChannels, bufferLength);
 
       // NOTE(Cristián): Test Code
-      int32 toneVolume = 7000;
-      Win32RunDirectSoundSample(&gSoundOutput);
+      Win32FillSoundBuffer(&gSoundOutput, 0, gSoundOutput.bufferSize);
       Win32PlayDirectSound();
-
 
       // ** MESSAGE LOOP **
       // We retrieve the messages from windows via the message queue
