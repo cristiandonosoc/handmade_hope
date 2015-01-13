@@ -13,7 +13,10 @@
 #include "win32_common_types.h"
 #include "win32_x_input_wrapper.cpp"
 #include "win32_graphics_wrapper.cpp"
+
 #include "win32_direct_sound_wrapper.cpp"
+// Global Sound Buffer Management
+global_variable win32_sound_output gSoundOutput;
 
 /**
  * The callback to be received from the Win32 Window call
@@ -186,7 +189,7 @@ WinMain(HINSTANCE hInstance,
       // An index that counts how many samples we've outputed. We can use the module operator
       // to make a running index of our buffer
       uint32 runningBlockIndex = 0;
-      Win32InitDirectSound(windowHandle, samplesPerSecond, bytesPerSample, nChannels, bufferLength);
+      Win32InitDirectSound(windowHandle, &gSoundOutput, samplesPerSecond, bytesPerSample, nChannels, bufferLength);
 
       // NOTE(Cristián): Test Code
       int32 toneVolume = 7000;

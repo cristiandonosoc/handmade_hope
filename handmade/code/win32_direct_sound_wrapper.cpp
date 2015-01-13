@@ -60,9 +60,6 @@ struct win32_sound_output
   }
 };
 
-// Global Sound Buffer Management
-global_variable win32_sound_output gSoundOutput;
-
 /**
  * We create our DirectSound API handler pointer.
  */
@@ -76,6 +73,7 @@ typedef DIRECT_SOUND_CREATE(direct_sound_create);
  */
 internal void
 Win32InitDirectSound(HWND windowHandle,
+                     win32_sound_output *soundOutput,
                      int32 samplesPerSecond,
                      int32 bytesPerSample,
                      int32 nChannels,
@@ -115,9 +113,9 @@ Win32InitDirectSound(HWND windowHandle,
     return; // TODO(Cristián): Diagnostics
   }
 
-  gSoundOutput.SetSamplesPerSecond(samplesPerSecond);
-  gSoundOutput.bytesPerBlock = nChannels * bytesPerSample;
-  gSoundOutput.bufferSize = bufferLength * nChannels * samplesPerSecond * bytesPerSample;
+  soundOutput->SetSamplesPerSecond(samplesPerSecond);
+  soundOutput->bytesPerBlock = nChannels * bytesPerSample;
+  soundOutput->bufferSize = bufferLength * nChannels * samplesPerSecond * bytesPerSample;
 
   // We set the format for the buffers
   WAVEFORMATEX waveFormat = {};
@@ -125,7 +123,7 @@ Win32InitDirectSound(HWND windowHandle,
   waveFormat.nChannels = nChannels;
   waveFormat.wBitsPerSample = bytesPerSample << 3; // *8
   // Size (in bytes) of a sample block
-  waveFormat.nBlockAlign = gSoundOutput.bytesPerBlock;
+  waveFormat.nBlockAlign = soundOutput->bytesPerBlock;
   waveFormat.nSamplesPerSec = samplesPerSecond;
   waveFormat.nAvgBytesPerSec = waveFormat.nBlockAlign * waveFormat.nSamplesPerSec;
   waveFormat.cbSize = 0;
@@ -149,7 +147,7 @@ Win32InitDirectSound(HWND windowHandle,
   DSBUFFERDESC secBufferDescription = {};
   secBufferDescription.dwSize = sizeof(secBufferDescription);
   secBufferDescription.dwFlags = 0;
-  secBufferDescription.dwBufferBytes = gSoundOutput.bufferSize;
+  secBufferDescription.dwBufferBytes = soundOutput->bufferSize;
   secBufferDescription.lpwfxFormat = &waveFormat;
   // The gSecondaryBuffer pointer is defined globally
   if(!SUCCEEDED(directSound->CreateSoundBuffer(&secBufferDescription, &gSecondaryBuffer, 0)))
