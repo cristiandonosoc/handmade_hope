@@ -30,20 +30,23 @@ struct win32_sound_output
 {
   private:
   int32 toneHz = 440;
-  int32 samplesPerSecond;
-  int32 wavePeriod;
+  int32 samplesPerSecond = 48000;
+  int32 wavePeriod = 48000 / 440;
 
   public:
   // Variables
-  int16 toneVolume = 7000;
+  int16 toneVolume = 16000;
 
   // Buffer Definition
+  int32 nChannels;
   int32 bytesPerBlock;
   int32 bufferSize;
   int32 runningBlockIndex;
+  int32 latency;
   real32 tSine;
 
   int32 GetWavePeriod() { return this->wavePeriod; }
+  int32 GetSamplesPerSecond() { return this->samplesPerSecond; }
   void SetSamplesPerSecond(int32 samplesPerSecond)
   {
     this->samplesPerSecond = samplesPerSecond;
@@ -74,11 +77,7 @@ typedef DIRECT_SOUND_CREATE(direct_sound_create);
  */
 internal void
 Win32InitDirectSound(HWND windowHandle,
-                     win32_sound_output *soundOutput,
-                     int32 samplesPerSecond,
-                     int32 bytesPerSample,
-                     int32 nChannels,
-                     int32 bufferLength)
+                     win32_sound_output *soundOutput)
 {
   // NOTE(Cristián): Load the library
   HMODULE DirectSoundLibrary = LoadLibraryA("dsound.dll");
@@ -114,18 +113,14 @@ Win32InitDirectSound(HWND windowHandle,
     return; // TODO(Cristián): Diagnostics
   }
 
-  soundOutput->SetSamplesPerSecond(samplesPerSecond);
-  soundOutput->bytesPerBlock = nChannels * bytesPerSample;
-  soundOutput->bufferSize = bufferLength * nChannels * samplesPerSecond * bytesPerSample;
-
   // We set the format for the buffers
   WAVEFORMATEX waveFormat = {};
   waveFormat.wFormatTag = WAVE_FORMAT_PCM;
-  waveFormat.nChannels = nChannels;
-  waveFormat.wBitsPerSample = bytesPerSample << 3; // *8
+  waveFormat.nChannels = soundOutput->nChannels;
+  waveFormat.wBitsPerSample = (soundOutput->bytesPerBlock / soundOutput->nChannels) * 8;
   // Size (in bytes) of a sample block
   waveFormat.nBlockAlign = soundOutput->bytesPerBlock;
-  waveFormat.nSamplesPerSec = samplesPerSecond;
+  waveFormat.nSamplesPerSec = soundOutput->GetSamplesPerSecond();
   waveFormat.nAvgBytesPerSec = waveFormat.nBlockAlign * waveFormat.nSamplesPerSec;
   waveFormat.cbSize = 0;
 
@@ -207,6 +202,10 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput, DWORD byteToLock, DWORD by
     soundOutput->runningBlockIndex++;
 
     soundOutput->tSine += 2 * PI32 / (real32)soundOutput->GetWavePeriod();
+    while(soundOutput->tSine > 2 * PI32)
+    {
+      soundOutput->tSine -= 2 * PI32;
+    }
   }
 
   int16 *sample2Out = (int16 *)region2;
@@ -224,10 +223,11 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput, DWORD byteToLock, DWORD by
     soundOutput->runningBlockIndex++;
 
     soundOutput->tSine += 2 * PI32 / (real32)soundOutput->GetWavePeriod();
+    while(soundOutput->tSine > 2 * PI32)
+    {
+      soundOutput->tSine -= 2 * PI32;
+    }
   }
-
-
-
 
   gSecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
 }
@@ -249,10 +249,15 @@ Win32RunDirectSoundSample(win32_sound_output *soundOutput)
   DWORD bytesToWrite;
   DWORD byteToLock =
     (soundOutput->runningBlockIndex * soundOutput->bytesPerBlock) % soundOutput->bufferSize;
+
+  DWORD targetCursor = (playCursor +
+    (soundOutput->latency * soundOutput->bytesPerBlock)) %
+    soundOutput->bufferSize;
+
   // TODO(Cristián): Change to a lower latenxy offset from the playCursor
   //                 Right now we have 1 buffer latency
-  if(byteToLock <= playCursor) { bytesToWrite = playCursor - byteToLock; }
-  else { bytesToWrite = soundOutput->bufferSize - (byteToLock - playCursor); }
+  if(byteToLock <= targetCursor) { bytesToWrite = targetCursor - byteToLock; }
+  else { bytesToWrite = soundOutput->bufferSize - (byteToLock - targetCursor); }
 
   Win32FillSoundBuffer(soundOutput, byteToLock, bytesToWrite);
 

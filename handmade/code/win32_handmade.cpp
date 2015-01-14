@@ -178,17 +178,16 @@ WinMain(HINSTANCE hInstance,
       // get one device context and use it forever, because we don't need to return it.
       HDC deviceContext = GetDC(windowHandle);
 
-      int32 samplesPerSecond = 48000; // 48 kHz
-      int32 nChannels = 2;  // Stereo Sound
-      int32 bytesPerSample = 2;
-      int32 bytesPerBlock = nChannels * bytesPerSample;
-      int32 bufferLength = 1;
-      int32 bufferSize = bufferLength * samplesPerSecond * bytesPerBlock;
+      gSoundOutput.SetSamplesPerSecond(48000); // 48kHz
+      gSoundOutput.latency = gSoundOutput.GetSamplesPerSecond() / 15;   // 15 frames of latency
+      gSoundOutput.nChannels = 2;
+      gSoundOutput.bytesPerBlock = gSoundOutput.nChannels * sizeof(int16);
+      gSoundOutput.bufferSize = gSoundOutput.GetSamplesPerSecond() * gSoundOutput.bytesPerBlock;
 
       // An index that counts how many samples we've outputed. We can use the module operator
       // to make a running index of our buffer
       uint32 runningBlockIndex = 0;
-      Win32InitDirectSound(windowHandle, &gSoundOutput, samplesPerSecond, bytesPerSample, nChannels, bufferLength);
+      Win32InitDirectSound(windowHandle, &gSoundOutput);
 
       // NOTE(Cristián): Test Code
       Win32FillSoundBuffer(&gSoundOutput, 0, gSoundOutput.bufferSize);
