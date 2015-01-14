@@ -88,6 +88,7 @@ Win32LoadXInput()
 {
   // We try to load 1.4 first (Windows 8), and then we try 1.3
   HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
+  if(!XInputLibrary) { LoadLibraryA("xinput9_1_0.dll"); }
   if(!XInputLibrary) { LoadLibraryA("xinput1_3.dll"); }
   if(!XInputLibrary) { return; } // TODO(Cristián): Diagnostics
 

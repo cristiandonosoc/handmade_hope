@@ -98,7 +98,7 @@ Win32MainWindowCallback(HWND windowHandle,
           }
           else // All other keys are treated by default
           {
-            result = DefWindowProc(windowHandle, message, wParam, lParam);
+            result = DefWindowProcA(windowHandle, message, wParam, lParam);
           }
         }
       } break;
@@ -243,9 +243,16 @@ WinMain(HINSTANCE hInstance,
 
             x_input_gamepad_state gamepadState = GetGamepadState(&controllerState);
 
-            // We assign acceleration
-            blueOffset += gamepadState.leftThumbX >> 12;
-            greenOffset -= gamepadState.leftThumbY >> 12; // We invert the Y because the screen is also inverted
+            /**
+             * TODO(Cristián): Handle the deadzone of controller correctly
+            #define XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE  7849
+            #define XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 8689
+            #define XINPUT_GAMEPAD_TRIGGER_THRESHOLD    30
+            */
+            // We cannot shift down when numbers are negative because they
+            // end up as -1, not 0!
+            blueOffset += gamepadState.leftThumbX / 4096;
+            greenOffset -= gamepadState.leftThumbY /4096; // We invert the Y because the screen is also inverted
 
             XINPUT_VIBRATION xInputVibration = {};
             xInputVibration.wLeftMotorSpeed = gamepadState.aButton ? 65535 : 0;
