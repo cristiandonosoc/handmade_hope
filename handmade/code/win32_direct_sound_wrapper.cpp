@@ -179,12 +179,6 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput, DWORD byteToLock, DWORD by
    *
    */
 
-  char buffer[200];
-  sprintf(buffer, "Wave Period is %d\n", soundOutput->GetWavePeriod());
-  OutputDebugStringA(buffer);
-  sprintf(buffer, "Sine Change is %f\n", 2 * PI32 / (real32)soundOutput->GetWavePeriod());
-  OutputDebugStringA(buffer);
-
   // We cast the region pointer into int16 pointers (it is a DWORD) so we can
   // write into each channel of the sound buffer
   int16 *sample1Out = (int16 *)region1;

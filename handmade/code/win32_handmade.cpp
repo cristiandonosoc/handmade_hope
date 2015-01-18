@@ -15,8 +15,10 @@
 #include "win32_graphics_wrapper.cpp"
 
 #include "win32_direct_sound_wrapper.cpp"
+
 // Global Sound Buffer Management
 global_variable win32_sound_output gSoundOutput;
+global_variable uint64 gPerformanceCounterFrequency;
 
 /**
  * The callback to be received from the Win32 Window call
@@ -156,6 +158,10 @@ WinMain(HINSTANCE hInstance,
   // We setup the backbuffer
   Win32ResizeDIBSection(&gBackBuffer, 1280, 740);
 
+  LARGE_INTEGER perfCounterFrequecyResult;
+  QueryPerformanceFrequency(&perfCounterFrequecyResult);
+  gPerformanceCounterFrequency = perfCounterFrequecyResult.QuadPart;
+
   if(RegisterClassA(&windowClass))
   {
     HWND windowHandle = CreateWindowExA(
@@ -197,9 +203,17 @@ WinMain(HINSTANCE hInstance,
       // We retrieve the messages from windows via the message queue
       int blueOffset = 0;
       int greenOffset = 0;
+
+      LARGE_INTEGER lastCounter;
+      QueryPerformanceCounter(&lastCounter);
+
+      // We put the amount of cycles made by the processor
+      uint64 lastCycleCount = __rdtsc();
+
       gRunning = true;
       while(gRunning)
       {
+
         /**
          * We create the MSG inside the loop instead of outside to use correct
          * 'lexical' scoping. This means we protect outselves from referencing this pointer
@@ -275,6 +289,28 @@ WinMain(HINSTANCE hInstance,
 
         Win32RunDirectSoundSample(&gSoundOutput);
 
+        uint64 endCycleCount = __rdtsc();
+
+        LARGE_INTEGER endCounter;
+        QueryPerformanceCounter(&endCounter);
+
+        uint64 counterElapsed = endCounter.QuadPart - lastCounter.QuadPart;
+        real32 msPerFrame = 1000 * (real32)counterElapsed / gPerformanceCounterFrequency;
+        uint32 fps = 1000 / msPerFrame;
+
+        uint64 cyclesElapsed = endCycleCount - lastCycleCount;
+        real32 megaCycles = cyclesElapsed / (1000.0f * 1000.0f);
+
+
+        // TODO(Cristián): Remove from production
+        char buffer[256];
+        //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
+        sprintf(buffer, "%f ms\t| %d FPS\t| %d MegaCycles\n", msPerFrame, fps, megaCycles);
+        OutputDebugStringA(buffer);
+
+        // We update the lastCounter
+        lastCounter = endCounter;
+        lastCycleCount = endCycleCount;
       }
     }
     else
