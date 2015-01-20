@@ -20,6 +20,8 @@
 global_variable win32_sound_output gSoundOutput;
 global_variable uint64 gPerformanceCounterFrequency;
 
+#include "handmade.cpp"
+
 /**
  * The callback to be received from the Win32 Window call
  */
@@ -281,7 +283,14 @@ WinMain(HINSTANCE hInstance,
 
         }
 
-        Win32RenderWeirdGradient(&gBackBuffer, blueOffset, greenOffset);
+        game_offscreen_buffer gameBuffer = {};
+        gameBuffer.memory = gBackBuffer.memory;
+        gameBuffer.width = gBackBuffer.width;
+        gameBuffer.height = gBackBuffer.height;
+        gameBuffer.pitch = gBackBuffer.pitch;
+
+        GameUpdateAndRender(&gameBuffer);
+
         win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
         Win32TransferBufferToWindows(deviceContext,
                                      &gBackBuffer,
