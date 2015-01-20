@@ -7,20 +7,19 @@
     $Notice: (c) Copyright 2014 Cristián Donoso $
     ===================================================================== */
 
-#include <windows.h>
-
 // Defines our own common types
-#include "win32_common_types.h"
-#include "win32_x_input_wrapper.cpp"
-#include "win32_graphics_wrapper.cpp"
+#include "common_types.h"
+#include "handmade.cpp"
 
-#include "win32_direct_sound_wrapper.cpp"
+// Platform specific code
+#include <windows.h>
+#include "platform_layer/win32/win32_x_input_wrapper.cpp"
+#include "platform_layer/win32/win32_graphics_wrapper.cpp"
+#include "platform_layer/win32/win32_direct_sound_wrapper.cpp"
 
 // Global Sound Buffer Management
 global_variable win32_sound_output gSoundOutput;
 global_variable uint64 gPerformanceCounterFrequency;
-
-#include "handmade.cpp"
 
 /**
  * The callback to be received from the Win32 Window call
@@ -303,13 +302,13 @@ WinMain(HINSTANCE hInstance,
         LARGE_INTEGER endCounter;
         QueryPerformanceCounter(&endCounter);
 
+#if 0
         uint64 counterElapsed = endCounter.QuadPart - lastCounter.QuadPart;
         real32 msPerFrame = 1000 * (real32)counterElapsed / gPerformanceCounterFrequency;
         uint32 fps = 1000 / msPerFrame;
 
         uint64 cyclesElapsed = endCycleCount - lastCycleCount;
         real32 megaCycles = cyclesElapsed / (1000.0f * 1000.0f);
-
 
         // TODO(Cristián): Remove from production
         char buffer[256];
@@ -320,6 +319,7 @@ WinMain(HINSTANCE hInstance,
         // We update the lastCounter
         lastCounter = endCounter;
         lastCycleCount = endCycleCount;
+#endif
       }
     }
     else

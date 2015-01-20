@@ -17,9 +17,10 @@
    * TODO(Cristián): Services that the game provides to the platform layer
    * (this may expand in the future (sound on a separate thread))
    */
+  // TODO(Cristián): In the future, rendering *specifically* will become a
+  // three-tier abstraction
   struct game_offscreen_buffer
   {
-    BITMAPINFO info;
     void *memory;
     int width;
     int height;

@@ -12,11 +12,11 @@
     ===================================================================== */
 
 #ifndef _WIN32_X_INPUT_WRAPPER_INCLUDED
-#define _WIN32_X_INPUT_WRAPPER_INCLUDED
+
+#include "common_types.h"
 
 #include <windows.h>
 #include <xinput.h>
-#include "win32_common_types.h"
 
 /**
  * Struct that contains all the booleans and values for the gamepad
@@ -138,5 +138,5 @@ GetGamepadState(XINPUT_STATE *controllerState)
   return gamepadState;
 }
 
-
+#define _WIN32_X_INPUT_WRAPPER_INCLUDED
 #endif

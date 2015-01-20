@@ -12,10 +12,9 @@
     ===================================================================== */
 
 #ifndef _WIN32_GRAPHICS_WRAPPER_INCLUDED
-#define _WIN32_GRAPHICS_WRAPPER_INCLUDED
 
+#include "common_types.h"
 #include <windows.h>
-#include "win32_common_types.h"
 
 struct win32_offscreen_buffer
 {
@@ -128,5 +127,5 @@ Win32TransferBufferToWindows(HDC deviceContext,
     DIB_RGB_COLORS, SRCCOPY);
 }
 
-
+#define _WIN32_GRAPHICS_WRAPPER_INCLUDED
 #endif

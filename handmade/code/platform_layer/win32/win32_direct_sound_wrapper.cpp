@@ -12,11 +12,11 @@
     ===================================================================== */
 
 #ifndef _WIN32_DIRECT_SOUND_WRAPPER_INCLUDED
-#define _WIN32_DIRECT_SOUND_WRAPPER_INCLUDED
+
+#include "common_types.h"
 
 #include <windows.h>
 #include <dsound.h>
-#include "win32_common_types.h"
 #include <stdio.h>
 
 #include <math.h> // TODO(Cristián): Implement our own sine function
@@ -263,4 +263,5 @@ Win32PlayDirectSound()
   gSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 }
 
+#define _WIN32_DIRECT_SOUND_WRAPPER_INCLUDED
 #endif
