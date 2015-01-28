@@ -207,14 +207,19 @@ WinMain(HINSTANCE hInstance,
       HDC deviceContext = GetDC(windowHandle);
 
       gSoundOutput.SetSamplesPerSecond(48000); // 48kHz
+      gSoundOutput.toneVolume = 7000;
       gSoundOutput.latency = gSoundOutput.GetSamplesPerSecond() / 15;   // 15 frames of latency
       gSoundOutput.nChannels = 2;
       gSoundOutput.bytesPerBlock = gSoundOutput.nChannels * sizeof(int16);
       gSoundOutput.bufferSize = gSoundOutput.GetSamplesPerSecond() * gSoundOutput.bytesPerBlock;
 
+      // We allocalte the buffer
+      // TODO(Cristián): Pool with Graphics Virtual Alloc
+      gSoundOutput.bufferMemory = VirtualAlloc(0, gSoundOutput.bufferSize,
+                                               MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+
       // An index that counts how many samples we've outputed. We can use the module operator
       // to make a running index of our buffer
-      uint32 runningBlockIndex = 0;
       Win32InitDirectSound(windowHandle, &gSoundOutput);
 
       // NOTE(Cristián): Test Code
@@ -315,13 +320,12 @@ WinMain(HINSTANCE hInstance,
         if(Win32SetupSoundBuffer(&gSoundOutput))
         {
 
-          int16 samples[48000 * 2];
+          gameSoundOutput.bufferMemory = gSoundOutput.bufferMemory;
           gameSoundOutput.samplesPerSecond = gSoundOutput.GetSamplesPerSecond();
           gameSoundOutput.toneHz = gSoundOutput.GetToneHz();
           gameSoundOutput.toneVolume = gSoundOutput.toneVolume;
           gameSoundOutput.sampleCount = gSoundOutput.bytesToWrite /
                                         gSoundOutput.bytesPerBlock;
-          gameSoundOutput.samples = samples;
 
           validSound = true;
         }
@@ -331,8 +335,6 @@ WinMain(HINSTANCE hInstance,
         if (validSound)
         {
           Win32FillSoundBuffer(&gSoundOutput,
-                               gSoundOutput.byteToLock,
-                               gSoundOutput.bytesToWrite,
                                &gameSoundOutput);
         }
 

@@ -19,9 +19,6 @@
 #include <dsound.h>
 #include <stdio.h>
 
-#include <math.h> // TODO(Cristián): Implement our own sine function
-
-
 /******** DIRECT SOUND CONFIG *******/
 global_variable LPDIRECTSOUNDBUFFER gSecondaryBuffer;
 
@@ -42,6 +39,10 @@ struct win32_sound_output
   int32 bufferSize;
   int32 latency;
 
+  // Buffer
+  void *bufferMemory;
+
+  // Get & Set Methods
   int32 GetWavePeriod() { return this->wavePeriod; }
   int32 GetSamplesPerSecond() { return this->samplesPerSecond; }
   int32 GetToneHz() { return this->toneHz; }
@@ -194,16 +195,15 @@ Win32ClearBuffer(win32_sound_output *soundOutput)
 }
 
 internal void
-Win32FillSoundBuffer(win32_sound_output *soundOutput, 
-                     DWORD byteToLock, 
-                     DWORD bytesToWrite,
+Win32FillSoundBuffer(win32_sound_output *soundOutput,
                      game_sound_ouput_buffer *sourceOutput)
 {
   VOID *region1;
   DWORD region1Size;
   VOID *region2;
   DWORD region2Size;
-  if(!SUCCEEDED(gSecondaryBuffer->Lock(byteToLock, bytesToWrite,
+  if(!SUCCEEDED(gSecondaryBuffer->Lock(soundOutput->byteToLock,
+                                       soundOutput->bytesToWrite,
                                        &region1, &region1Size,
                                        &region2, &region2Size,
                                        0)))
@@ -224,7 +224,7 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput,
   // We cast the region pointer into int16 pointers (it is a DWORD) so we can
   // write into each channel of the sound buffer
   int16 *destSample = (int16 *)region1;
-  int16 *sourceSample = (int16 *)sourceOutput->samples;
+  int16 *sourceSample = (int16 *)sourceOutput->bufferMemory;
   int32 region1SampleCount = region1Size / soundOutput->bytesPerBlock;
   // TODO(Cristián): Assert that region sizes are valid (sample multiple)
   for(int32 sampleIndex = 0;
@@ -233,6 +233,7 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput,
   {
     *destSample++ = *sourceSample++;
     *destSample++ = *sourceSample++;
+    soundOutput->runningBlockIndex++;
   }
 
   destSample = (int16 *)region2;
@@ -244,6 +245,7 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput,
   {
     *destSample++ = *sourceSample++;
     *destSample++ = *sourceSample++;
+    soundOutput->runningBlockIndex++;
   }
 
   gSecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
@@ -256,6 +258,8 @@ Win32SetupSoundBuffer(win32_sound_output *soundOutput)
   // sound buffer
   DWORD playCursor;
   DWORD writeCursor;
+  // TODO(Cristián): Tighten up sound logic so that we know where we should be
+  // writing to and to anticipate time spent in the game output.
   if(!SUCCEEDED(gSecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor)))
   {
     // If we can't get the current position, then the buffer died
@@ -282,7 +286,6 @@ Win32SetupSoundBuffer(win32_sound_output *soundOutput)
   soundOutput->bytesToWrite = bytesToWrite;
 
   return true;
-
 }
 
 internal void

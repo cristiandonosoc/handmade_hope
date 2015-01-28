@@ -29,7 +29,7 @@ struct game_offscreen_buffer
 
 struct game_sound_ouput_buffer
 {
-  int16 *samples;
+  void *bufferMemory;
   int32 sampleCount;
 
   int32 toneVolume;

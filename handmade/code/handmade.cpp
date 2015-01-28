@@ -74,7 +74,7 @@ OutputGameSound(game_sound_ouput_buffer *soundOutput)
 
   // We cast the region pointer into int16 pointers (it is a DWORD) so we can
   // write into each channel of the sound buffer
-  int16 *sampleOut = (int16 *)soundOutput->samples;
+  int16 *sampleOut = (int16 *)soundOutput->bufferMemory;
   //int32 region1SampleCount = region1Size / soundOutput->bytesPerBlock;
   // TODO(Cristián): Assert that region sizes are valid (sample multiple)
   for(int32 sampleIndex = 0;
