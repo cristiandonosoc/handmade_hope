@@ -36,4 +36,5 @@ typedef int32 bool32;
 typedef float real32;
 typedef double real64;
 
+#define PI32 3.14159265359f
 #endif

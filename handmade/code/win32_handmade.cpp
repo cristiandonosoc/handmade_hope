@@ -5,6 +5,26 @@
     $Revision: $
     $Creator: Cristián Donoso $
     $Notice: (c) Copyright 2014 Cristián Donoso $
+    =====================================================================
+
+    TODO(Cristián): THIS IS NOT A FINAL PLATFORM LAYER
+                    THINGS THAT ARE STILL MISSING:
+    - Saved game locations
+    - Getting a handle to our own executable file
+    - Asset loading path
+    - Threading
+    - Raw Input (Support for multiple keyboards)
+    - Sleep / Time Begin Period
+    - ClipCursor() (for multimonitor support)
+    - WM_SETCURSOR (control cursor visibility)
+    - WM_ACTIVATEAPP (for when we are not the active application)
+    - Query Cancel Autoplay
+    - Blit speed improvements (BitBlt)
+    - Hardware Acceleration (OpenGL || DirectX || BOTH?)
+    - Get Keyboard Layout (for french keyboards, international WASD support)
+
+    ... and many more
+
     ===================================================================== */
 
 // Defines our own common types
@@ -16,6 +36,7 @@
 #include "platform_layer/win32/win32_x_input_wrapper.cpp"
 #include "platform_layer/win32/win32_graphics_wrapper.cpp"
 #include "platform_layer/win32/win32_direct_sound_wrapper.cpp"
+
 
 // Global Sound Buffer Management
 global_variable win32_sound_output gSoundOutput;
@@ -197,7 +218,8 @@ WinMain(HINSTANCE hInstance,
       Win32InitDirectSound(windowHandle, &gSoundOutput);
 
       // NOTE(Cristián): Test Code
-      Win32FillSoundBuffer(&gSoundOutput, 0, gSoundOutput.bufferSize);
+      Win32ClearBuffer(&gSoundOutput);
+      //Win32FillSoundBuffer(&gSoundOutput, 0, gSoundOutput.bufferSize);
       Win32PlayDirectSound();
 
       // ** MESSAGE LOOP **
@@ -288,14 +310,38 @@ WinMain(HINSTANCE hInstance,
         gameBuffer.height = gBackBuffer.height;
         gameBuffer.pitch = gBackBuffer.pitch;
 
-        GameUpdateAndRender(&gameBuffer);
+        bool32 validSound = false;
+        game_sound_ouput_buffer gameSoundOutput = {};
+        if(Win32SetupSoundBuffer(&gSoundOutput))
+        {
+
+          int16 samples[48000 * 2];
+          gameSoundOutput.samplesPerSecond = gSoundOutput.GetSamplesPerSecond();
+          gameSoundOutput.toneHz = gSoundOutput.GetToneHz();
+          gameSoundOutput.toneVolume = gSoundOutput.toneVolume;
+          gameSoundOutput.sampleCount = gSoundOutput.bytesToWrite /
+                                        gSoundOutput.bytesPerBlock;
+          gameSoundOutput.samples = samples;
+
+          validSound = true;
+        }
+
+        GameUpdateAndRender(&gameBuffer, &gameSoundOutput);
+
+        if (validSound)
+        {
+          Win32FillSoundBuffer(&gSoundOutput,
+                               gSoundOutput.byteToLock,
+                               gSoundOutput.bytesToWrite,
+                               &gameSoundOutput);
+        }
+
 
         win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
         Win32TransferBufferToWindows(deviceContext,
                                      &gBackBuffer,
                                      dimension.width, dimension.height);
 
-        Win32RunDirectSoundSample(&gSoundOutput);
 
         uint64 endCycleCount = __rdtsc();
 

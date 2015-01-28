@@ -7,7 +7,10 @@
     $Notice: (c) Copyright 2015 Cristián Donoso $
     ===================================================================== */
 
+#ifndef _HANDMADE_CPP_INCLUDED
 #include "handmade.h"
+
+#include <math.h> // TODO(Cristián): Implement our own sine function
 
 /**
  * Writes a 'weird' gradient into a memory buffer
@@ -54,9 +57,54 @@ RenderWeirdGradient(game_offscreen_buffer *buffer, int blueOffset, int greenOffs
 }
 
 internal void
-GameUpdateAndRender(game_offscreen_buffer *buffer)
+OutputGameSound(game_sound_ouput_buffer *soundOutput)
 {
-  RenderWeirdGradient(buffer, 0, 0);
+  /**
+   * We write into the buffer by writing and advancing the output pointer
+   * We make two writes because we created 2 channels, which makes the buffer to look like this:
+   * [int16 int16] [int16 int16] ...
+   * [LEFT  RIGHT] [LEFT  RIGHT] ...
+   * [  SAMPLE   ] [  SAMPLE   ] ...
+   *
+   */
+
+  local_persist real32 tSine;
+  int32 wavePeriod = soundOutput->samplesPerSecond /
+                     soundOutput->toneHz;
+
+  // We cast the region pointer into int16 pointers (it is a DWORD) so we can
+  // write into each channel of the sound buffer
+  int16 *sampleOut = (int16 *)soundOutput->samples;
+  //int32 region1SampleCount = region1Size / soundOutput->bytesPerBlock;
+  // TODO(Cristián): Assert that region sizes are valid (sample multiple)
+  for(int32 sampleIndex = 0;
+      sampleIndex < soundOutput->sampleCount;
+      sampleIndex++)
+  {
+    real32 sineValue = sinf(tSine);
+    int16 sampleValue = (int16)(sineValue * soundOutput->toneVolume);
+
+    *sampleOut++ = sampleValue;
+    *sampleOut++ = sampleValue;
+
+    tSine += 2 * PI32 / (real32)wavePeriod;
+    while(tSine > 2 * PI32)
+    {
+      tSine -= 2 * PI32;
+    }
+  }
 }
 
+internal void
+GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
+                    game_sound_ouput_buffer *soundBuffer)
+{
+  // TODO(Cristián): Make more flexible the sound output
+  // in order to receive sample offsets
+  OutputGameSound(soundBuffer);
+  RenderWeirdGradient(offscreenBuffer, 0, 0);
+}
+
+#define _HANDMADE_CPP_INCLUDED
+#endif
 

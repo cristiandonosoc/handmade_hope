@@ -21,7 +21,6 @@
 
 #include <math.h> // TODO(Cristián): Implement our own sine function
 
-#define PI32 3.14159265359f
 
 /******** DIRECT SOUND CONFIG *******/
 global_variable LPDIRECTSOUNDBUFFER gSecondaryBuffer;
@@ -41,12 +40,11 @@ struct win32_sound_output
   int32 nChannels;
   int32 bytesPerBlock;
   int32 bufferSize;
-  int32 runningBlockIndex;
   int32 latency;
-  real32 tSine;
 
   int32 GetWavePeriod() { return this->wavePeriod; }
   int32 GetSamplesPerSecond() { return this->samplesPerSecond; }
+  int32 GetToneHz() { return this->toneHz; }
   void SetSamplesPerSecond(int32 samplesPerSecond)
   {
     this->samplesPerSecond = samplesPerSecond;
@@ -62,6 +60,12 @@ struct win32_sound_output
   {
     this->SetBufferToneHz(this->toneHz + diff);
   }
+
+  // VARIABLE DATA
+  real32 tSine;
+  int32 runningBlockIndex;
+  uint32 byteToLock;
+  uint32 bytesToWrite;
 };
 
 /**
@@ -155,16 +159,54 @@ Win32InitDirectSound(HWND windowHandle,
 }
 
 internal void
-Win32FillSoundBuffer(win32_sound_output *soundOutput, DWORD byteToLock, DWORD bytesToWrite)
+Win32ClearBuffer(win32_sound_output *soundOutput)
+{
+  VOID *region1;
+  DWORD region1Size;
+  VOID *region2;
+  DWORD region2Size;
+  if(!SUCCEEDED(gSecondaryBuffer->Lock(0, soundOutput->bufferSize,
+                                       &region1, &region1Size,
+                                       &region2, &region2Size,
+                                       0)))
+  {
+    // If we can't lock the buffer, then the buffer died
+    return;
+  }
+
+  uint8 *destSample = (uint8 *)region1;
+  for(int32 sampleIndex = 0;
+      sampleIndex < region1Size;
+      sampleIndex++)
+  {
+    *destSample++ = 0;
+  }
+
+  destSample = (uint8 *)region2;
+  for(int32 sampleIndex = 0;
+      sampleIndex < region2Size;
+      sampleIndex++)
+  {
+    *destSample++ = 0;
+  }
+
+  gSecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
+}
+
+internal void
+Win32FillSoundBuffer(win32_sound_output *soundOutput, 
+                     DWORD byteToLock, 
+                     DWORD bytesToWrite,
+                     game_sound_ouput_buffer *sourceOutput)
 {
   VOID *region1;
   DWORD region1Size;
   VOID *region2;
   DWORD region2Size;
   if(!SUCCEEDED(gSecondaryBuffer->Lock(byteToLock, bytesToWrite,
-          &region1, &region1Size,
-          &region2, &region2Size,
-          0)))
+                                       &region1, &region1Size,
+                                       &region2, &region2Size,
+                                       0)))
   {
     // If we can't lock the buffer, then the buffer died
     return;
@@ -181,53 +223,34 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput, DWORD byteToLock, DWORD by
 
   // We cast the region pointer into int16 pointers (it is a DWORD) so we can
   // write into each channel of the sound buffer
-  int16 *sample1Out = (int16 *)region1;
+  int16 *destSample = (int16 *)region1;
+  int16 *sourceSample = (int16 *)sourceOutput->samples;
   int32 region1SampleCount = region1Size / soundOutput->bytesPerBlock;
   // TODO(Cristián): Assert that region sizes are valid (sample multiple)
   for(int32 sampleIndex = 0;
       sampleIndex < region1SampleCount;
       sampleIndex++)
   {
-    real32 sineValue = sinf(soundOutput->tSine);
-    int16 sampleValue = (int16)(sineValue * soundOutput->toneVolume);
-
-    *sample1Out++ = sampleValue;
-    *sample1Out++ = sampleValue;
-    soundOutput->runningBlockIndex++;
-
-    soundOutput->tSine += 2 * PI32 / (real32)soundOutput->GetWavePeriod();
-    while(soundOutput->tSine > 2 * PI32)
-    {
-      soundOutput->tSine -= 2 * PI32;
-    }
+    *destSample++ = *sourceSample++;
+    *destSample++ = *sourceSample++;
   }
 
-  int16 *sample2Out = (int16 *)region2;
+  destSample = (int16 *)region2;
   int32 region2SampleCount = region2Size / soundOutput->bytesPerBlock;
   // TODO(Cristián): Assert that region sizes are valid (sample multiple)
   for(int32 sampleIndex = 0;
       sampleIndex < region2SampleCount;
       sampleIndex++)
   {
-    real32 sineValue = sinf(soundOutput->tSine);
-    int16 sampleValue = (int16)(sineValue * soundOutput->toneVolume);
-
-    *sample2Out++ = sampleValue;
-    *sample2Out++ = sampleValue;
-    soundOutput->runningBlockIndex++;
-
-    soundOutput->tSine += 2 * PI32 / (real32)soundOutput->GetWavePeriod();
-    while(soundOutput->tSine > 2 * PI32)
-    {
-      soundOutput->tSine -= 2 * PI32;
-    }
+    *destSample++ = *sourceSample++;
+    *destSample++ = *sourceSample++;
   }
 
   gSecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
 }
 
-internal void
-Win32RunDirectSoundSample(win32_sound_output *soundOutput)
+internal bool32
+Win32SetupSoundBuffer(win32_sound_output *soundOutput)
 {
   // We get the cursor IN BYTES of where the system is playing and writing in the
   // sound buffer
@@ -236,7 +259,7 @@ Win32RunDirectSoundSample(win32_sound_output *soundOutput)
   if(!SUCCEEDED(gSecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor)))
   {
     // If we can't get the current position, then the buffer died
-    return;
+    return false;
   }
 
   // We basically write from the last point we wrote until the playCursor
@@ -253,7 +276,12 @@ Win32RunDirectSoundSample(win32_sound_output *soundOutput)
   if(byteToLock <= targetCursor) { bytesToWrite = targetCursor - byteToLock; }
   else { bytesToWrite = soundOutput->bufferSize - (byteToLock - targetCursor); }
 
-  Win32FillSoundBuffer(soundOutput, byteToLock, bytesToWrite);
+  //Win32FillSoundBuffer(soundOutput, byteToLock, bytesToWrite, sourceOutput);
+
+  soundOutput->byteToLock = byteToLock;
+  soundOutput->bytesToWrite = bytesToWrite;
+
+  return true;
 
 }
 
