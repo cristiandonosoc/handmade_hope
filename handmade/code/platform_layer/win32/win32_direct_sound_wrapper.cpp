@@ -150,7 +150,7 @@ Win32ClearBuffer(win32_sound_output *soundOutput)
 
 internal void
 Win32FillSoundBuffer(win32_sound_output *soundOutput,
-                     game_sound_ouput_buffer *sourceOutput)
+                     game_sound_output_buffer *sourceOutput)
 {
   VOID *region1;
   DWORD region1Size;

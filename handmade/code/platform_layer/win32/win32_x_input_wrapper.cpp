@@ -138,5 +138,15 @@ GetGamepadState(XINPUT_STATE *controllerState)
   return gamepadState;
 }
 
+internal void
+Win32ProcessButtonState(game_button_state *oldState,
+                        game_button_state *newState,
+                        bool32 currentState)
+{
+  newState->halfTransitionCount =
+    oldState->endedDown != currentState ? 1 : 0;
+  newState->endedDown = currentState;
+}
+
 #define _WIN32_X_INPUT_WRAPPER_INCLUDED
 #endif

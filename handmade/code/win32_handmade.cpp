@@ -239,6 +239,10 @@ WinMain(HINSTANCE hInstance,
       // We put the amount of cycles made by the processor
       uint64 lastCycleCount = __rdtsc();
 
+      game_input gameInputs[2] = {};
+      game_input *oldInput = &gameInputs[0];
+      game_input *newInput = &gameInputs[1];
+
       gRunning = true;
       while(gRunning)
       {
@@ -273,18 +277,48 @@ WinMain(HINSTANCE hInstance,
 
         // Xinput is a polling based API
         // TODO(Cristián): Should we pull this more frequently?
+        int32 maxControllerCount = XUSER_MAX_COUNT;
+        if (maxControllerCount > ARRAY_COUNT(oldInput->controllers))
+        {
+          maxControllerCount = ARRAY_COUNT(oldInput->controllers);
+        }
         for(DWORD controllerIndex = 0;
-            controllerIndex < XUSER_MAX_COUNT;
+            controllerIndex < maxControllerCount;
             controllerIndex++)
         {
           DWORD result;
           XINPUT_STATE controllerState;
+          game_controller_input *oldController = &oldInput->controllers[controllerIndex];
+          game_controller_input *newController = &newInput->controllers[controllerIndex];
 
           if(XInputGetState(controllerIndex, &controllerState) == ERROR_SUCCESS) // Amazing success key code name
           {
             // TODO(Cristián): See if controllerState.swPacketNumber incrementes too rapidly
 
             x_input_gamepad_state gamepadState = GetGamepadState(&controllerState);
+
+            // We generate the game_input
+            newController->isAnalog = true;
+            real32 x = ((real32)(gamepadState.leftThumbX + 32768) /
+                       32768.0f) - 1.0f;
+            newController->startX = oldController->endX;
+            newController->endX = x;
+
+            real32 y = ((real32)(gamepadState.leftThumbY + 32768) /
+                       32768.0f) - 1.0f;
+            newController->startY = oldController->endY;
+            newController->endY = y;
+
+            Win32ProcessButtonState(&oldController->a, &newController->a, gamepadState.aButton);
+            Win32ProcessButtonState(&oldController->b, &newController->b, gamepadState.bButton);
+            Win32ProcessButtonState(&oldController->x, &newController->x, gamepadState.xButton);
+            Win32ProcessButtonState(&oldController->y, &newController->y, gamepadState.yButton);
+            Win32ProcessButtonState(&oldController->leftShoulder, &newController->leftShoulder,
+                                    gamepadState.leftTrigger);
+            Win32ProcessButtonState(&oldController->rightShoulder, &newController->rightShoulder,
+                                    gamepadState.rightTrigger);
+
+
 
             /**
              * TODO(Cristián): Handle the deadzone of controller correctly
@@ -317,7 +351,7 @@ WinMain(HINSTANCE hInstance,
         gameBuffer.pitch = gBackBuffer.pitch;
 
         bool32 validSound = false;
-        game_sound_ouput_buffer gameSoundOutput = {};
+        game_sound_output_buffer gameSoundOutput = {};
         if(Win32SetupSoundBuffer(&gSoundOutput))
         {
 
@@ -329,7 +363,7 @@ WinMain(HINSTANCE hInstance,
           validSound = true;
         }
 
-        GameUpdateAndRender(&gameBuffer, &gameSoundOutput);
+        GameUpdateAndRender(&gameBuffer, &gameSoundOutput, newInput);
 
         if (validSound)
         {
@@ -362,11 +396,17 @@ WinMain(HINSTANCE hInstance,
         //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
         sprintf(buffer, "%f ms\t| %d FPS\t| %d MegaCycles\n", msPerFrame, fps, megaCycles);
         OutputDebugStringA(buffer);
+#endif
 
         // We update the lastCounter
         lastCounter = endCounter;
         lastCycleCount = endCycleCount;
-#endif
+
+        // We swap the controllers
+        game_input *tempInputState = newInput;
+        newInput = oldInput;
+        oldInput = tempInputState;
+        // TODO(Cristián): Clear the newInput??
       }
     }
     else
