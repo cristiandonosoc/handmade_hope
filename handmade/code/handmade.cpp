@@ -57,7 +57,8 @@ RenderWeirdGradient(game_offscreen_buffer *buffer, int blueOffset, int greenOffs
 }
 
 internal void
-OutputGameSound(game_sound_ouput_buffer *soundOutput)
+OutputGameSound(game_sound_ouput_buffer *soundOutput, 
+                int32 toneHz, int32 toneVolume)
 {
   /**
    * We write into the buffer by writing and advancing the output pointer
@@ -69,8 +70,7 @@ OutputGameSound(game_sound_ouput_buffer *soundOutput)
    */
 
   local_persist real32 tSine;
-  int32 wavePeriod = soundOutput->samplesPerSecond /
-                     soundOutput->toneHz;
+  int32 wavePeriod = soundOutput->samplesPerSecond / toneHz;
 
   // We cast the region pointer into int16 pointers (it is a DWORD) so we can
   // write into each channel of the sound buffer
@@ -82,7 +82,7 @@ OutputGameSound(game_sound_ouput_buffer *soundOutput)
       sampleIndex++)
   {
     real32 sineValue = sinf(tSine);
-    int16 sampleValue = (int16)(sineValue * soundOutput->toneVolume);
+    int16 sampleValue = (int16)(sineValue * toneVolume);
 
     *sampleOut++ = sampleValue;
     *sampleOut++ = sampleValue;
@@ -99,10 +99,15 @@ internal void
 GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
                     game_sound_ouput_buffer *soundBuffer)
 {
+
+  local_persist int32 xOffset = 0;
+  local_persist int32 yOffset = 0;
+  local_persist int32 toneHz = 440;
+  local_persist int32 toneVolume = 7000;
   // TODO(Cristián): Make more flexible the sound output
   // in order to receive sample offsets
-  OutputGameSound(soundBuffer);
-  RenderWeirdGradient(offscreenBuffer, 0, 0);
+  OutputGameSound(soundBuffer, toneHz, toneVolume);
+  RenderWeirdGradient(offscreenBuffer, xOffset, yOffset);
 }
 
 #define _HANDMADE_CPP_INCLUDED

@@ -11,9 +11,10 @@
 
     ===================================================================== */
 
-#ifndef _WIN32_DIRECT_SOUND_WRAPPER_INCLUDED
+#ifndef _WIN32_DIRECT_SOUND_WRAPPER_CPP_INCLUDED
 
 #include "common_types.h"
+#include "win32_direct_sound_wrapper.h"
 
 #include <windows.h>
 #include <dsound.h>
@@ -21,53 +22,6 @@
 
 /******** DIRECT SOUND CONFIG *******/
 global_variable LPDIRECTSOUNDBUFFER gSecondaryBuffer;
-
-struct win32_sound_output
-{
-  private:
-  int32 toneHz = 440;
-  int32 samplesPerSecond = 48000;
-  int32 wavePeriod = 48000 / 440;
-
-  public:
-  // Variables
-  int16 toneVolume = 16000;
-
-  // Buffer Definition
-  int32 nChannels;
-  int32 bytesPerBlock;
-  int32 bufferSize;
-  int32 latency;
-
-  // Buffer
-  void *bufferMemory;
-
-  // Get & Set Methods
-  int32 GetWavePeriod() { return this->wavePeriod; }
-  int32 GetSamplesPerSecond() { return this->samplesPerSecond; }
-  int32 GetToneHz() { return this->toneHz; }
-  void SetSamplesPerSecond(int32 samplesPerSecond)
-  {
-    this->samplesPerSecond = samplesPerSecond;
-    this->wavePeriod = this->samplesPerSecond / this->toneHz;
-  }
-
-  void SetBufferToneHz(int32 toneHz)
-  {
-    this->toneHz = toneHz;
-    this->wavePeriod = this->samplesPerSecond / this->toneHz;
-  }
-  void ModifyBufferToneHz(int32 diff)
-  {
-    this->SetBufferToneHz(this->toneHz + diff);
-  }
-
-  // VARIABLE DATA
-  real32 tSine;
-  int32 runningBlockIndex;
-  uint32 byteToLock;
-  uint32 bytesToWrite;
-};
 
 /**
  * We create our DirectSound API handler pointer.
@@ -125,7 +79,7 @@ Win32InitDirectSound(HWND windowHandle,
   waveFormat.wBitsPerSample = (soundOutput->bytesPerBlock / soundOutput->nChannels) * 8;
   // Size (in bytes) of a sample block
   waveFormat.nBlockAlign = soundOutput->bytesPerBlock;
-  waveFormat.nSamplesPerSec = soundOutput->GetSamplesPerSecond();
+  waveFormat.nSamplesPerSec = soundOutput->samplesPerSecond;
   waveFormat.nAvgBytesPerSec = waveFormat.nBlockAlign * waveFormat.nSamplesPerSec;
   waveFormat.cbSize = 0;
 
@@ -294,5 +248,5 @@ Win32PlayDirectSound()
   gSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 }
 
-#define _WIN32_DIRECT_SOUND_WRAPPER_INCLUDED
+#define _WIN32_DIRECT_SOUND_WRAPPER_CPP_INCLUDED
 #endif

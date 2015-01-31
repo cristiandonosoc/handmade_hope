@@ -108,11 +108,13 @@ Win32MainWindowCallback(HWND windowHandle,
           }
           else if(vKeyCode == VK_LEFT)
           {
-            gSoundOutput.ModifyBufferToneHz(-2);
+            // TODO(Cristián): Move this to the game layer
+            //gSoundOutput.ModifyBufferToneHz(-2);
           }
           else if(vKeyCode == VK_RIGHT)
           {
-            gSoundOutput.ModifyBufferToneHz(2);
+            // TODO(Cristián): Move this to the game layer
+            //gSoundOutput.ModifyBufferToneHz(2);
           }
           else if(vKeyCode == VK_ESCAPE)
           {
@@ -206,12 +208,11 @@ WinMain(HINSTANCE hInstance,
       // get one device context and use it forever, because we don't need to return it.
       HDC deviceContext = GetDC(windowHandle);
 
-      gSoundOutput.SetSamplesPerSecond(48000); // 48kHz
-      gSoundOutput.toneVolume = 7000;
-      gSoundOutput.latency = gSoundOutput.GetSamplesPerSecond() / 15;   // 15 frames of latency
+      gSoundOutput.samplesPerSecond = 48000; // 48kHz
+      gSoundOutput.latency = gSoundOutput.samplesPerSecond / 15;   // 15 frames of latency
       gSoundOutput.nChannels = 2;
       gSoundOutput.bytesPerBlock = gSoundOutput.nChannels * sizeof(int16);
-      gSoundOutput.bufferSize = gSoundOutput.GetSamplesPerSecond() * gSoundOutput.bytesPerBlock;
+      gSoundOutput.bufferSize = gSoundOutput.samplesPerSecond * gSoundOutput.bytesPerBlock;
 
       // We allocalte the buffer
       // TODO(Cristián): Pool with Graphics Virtual Alloc
@@ -321,9 +322,7 @@ WinMain(HINSTANCE hInstance,
         {
 
           gameSoundOutput.bufferMemory = gSoundOutput.bufferMemory;
-          gameSoundOutput.samplesPerSecond = gSoundOutput.GetSamplesPerSecond();
-          gameSoundOutput.toneHz = gSoundOutput.GetToneHz();
-          gameSoundOutput.toneVolume = gSoundOutput.toneVolume;
+          gameSoundOutput.samplesPerSecond = gSoundOutput.samplesPerSecond;
           gameSoundOutput.sampleCount = gSoundOutput.bytesToWrite /
                                         gSoundOutput.bytesPerBlock;
 
