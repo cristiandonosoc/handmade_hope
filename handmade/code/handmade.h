@@ -10,6 +10,9 @@
 #ifndef _HANDMADE_H_INCLUDED
 
 #define ARRAY_COUNT(Array) (sizeof(Array) / sizeof((Array)[0]))
+#define KILOBYTES(amount) ((amount) * 1024)
+#define MEGABYTES(amount) ((amount) * 1024 * 1024)
+#define GIGABYTES(amount) ((amount) * 1024 * 1024 * 1024)
 
 /**
  * TODO(Cristián): Services that the platform layer provides to the game
@@ -89,10 +92,35 @@ struct game_input
   game_controller_input controllers[4];
 };
 
+struct game_memory
+{
+  bool32 isInitialized;
+  uint64 permanentStorageSize;
+  // NOTE(Cristián): REQUIRED to be cleared to 0 at startup
+  void *permanentStorage;
 
-internal void GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
+  uint64 transientStorageSize;
+  // NOTE(Cristián): REQUIRED to be cleared to 0 at startup
+  void *transientStorage;
+};
+
+
+internal void GameUpdateAndRender(game_memory *gameMemory,
+                                  game_offscreen_buffer *offscreenBuffer,
                                   game_sound_output_buffer *soundBuffer,
                                   game_input *gameInput);
+
+// THIS IS NOT FOR THE PLATFORM LAYER TO KNOW
+
+struct game_state
+{
+  int32 xOffset;
+  int32 yOffset;
+  int32 toneHz;
+  int32 toneVolume;
+};
+
+
 
 #define _HANDMADE_H_INCLUDED
 #endif

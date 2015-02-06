@@ -96,22 +96,28 @@ OutputGameSound(game_sound_output_buffer *soundOutput,
 }
 
 internal void
-GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
+GameUpdateAndRender(game_memory *gameMemory,
+                    game_offscreen_buffer *offscreenBuffer,
                     game_sound_output_buffer *soundBuffer,
                     game_input *gameInput)
 {
 
-  local_persist int32 xOffset = 0;
-  local_persist int32 yOffset = 0;
-  local_persist int32 toneHz = 440;
-  local_persist int32 toneVolume = 7000;
+  game_state *gameState = (game_state *)gameMemory->permanentStorage;
+  if(!gameMemory->isInitialized)
+  {
+    gameState->toneHz = 440;
+    gameState->toneVolume = 7000;
+
+    // TODO(Cristián): This may be more appropiate to do in the platform layer
+    gameMemory->isInitialized = true;
+  }
 
   game_controller_input *input0 = &gameInput->controllers[0];
 
   if(input0->isAnalog)
   {
     // NOTE(Cristián): Use analog movement tuning
-    toneHz = 256 + (int32)(120.0f * input0->endX);
+    gameState->toneHz = 256 + (int32)(120.0f * input0->endX);
   }
   else
   {
@@ -120,13 +126,15 @@ GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
 
   if(input0->a.endedDown)
   {
-    xOffset += 1;
+    gameState->xOffset += 1;
   }
 
-
-
-  OutputGameSound(soundBuffer, toneHz, toneVolume);
-  RenderWeirdGradient(offscreenBuffer, xOffset, yOffset);
+  OutputGameSound(soundBuffer,
+                  gameState->toneHz,
+                  gameState->toneVolume);
+  RenderWeirdGradient(offscreenBuffer,
+                      gameState->xOffset,
+                      gameState->yOffset);
 }
 
 #define _HANDMADE_CPP_INCLUDED

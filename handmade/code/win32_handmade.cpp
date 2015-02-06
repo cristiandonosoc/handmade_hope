@@ -208,11 +208,20 @@ WinMain(HINSTANCE hInstance,
       // get one device context and use it forever, because we don't need to return it.
       HDC deviceContext = GetDC(windowHandle);
 
+      /**
+       *  SOUND INITIALIZATION
+       */
+
       gSoundOutput.samplesPerSecond = 48000; // 48kHz
       gSoundOutput.latency = gSoundOutput.samplesPerSecond / 15;   // 15 frames of latency
       gSoundOutput.nChannels = 2;
       gSoundOutput.bytesPerBlock = gSoundOutput.nChannels * sizeof(int16);
       gSoundOutput.bufferSize = gSoundOutput.samplesPerSecond * gSoundOutput.bytesPerBlock;
+
+      /**
+       * NOTE(Cristián): VirtualAlloc by default clears the memory to 0,
+       *                 unless MEM_RESET is specified.
+       */
 
       // We allocalte the buffer
       // TODO(Cristián): Pool with Graphics Virtual Alloc
@@ -228,11 +237,32 @@ WinMain(HINSTANCE hInstance,
       //Win32FillSoundBuffer(&gSoundOutput, 0, gSoundOutput.bufferSize);
       Win32PlayDirectSound();
 
+      /**
+       *  GAME MEMORY INITIALIZATION
+       */
+      game_memory gameMemory = {};
+      gameMemory.permanentStorageSize = MEGABYTES(64);
+      gameMemory.permanentStorage = VirtualAlloc(0, gameMemory.permanentStorageSize,
+                                                  MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+
+
+      gameMemory.transientStorageSize = GIGABYTES((uint64)4);
+      gameMemory.transientStorage = VirtualAlloc(0, gameMemory.transientStorageSize,
+                                                 MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+
+
+      if(!gSoundOutput.bufferMemory || 
+         !gameMemory.permanentStorage ||
+         !gameMemory.transientStorageSize)
+      {
+        // NOTE(Cristián): We weren't able to allocate all the memory needed
+        // TODO(Cristián): Loggin'
+        return(0);
+      }
+
+
       // ** MESSAGE LOOP **
       // We retrieve the messages from windows via the message queue
-      int blueOffset = 0;
-      int greenOffset = 0;
-
       LARGE_INTEGER lastCounter;
       QueryPerformanceCounter(&lastCounter);
 
@@ -297,6 +327,13 @@ WinMain(HINSTANCE hInstance,
 
             x_input_gamepad_state gamepadState = GetGamepadState(&controllerState);
 
+            /**
+             * TODO(Cristián): Handle the deadzone of controller correctly
+            #define XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE  7849
+            #define XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 8689
+            #define XINPUT_GAMEPAD_TRIGGER_THRESHOLD    30
+            */
+
             // We generate the game_input
             newController->isAnalog = true;
             real32 x = ((real32)(gamepadState.leftThumbX + 32768) /
@@ -319,23 +356,6 @@ WinMain(HINSTANCE hInstance,
                                     gamepadState.rightTrigger);
 
 
-
-            /**
-             * TODO(Cristián): Handle the deadzone of controller correctly
-            #define XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE  7849
-            #define XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 8689
-            #define XINPUT_GAMEPAD_TRIGGER_THRESHOLD    30
-            */
-            // We cannot shift down when numbers are negative because they
-            // end up as -1, not 0!
-            blueOffset += gamepadState.leftThumbX / 4096;
-            greenOffset -= gamepadState.leftThumbY /4096; // We invert the Y because the screen is also inverted
-
-            XINPUT_VIBRATION xInputVibration = {};
-            xInputVibration.wLeftMotorSpeed = gamepadState.aButton ? 65535 : 0;
-            xInputVibration.wRightMotorSpeed = gamepadState.bButton ? 65535 : 0;
-
-            XInputSetState(controllerIndex, &xInputVibration);
           }
           else
           {
@@ -363,7 +383,7 @@ WinMain(HINSTANCE hInstance,
           validSound = true;
         }
 
-        GameUpdateAndRender(&gameBuffer, &gameSoundOutput, newInput);
+        GameUpdateAndRender(&gameMemory, &gameBuffer, &gameSoundOutput, newInput);
 
         if (validSound)
         {
