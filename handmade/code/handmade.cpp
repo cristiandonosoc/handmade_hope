@@ -112,6 +112,21 @@ GameUpdateAndRender(game_memory *gameMemory,
 
     // TODO(Cristián): This may be more appropiate to do in the platform layer
     gameMemory->isInitialized = true;
+
+    // We try to read from files
+    // TODO(Cristián): Stop allocating new memory for the file
+    //                 Instead reserve memory from the already allocated
+    //                 gameMemory
+    char *fileName = __FILE__;
+    uint32 fileSize;
+    game_file gameFile = DEBUG_PlatformReadEntireFile(fileName);
+    if (gameFile.content)
+    {
+      DEBUG_PlatformWriteEntireFile("file_out.test",
+                                    gameFile.contentSize,
+                                    gameFile.content);
+      DEBUG_PlatformFreeGameFile(&gameFile);
+    }
   }
 
   game_controller_input *input0 = &gameInput->controllers[0];

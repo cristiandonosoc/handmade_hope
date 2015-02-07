@@ -2,3 +2,4 @@ build/*
 extras/*
 *.swp
 *.suo
+*.test

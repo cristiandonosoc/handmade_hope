@@ -34,9 +34,38 @@
 #define GIGABYTES(amount) (MEGABYTES(amount) * 1024LL)
 #define TERABYTES(amount) (GIGABYTES(amount) * 1024LL)
 
+inline uint32
+SafeTruncateUInt64(uint64 value)
+{
+  // TODO(Cristián): DEFINES for maximum values
+  ASSERT(value <= 0xFFFFFFFF);
+  return (uint32)value;
+}
+
 /**
  * TODO(Cristián): Services that the platform layer provides to the game
  */
+
+#if HANDMADE_INTERNAL
+/**
+ * IMPORTANT(Cristián):
+ *
+ * These are not for doing anything in the shipping game.
+ * Thay are blocking and the write doesn't protect against lost data.
+ */
+struct game_file
+{
+  bool32 valid;
+  uint32 contentSize;
+  void *content;
+};
+
+internal game_file DEBUG_PlatformReadEntireFile(char *fileName);
+internal void DEBUG_PlatformFreeGameFile(game_file *gameFile);
+internal bool32 DEBUG_PlatformWriteEntireFile(char *fileName,
+                                     uint32 memorySize,
+                                     void *fileMemory);
+#endif
 
 /**
  * TODO(Cristián): Services that the game provides to the platform layer
