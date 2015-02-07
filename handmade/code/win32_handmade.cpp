@@ -240,18 +240,28 @@ WinMain(HINSTANCE hInstance,
       /**
        *  GAME MEMORY INITIALIZATION
        */
+#if HANDMADE_INTERNAL
+      // NOTE(Cristián): Specify the base address for memory allocation
+      LPVOID baseAddress = (LPVOID)TERABYTES(2);
+#else
+      LPVOID baseAddress = 0;
+#endif
       game_memory gameMemory = {};
       gameMemory.permanentStorageSize = MEGABYTES(64);
-      gameMemory.permanentStorage = VirtualAlloc(0, gameMemory.permanentStorageSize,
-                                                  MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+      gameMemory.transientStorageSize = GIGABYTES(4);
+
+      // TODO(Cristián): Handle varios memory footprints
+      //                 Use system metric on *physical* memory
+      uint64 totalSize = gameMemory.permanentStorageSize + gameMemory.transientStorageSize;
+      gameMemory.permanentStorage = VirtualAlloc(baseAddress,
+                                                 totalSize,
+                                                 MEM_RESERVE|MEM_COMMIT,
+                                                 PAGE_READWRITE);
+      gameMemory.transientStorage = ((uint8 *)gameMemory.permanentStorage +
+                                    gameMemory.permanentStorageSize);
 
 
-      gameMemory.transientStorageSize = GIGABYTES((uint64)4);
-      gameMemory.transientStorage = VirtualAlloc(0, gameMemory.transientStorageSize,
-                                                 MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-
-
-      if(!gSoundOutput.bufferMemory || 
+      if(!gSoundOutput.bufferMemory ||
          !gameMemory.permanentStorage ||
          !gameMemory.transientStorageSize)
       {

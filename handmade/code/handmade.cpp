@@ -102,6 +102,8 @@ GameUpdateAndRender(game_memory *gameMemory,
                     game_input *gameInput)
 {
 
+  ASSERT(sizeof(game_state) <= gameMemory->permanentStorageSize);
+
   game_state *gameState = (game_state *)gameMemory->permanentStorage;
   if(!gameMemory->isInitialized)
   {

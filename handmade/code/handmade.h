@@ -7,12 +7,32 @@
     $Notice: (c) Copyright 2015 Cristián Donoso $
     ===================================================================== */
 
+/**
+ * NOTE(Cristián):
+ *
+ * HANDMADE_INTERNAL:
+ *  0 - Build for public release
+ *  1 - Build for developer only
+ *
+ * HANDMADE_SLOW:
+ *  0 - No slow code allowed
+ *  1 - Slow code allowed
+ */
 #ifndef _HANDMADE_H_INCLUDED
 
+#if HANDMADE_SLOW
+#define ASSERT(expression) if(!(expression)) { *(int *)0 = 0; }
+#else
+#define ASSERT(expression) if((expression)) { *(int *)0 = 0; }
+#endif
+
 #define ARRAY_COUNT(Array) (sizeof(Array) / sizeof((Array)[0]))
-#define KILOBYTES(amount) ((amount) * 1024)
-#define MEGABYTES(amount) ((amount) * 1024 * 1024)
-#define GIGABYTES(amount) ((amount) * 1024 * 1024 * 1024)
+
+// TODO(Cristián): Should this always use uint64?
+#define KILOBYTES(amount) ((amount) * 1024LL)
+#define MEGABYTES(amount) (KILOBYTES(amount) * 1024LL)
+#define GIGABYTES(amount) (MEGABYTES(amount) * 1024LL)
+#define TERABYTES(amount) (GIGABYTES(amount) * 1024LL)
 
 /**
  * TODO(Cristián): Services that the platform layer provides to the game
@@ -120,6 +140,11 @@ struct game_state
   int32 toneVolume;
 };
 
+struct game_clocks
+{
+  // TODO(Cristián): What do we want to pass?
+  real32 secondsElapsed;
+};
 
 
 #define _HANDMADE_H_INCLUDED
