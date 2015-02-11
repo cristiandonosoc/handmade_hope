@@ -30,6 +30,7 @@ struct x_input_gamepad_state
   bool32 down;
   bool32 left;
   bool32 right;
+  int16 leftThumbX;
   bool32 start;
   bool32 back;
   bool32 leftThumb;
@@ -42,8 +43,8 @@ struct x_input_gamepad_state
   bool32 xButton;
 
   // THUMBS
-  int16 leftThumbX;
   int16 leftThumbY;
+  uint8 a;
   int16 rightThumbX;
   int16 rightThumbY;
 

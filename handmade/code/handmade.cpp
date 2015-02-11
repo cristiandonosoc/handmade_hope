@@ -45,10 +45,8 @@ RenderWeirdGradient(game_offscreen_buffer *buffer, int blueOffset, int greenOffs
         Little Endian Architecture
         Pixel in Register: 0xXXRRGGBB
        */
-      uint8 blue = (x + blueOffset);
-      uint8 green = (y + greenOffset);
-      uint8 red = 0;
-      uint8 pad = 0;
+      uint8 blue = (uint8)(x + blueOffset);
+      uint8 green = (uint8)(y + greenOffset);
 
       *pixel++ = blue | (green << 8);
     }
@@ -118,7 +116,6 @@ GameUpdateAndRender(game_memory *gameMemory,
     //                 Instead reserve memory from the already allocated
     //                 gameMemory
     char *fileName = __FILE__;
-    uint32 fileSize;
     game_file gameFile = DEBUG_PlatformReadEntireFile(fileName);
     if (gameFile.content)
     {

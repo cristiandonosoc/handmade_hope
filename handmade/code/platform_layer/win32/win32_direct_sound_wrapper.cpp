@@ -75,10 +75,10 @@ Win32InitDirectSound(HWND windowHandle,
   // We set the format for the buffers
   WAVEFORMATEX waveFormat = {};
   waveFormat.wFormatTag = WAVE_FORMAT_PCM;
-  waveFormat.nChannels = soundOutput->nChannels;
-  waveFormat.wBitsPerSample = (soundOutput->bytesPerBlock / soundOutput->nChannels) * 8;
+  waveFormat.nChannels = (WORD)soundOutput->nChannels;
+  waveFormat.wBitsPerSample = (WORD)(soundOutput->bytesPerBlock / soundOutput->nChannels) * 8;
   // Size (in bytes) of a sample block
-  waveFormat.nBlockAlign = soundOutput->bytesPerBlock;
+  waveFormat.nBlockAlign = (WORD)soundOutput->bytesPerBlock;
   waveFormat.nSamplesPerSec = soundOutput->samplesPerSecond;
   waveFormat.nAvgBytesPerSec = waveFormat.nBlockAlign * waveFormat.nSamplesPerSec;
   waveFormat.cbSize = 0;
@@ -130,7 +130,7 @@ Win32ClearBuffer(win32_sound_output *soundOutput)
   }
 
   uint8 *destSample = (uint8 *)region1;
-  for(int32 sampleIndex = 0;
+  for(uint32 sampleIndex = 0;
       sampleIndex < region1Size;
       sampleIndex++)
   {
@@ -138,7 +138,7 @@ Win32ClearBuffer(win32_sound_output *soundOutput)
   }
 
   destSample = (uint8 *)region2;
-  for(int32 sampleIndex = 0;
+  for(uint32 sampleIndex = 0;
       sampleIndex < region2Size;
       sampleIndex++)
   {

@@ -204,13 +204,13 @@ Win32MainWindowCallback(HWND windowHandle,
     case WM_KEYDOWN:
     case WM_KEYUP:
       {
-        uint32 vKeyCode = wParam;
+        uint32 vKeyCode = (uint32)wParam;
         // Here we force the booleans to be 0 or 1 because
         // we want the case where the both are active to be ignored,
         // Without the forcing, both active can actually be different
         // and we would enter anyway
-        bool keyWasDown = (lParam & (1 << 30) != 0);
-        bool keyIsDown = ((lParam & (1 << 31) == 0));
+        bool keyWasDown = ((lParam & (1 << 30)) != 0);
+        bool keyIsDown = (((lParam & (1 << 31)) == 0));
         // We ignore the key that keeps pressed
         if(keyWasDown != keyIsDown)
         {
@@ -380,7 +380,7 @@ WinMain(HINSTANCE hInstance,
       //                 Use system metric on *physical* memory
       uint64 totalSize = gameMemory.permanentStorageSize + gameMemory.transientStorageSize;
       gameMemory.permanentStorage = VirtualAlloc(baseAddress,
-                                                 totalSize,
+                                                 (size_t)totalSize,
                                                  MEM_RESERVE|MEM_COMMIT,
                                                  PAGE_READWRITE);
       gameMemory.transientStorage = ((uint8 *)gameMemory.permanentStorage +
@@ -443,7 +443,7 @@ WinMain(HINSTANCE hInstance,
 
         // Xinput is a polling based API
         // TODO(Cristián): Should we pull this more frequently?
-        int32 maxControllerCount = XUSER_MAX_COUNT;
+        DWORD maxControllerCount = XUSER_MAX_COUNT;
         if (maxControllerCount > ARRAY_COUNT(oldInput->controllers))
         {
           maxControllerCount = ARRAY_COUNT(oldInput->controllers);
@@ -452,7 +452,6 @@ WinMain(HINSTANCE hInstance,
             controllerIndex < maxControllerCount;
             controllerIndex++)
         {
-          DWORD result;
           XINPUT_STATE controllerState;
           game_controller_input *oldController = &oldInput->controllers[controllerIndex];
           game_controller_input *newController = &newInput->controllers[controllerIndex];
