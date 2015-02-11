@@ -122,7 +122,7 @@ struct game_controller_input
    */
   union
   {
-    game_button_state buttons[6];
+    game_button_state buttons[10];
     struct
     {
       game_button_state a;
@@ -131,6 +131,10 @@ struct game_controller_input
       game_button_state y;
       game_button_state leftShoulder;
       game_button_state rightShoulder;
+      game_button_state up;
+      game_button_state down;
+      game_button_state left;
+      game_button_state right;
     };
   };
 };

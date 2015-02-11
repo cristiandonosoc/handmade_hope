@@ -136,6 +136,15 @@ GameUpdateAndRender(game_memory *gameMemory,
   else
   {
     // NOTE(Cristián): Use digital movement tuning
+    if (input0->right.endedDown)
+    {
+      OutputDebugStringA("RIGHT DOWN\n");
+    }
+    else
+    {
+      OutputDebugStringA("NOT DOWN\n");
+    }
+    gameState->toneHz = 256 + (int32)(120.0f * input0->right.endedDown);
   }
 
   if(input0->a.endedDown)

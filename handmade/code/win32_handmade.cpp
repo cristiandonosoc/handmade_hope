@@ -28,11 +28,11 @@
     ===================================================================== */
 
 // Defines our own common types
+#include <windows.h>
 #include "common_types.h"
-#include "handmade.cpp"
 
 // Platform specific code
-#include <windows.h>
+#include "handmade.cpp"
 #include "platform_layer/win32/win32_x_input_wrapper.cpp"
 #include "platform_layer/win32/win32_graphics_wrapper.cpp"
 #include "platform_layer/win32/win32_direct_sound_wrapper.cpp"
@@ -204,55 +204,7 @@ Win32MainWindowCallback(HWND windowHandle,
     case WM_KEYDOWN:
     case WM_KEYUP:
       {
-        uint32 vKeyCode = (uint32)wParam;
-        // Here we force the booleans to be 0 or 1 because
-        // we want the case where the both are active to be ignored,
-        // Without the forcing, both active can actually be different
-        // and we would enter anyway
-        bool keyWasDown = ((lParam & (1 << 30)) != 0);
-        bool keyIsDown = (((lParam & (1 << 31)) == 0));
-        // We ignore the key that keeps pressed
-        if(keyWasDown != keyIsDown)
-        {
-          if(vKeyCode == 'W')
-          {
-          }
-          else if(vKeyCode == 'A')
-          {
-          }
-          else if(vKeyCode == 'S')
-          {
-          }
-          else if(vKeyCode == 'D')
-          {
-          }
-          else if(vKeyCode == VK_UP)
-          {
-          }
-          else if(vKeyCode == VK_DOWN)
-          {
-          }
-          else if(vKeyCode == VK_LEFT)
-          {
-            // TODO(Cristián): Move this to the game layer
-            //gSoundOutput.ModifyBufferToneHz(-2);
-          }
-          else if(vKeyCode == VK_RIGHT)
-          {
-            // TODO(Cristián): Move this to the game layer
-            //gSoundOutput.ModifyBufferToneHz(2);
-          }
-          else if(vKeyCode == VK_ESCAPE)
-          {
-          }
-          else if(vKeyCode == VK_SPACE)
-          {
-          }
-          else // All other keys are treated by default
-          {
-            result = DefWindowProcA(windowHandle, message, wParam, lParam);
-          }
-        }
+        ASSERT("Keyboard input came through a dispatch event");
       } break;
     case WM_PAINT:
       {
@@ -413,6 +365,9 @@ WinMain(HINSTANCE hInstance,
       while(gRunning)
       {
 
+        game_controller_input *keyboardController = &newInput->controllers[0];
+        game_controller_input *oldKeyboardController = &oldInput->controllers[0];
+
         /**
          * We create the MSG inside the loop instead of outside to use correct
          * 'lexical' scoping. This means we protect outselves from referencing this pointer
@@ -436,9 +391,70 @@ WinMain(HINSTANCE hInstance,
           {
             gRunning = false;
           }
-
-          TranslateMessage(&message);
-          DispatchMessageA(&message);
+          switch(message.message)
+          {
+            case WM_SYSKEYDOWN:
+            case WM_SYSKEYUP:
+            case WM_KEYDOWN:
+            case WM_KEYUP:
+            {
+              uint32 vKeyCode = (uint32)message.wParam;
+              // Here we force the booleans to be 0 or 1 because
+              // we want the case where the both are active to be ignored,
+              // Without the forcing, both active can actually be different
+              // and we would enter anyway
+              bool keyWasDown = ((message.lParam & (1 << 30)) != 0);
+              bool keyIsDown = (((message.lParam & (1 << 31)) == 0));
+              // We ignore the key that keeps pressed
+              if(keyWasDown != keyIsDown)
+              {
+                if(vKeyCode == 'W')
+                {
+                }
+                else if(vKeyCode == 'A')
+                {
+                }
+                else if(vKeyCode == 'S')
+                {
+                }
+                else if(vKeyCode == 'D')
+                {
+                }
+                else if(vKeyCode == VK_UP)
+                {
+                  Win32ProcessKeyboardMessage(&oldKeyboardController->up, &keyboardController->up, keyIsDown);
+                }
+                else if(vKeyCode == VK_DOWN)
+                {
+                  Win32ProcessKeyboardMessage(&oldKeyboardController->down, &keyboardController->down, keyIsDown);
+                }
+                else if(vKeyCode == VK_LEFT)
+                {
+                  Win32ProcessKeyboardMessage(&oldKeyboardController->left, &keyboardController->left, keyIsDown);
+                }
+                else if(vKeyCode == VK_RIGHT)
+                {
+                  Win32ProcessKeyboardMessage(&oldKeyboardController->right, &keyboardController->right, keyIsDown);
+                }
+                else if(vKeyCode == VK_ESCAPE)
+                {
+                  gRunning = false;
+                }
+                else if(vKeyCode == VK_SPACE)
+                {
+                }
+                else // All other keys are treated by default
+                {
+                  DefWindowProcA(windowHandle, message.message, message.wParam, message.lParam);
+                }
+              }
+            } break;
+            default:
+            {
+              TranslateMessage(&message);
+              DispatchMessageA(&message);
+            } break;
+          }
         }
 
         // Xinput is a polling based API
@@ -448,7 +464,7 @@ WinMain(HINSTANCE hInstance,
         {
           maxControllerCount = ARRAY_COUNT(oldInput->controllers);
         }
-        for(DWORD controllerIndex = 0;
+        for(DWORD controllerIndex = 1;
             controllerIndex < maxControllerCount;
             controllerIndex++)
         {

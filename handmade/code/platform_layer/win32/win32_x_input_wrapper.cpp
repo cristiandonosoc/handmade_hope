@@ -149,5 +149,15 @@ Win32ProcessButtonState(game_button_state *oldState,
   newState->endedDown = currentState;
 }
 
+internal void
+Win32ProcessKeyboardMessage(game_button_state *oldState,
+                            game_button_state *newState,
+                            bool32 currentState)
+{
+  newState->halfTransitionCount++;
+  newState->endedDown = currentState;
+  oldState->endedDown = currentState;
+}
+
 #define _WIN32_X_INPUT_WRAPPER_INCLUDED
 #endif
