@@ -54,7 +54,7 @@ struct x_input_gamepad_state
 };
 
 /**
- * We make a windows binding ourselves. We this we bypass an import librabry.
+ * We make a windows binding ourselves. With this we bypass an import librabry.
  * We do this in the case of XInput because the required library changes according to
  * the version of Windows the user is using, so we would like the game to function
  * independent of the dll that's really required.
@@ -149,15 +149,205 @@ Win32ProcessButtonState(game_button_state *oldState,
   newState->endedDown = currentState;
 }
 
+internal real32
+Win32ProcessXInputThumb(SHORT thumbValue,
+                        SHORT deadZone)
+{
+  real32 returnValue = 0.0f;
+  if(thumbValue < - deadZone ||
+     thumbValue > deadZone)
+  {
+    returnValue = ((real32)(thumbValue + 32768) / 32768.0f) - 1.0f;
+  }
+
+  return returnValue;
+}
+
+internal void
+Win32ProcessGamepadState(game_controller_input *oldController,
+                         game_controller_input *newController,
+                         x_input_gamepad_state gamepadState)
+{
+
+  // We generate the game_input
+  newController->isAnalog = true;
+
+  real32 threshold = 0.5f;
+
+  // Left Stick
+  newController->leftStickAverageX =
+    Win32ProcessXInputThumb(gamepadState.leftThumbX,
+                            XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+  newController->leftStickAverageY =
+    Win32ProcessXInputThumb(gamepadState.leftThumbY,
+                            XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+  if(gamepadState.up)
+  {
+    newController->leftStickAverageY = 1.0f;
+  }
+  if(gamepadState.down)
+  {
+    newController->leftStickAverageY = -1.0f;
+  }
+  if(gamepadState.left)
+  {
+    newController->leftStickAverageX = -1.0f;
+  }
+  if(gamepadState.right)
+  {
+    newController->leftStickAverageX = 1.0f;
+  }
+
+
+
+  Win32ProcessButtonState(&oldController->moveUp,
+                          &newController->moveUp,
+                          newController->leftStickAverageY > threshold);
+  Win32ProcessButtonState(&oldController->moveDown,
+                          &newController->moveDown,
+                          newController->leftStickAverageY < -threshold);
+  Win32ProcessButtonState(&oldController->moveLeft,
+                          &newController->moveLeft,
+                          newController->leftStickAverageX < -threshold);
+  Win32ProcessButtonState(&oldController->moveRight,
+                          &newController->moveRight,
+                          newController->leftStickAverageX > threshold);
+
+  // Right Stick
+  newController->rightStickAverageX =
+    Win32ProcessXInputThumb(gamepadState.rightThumbX,
+                            XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+  newController->rightStickAverageY =
+    Win32ProcessXInputThumb(gamepadState.rightThumbY,
+                            XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+
+  // Action Buttons
+  Win32ProcessButtonState(&oldController->actionDown,
+                          &newController->actionDown,
+                          gamepadState.aButton);
+  Win32ProcessButtonState(&oldController->actionRight,
+                          &newController->actionRight,
+                          gamepadState.bButton);
+  Win32ProcessButtonState(&oldController->actionLeft,
+                          &newController->actionLeft,
+                          gamepadState.xButton);
+  Win32ProcessButtonState(&oldController->actionUp,
+                          &newController->actionUp,
+                          gamepadState.yButton);
+
+  // Shoulders
+  Win32ProcessButtonState(&oldController->leftShoulder,
+                          &newController->leftShoulder,
+                          gamepadState.leftTrigger);
+  Win32ProcessButtonState(&oldController->rightShoulder,
+                          &newController->rightShoulder,
+                          gamepadState.rightTrigger);
+
+
+  Win32ProcessButtonState(&oldController->start,
+                          &newController->start,
+                          gamepadState.start);
+  Win32ProcessButtonState(&oldController->back,
+                          &newController->back,
+                          gamepadState.back);
+
+}
+
+
 internal void
 Win32ProcessKeyboardMessage(game_button_state *oldState,
                             game_button_state *newState,
                             bool32 currentState)
 {
+  ASSERT(newState->endedDown != currentState)
   newState->halfTransitionCount++;
   newState->endedDown = currentState;
-  oldState->endedDown = currentState;
 }
 
+struct win32_keyboard_process_result
+{
+  bool32 quit;
+  bool32 unprocessed;
+};
+
+internal win32_keyboard_process_result
+Win32ProcessKeyboardMessages(MSG message,
+                             game_controller_input *oldKeyboardController,
+                             game_controller_input *newKeyboardController)
+{
+  win32_keyboard_process_result result = {};
+  switch(message.message)
+  {
+    case WM_SYSKEYDOWN:
+    case WM_SYSKEYUP:
+    case WM_KEYDOWN:
+    case WM_KEYUP:
+    {
+      uint32 vKeyCode = (uint32)message.wParam;
+      // Here we force the booleans to be 0 or 1 because
+      // we want the case where the both are active to be ignored,
+      // Without the forcing, both active can actually be different
+      // and we would enter anyway
+      bool keyWasDown = ((message.lParam & (1 << 30)) != 0);
+      bool keyIsDown = (((message.lParam & (1 << 31)) == 0));
+      // We ignore the key that keeps pressed
+      if(keyWasDown != keyIsDown)
+      {
+        if(vKeyCode == 'W')
+        {
+          Win32ProcessKeyboardMessage(&oldKeyboardController->moveUp, &newKeyboardController->moveUp, keyIsDown);
+        }
+        else if(vKeyCode == 'S')
+        {
+          Win32ProcessKeyboardMessage(&oldKeyboardController->moveDown, &newKeyboardController->moveDown, keyIsDown);
+        }
+        else if(vKeyCode == 'A')
+        {
+          Win32ProcessKeyboardMessage(&oldKeyboardController->moveLeft, &newKeyboardController->moveLeft, keyIsDown);
+        }
+        else if(vKeyCode == 'D')
+        {
+          Win32ProcessKeyboardMessage(&oldKeyboardController->moveRight, &newKeyboardController->moveRight, keyIsDown);
+        }
+        else if(vKeyCode == VK_UP)
+        {
+          Win32ProcessKeyboardMessage(&oldKeyboardController->actionUp, &newKeyboardController->actionUp, keyIsDown);
+        }
+        else if(vKeyCode == VK_DOWN)
+        {
+          Win32ProcessKeyboardMessage(&oldKeyboardController->actionDown, &newKeyboardController->actionDown, keyIsDown);
+        }
+        else if(vKeyCode == VK_LEFT)
+        {
+          Win32ProcessKeyboardMessage(&oldKeyboardController->actionLeft, &newKeyboardController->actionLeft, keyIsDown);
+        }
+        else if(vKeyCode == VK_RIGHT)
+        {
+          Win32ProcessKeyboardMessage(&oldKeyboardController->actionRight, &newKeyboardController->actionRight, keyIsDown);
+        }
+        else if(vKeyCode == VK_ESCAPE)
+        {
+          result.quit = true;
+          Win32ProcessKeyboardMessage(&oldKeyboardController->back, &newKeyboardController->back, keyIsDown);
+        }
+        else if(vKeyCode == VK_SPACE)
+        {
+        }
+        else // All other keys are treated by default
+        {
+          result.unprocessed = true;
+        }
+      }
+    } break;
+    default:
+    {
+      TranslateMessage(&message);
+      DispatchMessageA(&message);
+    } break;
+
+  }
+
+  return result;
+}
 #define _WIN32_X_INPUT_WRAPPER_INCLUDED
 #endif

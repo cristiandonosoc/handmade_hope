@@ -36,137 +36,13 @@
 #include "platform_layer/win32/win32_x_input_wrapper.cpp"
 #include "platform_layer/win32/win32_graphics_wrapper.cpp"
 #include "platform_layer/win32/win32_direct_sound_wrapper.cpp"
+#include "platform_layer/win32/win32_file_io.cpp"
 
 
 // Global Sound Buffer Management
 global_variable win32_sound_output gSoundOutput;
 global_variable uint64 gPerformanceCounterFrequency;
-
-// Platform Load File
-internal game_file
-DEBUG_PlatformReadEntireFile(char *fileName)
-{
-  game_file gameFile = {};
-  HANDLE fileHandle = CreateFileA(fileName,
-      GENERIC_READ,
-      FILE_SHARE_READ,
-      0,
-      OPEN_EXISTING,
-      0,
-      0);
-  if (fileHandle == INVALID_HANDLE_VALUE)
-  {
-    // TODO(Cristián): Better error code
-    // TODO(Cristián): Loggin'
-    goto LABEL_PLATFORM_READ_ENTIRE_FILE_RETURN;
-  }
-
-  LARGE_INTEGER fileSize64;
-  if(!GetFileSizeEx(fileHandle, &fileSize64))
-  {
-    // TODO(Cristián): Loggin'
-    goto LABEL_PLATFORM_READ_ENTIRE_FILE_CREATE_FILE_CLEANUP;
-  }
-
-  uint32 fileSize32 = SafeTruncateUInt64(fileSize64.QuadPart);
-  gameFile.content = VirtualAlloc(0,
-                                  fileSize32,
-                                  MEM_RESERVE|MEM_COMMIT,
-                                  PAGE_READWRITE);
-  if (!gameFile.content)
-  {
-    // TODO(Cristián): Loggin'
-    goto LABEL_PLATFORM_READ_ENTIRE_FILE_CREATE_FILE_CLEANUP;
-  }
-
-
-  DWORD bytesRead = 0;
-  if(!ReadFile(fileHandle,
-               gameFile.content,
-               fileSize32,
-               &bytesRead,
-               0))
-  {
-    // TODO(Cristián): Loggin'
-    goto LABEL_PLATFORM_READ_ENTIRE_FILE_GET_FILE_MEMORY_CLEANUP;
-  }
-
-  if (bytesRead != fileSize32)
-  {
-    // TODO(Cristián): Loggin'
-    goto LABEL_PLATFORM_READ_ENTIRE_FILE_GET_FILE_MEMORY_CLEANUP;
-  }
-
-  // NOTE(Cristián): FileRead was successful.
-  //                 Cleanup code is below the return
-  gameFile.contentSize = fileSize32;
-  gameFile.valid = true;
-  goto LABEL_PLATFORM_READ_ENTIRE_FILE_CREATE_FILE_CLEANUP;
-
-LABEL_PLATFORM_READ_ENTIRE_FILE_GET_FILE_MEMORY_CLEANUP:
-  DEBUG_PlatformFreeGameFile(&gameFile);
-LABEL_PLATFORM_READ_ENTIRE_FILE_CREATE_FILE_CLEANUP:
-  CloseHandle(fileHandle);
-LABEL_PLATFORM_READ_ENTIRE_FILE_RETURN:
-  return(gameFile);
-}
-internal void
-DEBUG_PlatformFreeGameFile(game_file *gameFile)
-{
-  if(gameFile->content)
-  {
-    VirtualFree(gameFile->content, 0, MEM_RELEASE);
-  }
-  *gameFile = {};
-}
-
-internal bool32
-DEBUG_PlatformWriteEntireFile(char *fileName,
-                              uint32 memorySize,
-                              void *fileMemory)
-{
-  bool32 successfulWrite = false;
-  HANDLE fileHandle = CreateFileA(fileName,
-      GENERIC_WRITE,
-      0,
-      0,
-      CREATE_ALWAYS,
-      0,
-      0);
-  if (fileHandle == INVALID_HANDLE_VALUE)
-  {
-    // TODO(Cristián): Better error code
-    // TODO(Cristián): Loggin'
-    goto LABEL_PLATFORM_WRITE_ENTIRE_FILE_RETURN;
-  }
-
-  DWORD bytesWritten;
-  if(!WriteFile(fileHandle,
-                fileMemory,
-                memorySize,
-                &bytesWritten,
-                0))
-  {
-    // TODO(Cristián): Loggin'
-    goto LABEL_PLATFORM_WRITE_ENTIRE_FILE_CREATE_FILE_CLEANUP;
-  }
-
-  if (bytesWritten != memorySize)
-  {
-    // TODO(Cristián): Loggin'
-    goto LABEL_PLATFORM_WRITE_ENTIRE_FILE_CREATE_FILE_CLEANUP;
-  }
-
-  // NOTE(Cristián): WriteFile was successful.
-  //                 Cleanup code is below the return
-  successfulWrite = true;
-
-LABEL_PLATFORM_WRITE_ENTIRE_FILE_CREATE_FILE_CLEANUP:
-  CloseHandle(fileHandle);
-LABEL_PLATFORM_WRITE_ENTIRE_FILE_RETURN:
-  return(successfulWrite);
-}
-
+global_variable bool32 mainLoopIsRunning;
 
 /**
  * The callback to be received from the Win32 Window call
@@ -180,6 +56,10 @@ Win32MainWindowCallback(HWND windowHandle,
   LRESULT result = 0;
   switch(message)
   {
+    case WM_QUIT:
+    {
+      mainLoopIsRunning = false;
+    } break;
     case WM_SIZE:
       {
       } break;
@@ -190,12 +70,12 @@ Win32MainWindowCallback(HWND windowHandle,
     case WM_CLOSE:
       {
         //TODO:(Cristián): Handle this with a message to the user
-        gRunning = false;
+        mainLoopIsRunning = false;
       } break;
     case WM_DESTROY:
       {
         //TODO:(Cristián): Handle this with an error - Recreate window?
-        gRunning = false;
+        mainLoopIsRunning = false;
       } break;
     // We use the switch to grab all the keys messages into one block
     // (they all cascade into WM_KEYUP)
@@ -361,12 +241,30 @@ WinMain(HINSTANCE hInstance,
       game_input *oldInput = &gameInputs[0];
       game_input *newInput = &gameInputs[1];
 
-      gRunning = true;
-      while(gRunning)
+      mainLoopIsRunning = true;
+      while(mainLoopIsRunning)
       {
 
-        game_controller_input *keyboardController = &newInput->controllers[0];
-        game_controller_input *oldKeyboardController = &oldInput->controllers[0];
+        // TODO(Cristián): Zeroing macro
+        // NOTE(Cristián): We can't zero everything because the up/down state
+        //                 will be wrong
+        game_controller_input *oldKeyboardController =
+          GetController(oldInput, 0);
+        game_controller_input *newKeyboardController =
+          GetController(newInput, 0);
+        game_controller_input zeroController = {};
+        *newKeyboardController = zeroController;
+        newKeyboardController->isConnected = true;
+
+        // We preserve the state of the buttons between the swapping
+        // game inputs
+        for(int buttonIndex = 0;
+            buttonIndex < ARRAY_COUNT(newKeyboardController->buttons);
+            buttonIndex++)
+        {
+          newKeyboardController->buttons[buttonIndex].endedDown =
+            oldKeyboardController->buttons[buttonIndex].endedDown;
+        }
 
         /**
          * We create the MSG inside the loop instead of outside to use correct
@@ -387,140 +285,74 @@ WinMain(HINSTANCE hInstance,
         // Windows may call the callback even outside the loop
         while(PeekMessageA(&message, 0, 0, 0, PM_REMOVE))
         {
-          if(message.message == WM_QUIT)
+          win32_keyboard_process_result result =
+            Win32ProcessKeyboardMessages(message,
+                                         oldKeyboardController,
+                                         newKeyboardController);
+
+          // We manage the results from the keyboard process
+          if (result.quit)
           {
-            gRunning = false;
+            mainLoopIsRunning = false;
           }
-          switch(message.message)
+
+          if (result.unprocessed)
           {
-            case WM_SYSKEYDOWN:
-            case WM_SYSKEYUP:
-            case WM_KEYDOWN:
-            case WM_KEYUP:
-            {
-              uint32 vKeyCode = (uint32)message.wParam;
-              // Here we force the booleans to be 0 or 1 because
-              // we want the case where the both are active to be ignored,
-              // Without the forcing, both active can actually be different
-              // and we would enter anyway
-              bool keyWasDown = ((message.lParam & (1 << 30)) != 0);
-              bool keyIsDown = (((message.lParam & (1 << 31)) == 0));
-              // We ignore the key that keeps pressed
-              if(keyWasDown != keyIsDown)
-              {
-                if(vKeyCode == 'W')
-                {
-                }
-                else if(vKeyCode == 'A')
-                {
-                }
-                else if(vKeyCode == 'S')
-                {
-                }
-                else if(vKeyCode == 'D')
-                {
-                }
-                else if(vKeyCode == VK_UP)
-                {
-                  Win32ProcessKeyboardMessage(&oldKeyboardController->up, &keyboardController->up, keyIsDown);
-                }
-                else if(vKeyCode == VK_DOWN)
-                {
-                  Win32ProcessKeyboardMessage(&oldKeyboardController->down, &keyboardController->down, keyIsDown);
-                }
-                else if(vKeyCode == VK_LEFT)
-                {
-                  Win32ProcessKeyboardMessage(&oldKeyboardController->left, &keyboardController->left, keyIsDown);
-                }
-                else if(vKeyCode == VK_RIGHT)
-                {
-                  Win32ProcessKeyboardMessage(&oldKeyboardController->right, &keyboardController->right, keyIsDown);
-                }
-                else if(vKeyCode == VK_ESCAPE)
-                {
-                  gRunning = false;
-                }
-                else if(vKeyCode == VK_SPACE)
-                {
-                }
-                else // All other keys are treated by default
-                {
-                  DefWindowProcA(windowHandle, message.message, message.wParam, message.lParam);
-                }
-              }
-            } break;
-            default:
-            {
-              TranslateMessage(&message);
-              DispatchMessageA(&message);
-            } break;
+            DefWindowProcA(windowHandle,
+                           message.message,
+                           message.wParam,
+                           message.lParam);
           }
         }
 
         // Xinput is a polling based API
         // TODO(Cristián): Should we pull this more frequently?
-        DWORD maxControllerCount = XUSER_MAX_COUNT;
+        DWORD maxControllerCount = XUSER_MAX_COUNT + 1;
         if (maxControllerCount > ARRAY_COUNT(oldInput->controllers))
         {
           maxControllerCount = ARRAY_COUNT(oldInput->controllers);
         }
+
+        // We iterate over all the controllers (gamepads)
         for(DWORD controllerIndex = 1;
             controllerIndex < maxControllerCount;
             controllerIndex++)
         {
           XINPUT_STATE controllerState;
-          game_controller_input *oldController = &oldInput->controllers[controllerIndex];
-          game_controller_input *newController = &newInput->controllers[controllerIndex];
+          // NOTE(Cristián): We traduce to our controller index because
+          // currently the keyboard is game_input 0
+          int internalControllerIndex = controllerIndex - 1;
+          game_controller_input *oldController =
+            GetController(oldInput, internalControllerIndex);
+          game_controller_input *newController =
+            GetController(newInput, internalControllerIndex);
 
-          if(XInputGetState(controllerIndex, &controllerState) == ERROR_SUCCESS) // Amazing success key code name
+          if(XInputGetState(internalControllerIndex,
+                            &controllerState) == ERROR_SUCCESS) // Amazing success key code name
           {
+            newController->isConnected = true;
             // TODO(Cristián): See if controllerState.swPacketNumber incrementes too rapidly
-
             x_input_gamepad_state gamepadState = GetGamepadState(&controllerState);
-
-            /**
-             * TODO(Cristián): Handle the deadzone of controller correctly
-            #define XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE  7849
-            #define XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 8689
-            #define XINPUT_GAMEPAD_TRIGGER_THRESHOLD    30
-            */
-
-            // We generate the game_input
-            newController->isAnalog = true;
-            real32 x = ((real32)(gamepadState.leftThumbX + 32768) /
-                       32768.0f) - 1.0f;
-            newController->startX = oldController->endX;
-            newController->endX = x;
-
-            real32 y = ((real32)(gamepadState.leftThumbY + 32768) /
-                       32768.0f) - 1.0f;
-            newController->startY = oldController->endY;
-            newController->endY = y;
-
-            Win32ProcessButtonState(&oldController->a, &newController->a, gamepadState.aButton);
-            Win32ProcessButtonState(&oldController->b, &newController->b, gamepadState.bButton);
-            Win32ProcessButtonState(&oldController->x, &newController->x, gamepadState.xButton);
-            Win32ProcessButtonState(&oldController->y, &newController->y, gamepadState.yButton);
-            Win32ProcessButtonState(&oldController->leftShoulder, &newController->leftShoulder,
-                                    gamepadState.leftTrigger);
-            Win32ProcessButtonState(&oldController->rightShoulder, &newController->rightShoulder,
-                                    gamepadState.rightTrigger);
-
-
+            Win32ProcessGamepadState(oldController,
+                                     newController,
+                                     gamepadState);
           }
           else
           {
             // NOTE(Cristián): The controller is not available
+            newController->isConnected = false;
           }
 
         }
 
-        game_offscreen_buffer gameBuffer = {};
-        gameBuffer.memory = gBackBuffer.memory;
-        gameBuffer.width = gBackBuffer.width;
-        gameBuffer.height = gBackBuffer.height;
-        gameBuffer.pitch = gBackBuffer.pitch;
+        // The video buffer to be passed to the game
+        game_offscreen_buffer gameOffscreenBuffer = {};
+        gameOffscreenBuffer.memory = gBackBuffer.memory;
+        gameOffscreenBuffer.width = gBackBuffer.width;
+        gameOffscreenBuffer.height = gBackBuffer.height;
+        gameOffscreenBuffer.pitch = gBackBuffer.pitch;
 
+        // The sound ouput to be passed to the game
         bool32 validSound = false;
         game_sound_output_buffer gameSoundOutput = {};
         if(Win32SetupSoundBuffer(&gSoundOutput))
@@ -530,11 +362,17 @@ WinMain(HINSTANCE hInstance,
           gameSoundOutput.samplesPerSecond = gSoundOutput.samplesPerSecond;
           gameSoundOutput.sampleCount = gSoundOutput.bytesToWrite /
                                         gSoundOutput.bytesPerBlock;
-
           validSound = true;
         }
 
-        GameUpdateAndRender(&gameMemory, &gameBuffer, &gameSoundOutput, newInput);
+        /**
+         * We call the game with the game memory, the graphics buffer,
+         * the sound output and the current input
+         */
+        GameUpdateAndRender(&gameMemory,
+                            &gameOffscreenBuffer,
+                            &gameSoundOutput,
+                            newInput);
 
         if (validSound)
         {

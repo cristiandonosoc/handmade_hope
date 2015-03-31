@@ -32,7 +32,6 @@ struct win32_window_dimension {
 
 /****** GLOBAL VARIABLES ******/
 
-global_variable bool32 gRunning;
 global_variable win32_offscreen_buffer gBackBuffer;
 
 /**

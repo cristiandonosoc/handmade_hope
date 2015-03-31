@@ -100,6 +100,9 @@ GameUpdateAndRender(game_memory *gameMemory,
                     game_input *gameInput)
 {
 
+  ASSERT(((&gameInput->controllers[0].terminator) -
+          (&gameInput->controllers[0].buttons[0])) == 
+         ARRAY_COUNT(gameInput->controllers[0].buttons));
   ASSERT(sizeof(game_state) <= gameMemory->permanentStorageSize);
 
   game_state *gameState = (game_state *)gameMemory->permanentStorage;
@@ -126,32 +129,35 @@ GameUpdateAndRender(game_memory *gameMemory,
     }
   }
 
-  game_controller_input *input0 = &gameInput->controllers[0];
+  gameState->toneHz = 256;
 
-  if(input0->isAnalog)
+  for(int controllerIndex = 0;
+      controllerIndex < ARRAY_COUNT(gameInput->controllers);
+      controllerIndex++)
   {
-    // NOTE(Cristián): Use analog movement tuning
-    gameState->toneHz = 256 + (int32)(120.0f * input0->endX);
-  }
-  else
-  {
-    // NOTE(Cristián): Use digital movement tuning
-    if (input0->right.endedDown)
+    game_controller_input *input = 
+      GetController(gameInput, controllerIndex);
+
+    if(input->isAnalog)
     {
-      OutputDebugStringA("RIGHT DOWN\n");
+      // NOTE(Cristián): Use analog movement tuninY
+      gameState->xOffset += (int32)(10 * input->leftStickAverageX);
+      gameState->yOffset += (int32)(10 * input->leftStickAverageY);
     }
     else
     {
-      OutputDebugStringA("NOT DOWN\n");
+      if (input->moveRight.endedDown)
+      {
+        gameState->toneHz = 256 + (int32)(120.0f * input->moveRight.endedDown);
+      }
     }
-    gameState->toneHz = 256 + (int32)(120.0f * input0->right.endedDown);
-  }
 
-  if(input0->a.endedDown)
-  {
-    gameState->xOffset += 1;
-  }
+    if(input->actionDown.endedDown)
+    {
+      gameState->xOffset += 1;
+    }
 
+  }
   OutputGameSound(soundBuffer,
                   gameState->toneHz,
                   gameState->toneVolume);
