@@ -31,6 +31,8 @@
 #include <windows.h>
 #include "common_types.h"
 
+#include "win32_handmade.h"
+
 // Platform specific code
 #include "handmade.cpp"
 #include "platform_layer/win32/win32_x_input_wrapper.cpp"
@@ -41,81 +43,9 @@
 
 // Global Sound Buffer Management
 global_variable win32_sound_output gSoundOutput;
-global_variable uint64 gPerformanceCounterFrequency;
 global_variable bool32 mainLoopIsRunning;
 
-/**
- * The callback to be received from the Win32 Window call
- */
-LRESULT CALLBACK
-Win32MainWindowCallback(HWND windowHandle,
-                        UINT message,
-                        WPARAM wParam,
-                        LPARAM lParam)
-{
-  LRESULT result = 0;
-  switch(message)
-  {
-    case WM_QUIT:
-    {
-      mainLoopIsRunning = false;
-    } break;
-    case WM_SIZE:
-      {
-      } break;
-    case WM_ACTIVATEAPP:
-      {
-        OutputDebugStringA("WM_ACTIVATEAPP\n");
-      } break;
-    case WM_CLOSE:
-      {
-        //TODO:(Cristián): Handle this with a message to the user
-        mainLoopIsRunning = false;
-      } break;
-    case WM_DESTROY:
-      {
-        //TODO:(Cristián): Handle this with an error - Recreate window?
-        mainLoopIsRunning = false;
-      } break;
-    // We use the switch to grab all the keys messages into one block
-    // (they all cascade into WM_KEYUP)
-    case WM_SYSKEYDOWN:
-    case WM_SYSKEYUP:
-    case WM_KEYDOWN:
-    case WM_KEYUP:
-      {
-        ASSERT("Keyboard input came through a dispatch event");
-      } break;
-    case WM_PAINT:
-      {
-        // We get the windows paint device context (and its dimensions)
-        PAINTSTRUCT paint;
-        HDC deviceContext = BeginPaint(windowHandle, &paint);
-        /*
-          // We do not care for the dirty rectangle because this is a game
-          // that renders the whole screen each frame. Otherwise, we could
-          // use the paint parameters to just update the part of the window
-          // that needs to be repainted.
-          int x = paint.rcPaint.left;
-          int y = paint.rcPaint.top;
-          int width = paint.rcPaint.right - paint.rcPaint.left;
-          int height = paint.rcPaint.bottom - paint.rcPaint.top;
-        */
-        win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
-        Win32TransferBufferToWindows(deviceContext,
-                                     &gBackBuffer,
-                                     dimension.width, dimension.height);
-        EndPaint(windowHandle, &paint);
-      } break;
-    default:
-      {
-        // In this case, we let windows handle the default result for this message
-        result = DefWindowProc(windowHandle, message, wParam, lParam);
-      } break;
-  }
-  return(result);
-}
-
+global_variable uint64 gPerformanceCounterFrequency;
 
 /**
  * Main entrance for the program from the C-Runtime Library
@@ -143,6 +73,16 @@ WinMain(HINSTANCE hInstance,
   LARGE_INTEGER perfCounterFrequecyResult;
   QueryPerformanceFrequency(&perfCounterFrequecyResult);
   gPerformanceCounterFrequency = perfCounterFrequecyResult.QuadPart;
+
+  // NOTE(Cristián): We set the windows scheduler granularity to 1ms
+  //                 so that the thread gets waken at that interval
+  UINT desiredSchedulerMs = 1;
+  bool32 sleepIsGranular = (timeBeginPeriod(desiredSchedulerMs) == TIMERR_NOERROR);
+
+  // TODO(Cristián): How do we reliably query this?
+  //int monitorRefreshHz = 60;
+  int gameUpdateHz = 30;
+  real32 targetSecondsPerFrame = 1.0f / (real32)gameUpdateHz;
 
   if(RegisterClassA(&windowClass))
   {
@@ -228,19 +168,16 @@ WinMain(HINSTANCE hInstance,
         return(0);
       }
 
-
-      // ** MESSAGE LOOP **
-      // We retrieve the messages from windows via the message queue
-      LARGE_INTEGER lastCounter;
-      QueryPerformanceCounter(&lastCounter);
-
+      LARGE_INTEGER lastCounter = Win32GetWallClock();
       // We put the amount of cycles made by the processor
-      uint64 lastCycleCount = __rdtsc();
+      //uint64 lastCycleCount = __rdtsc();
 
       game_input gameInputs[2] = {};
       game_input *oldInput = &gameInputs[0];
       game_input *newInput = &gameInputs[1];
 
+      // ** MESSAGE LOOP **
+      // We retrieve the messages from windows via the message queue
       mainLoopIsRunning = true;
       while(mainLoopIsRunning)
       {
@@ -368,18 +305,64 @@ WinMain(HINSTANCE hInstance,
         /**
          * We call the game with the game memory, the graphics buffer,
          * the sound output and the current input
+         *
+         * This will generate all the content needed for the frame
          */
         GameUpdateAndRender(&gameMemory,
                             &gameOffscreenBuffer,
                             &gameSoundOutput,
                             newInput);
 
+        // TODO(Cristián): Sound is wrong right now! It hasn't been updated
+        // to go with the new frame loop.
         if (validSound)
         {
           Win32FillSoundBuffer(&gSoundOutput,
                                &gameSoundOutput);
         }
 
+        /**
+         * We calculate the wall clock time that happened since the last counter.
+         * After we wait the appropiate amount of time, we can show the frame and
+         * fill the sound buffer
+         */
+        LARGE_INTEGER workCounter = Win32GetWallClock();
+        real32 secondsElapsedForFrame = Win32GetSecondsElapsed(lastCounter,
+                                                               workCounter);
+
+        // We will verify all the amount of time we spent in the
+        // game loop this iteration
+        // TODO(Cristián): NOT TESTED YET! PROBABLY BUGGY!
+        DWORD sleepMs = 0;
+        if(secondsElapsedForFrame > targetSecondsPerFrame)
+        {
+          // We skipped a frame!
+          // TODO(Cristián): Loggin'
+        }
+        else
+        {
+          // We are done for the frame, so we send the CPU to sleep
+          if(sleepIsGranular)
+          {
+            // TODO(Cristián): We needed to remove a millisecond of sleep,
+            //                 probably because the granularity is not that good
+            sleepMs = (DWORD)(1000.0f * (targetSecondsPerFrame - secondsElapsedForFrame));
+            if(sleepMs > 1)
+            {
+              Sleep(sleepMs- 1);
+            }
+            real32 testSecondsElapsedForFrame =
+              Win32GetSecondsElapsed(lastCounter,
+                                     Win32GetWallClock());
+            ASSERT(testSecondsElapsedForFrame < targetSecondsPerFrame);
+          }
+
+          while(secondsElapsedForFrame < targetSecondsPerFrame)
+          {
+            secondsElapsedForFrame = Win32GetSecondsElapsed(lastCounter,
+                                                            Win32GetWallClock());
+          }
+        }
 
         win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
         Win32TransferBufferToWindows(deviceContext,
@@ -387,29 +370,24 @@ WinMain(HINSTANCE hInstance,
                                      dimension.width, dimension.height);
 
 
-        uint64 endCycleCount = __rdtsc();
-
-        LARGE_INTEGER endCounter;
-        QueryPerformanceCounter(&endCounter);
-
-#if 0
-        uint64 counterElapsed = endCounter.QuadPart - lastCounter.QuadPart;
-        real32 msPerFrame = 1000 * (real32)counterElapsed / gPerformanceCounterFrequency;
-        uint32 fps = 1000 / msPerFrame;
-
-        uint64 cyclesElapsed = endCycleCount - lastCycleCount;
-        real32 megaCycles = cyclesElapsed / (1000.0f * 1000.0f);
-
+        real32 fps = 1.0f / secondsElapsedForFrame;
         // TODO(Cristián): Remove from production
         char buffer[256];
         //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
-        sprintf(buffer, "%f ms\t| %d FPS\t| %d MegaCycles\n", msPerFrame, fps, megaCycles);
+        sprintf_s(buffer,
+                "%f ms\t| %f FPS\t| %d sleepMs\n",
+                1000.0f * secondsElapsedForFrame,
+                fps,
+                sleepMs);
         OutputDebugStringA(buffer);
-#endif
 
-        // We update the lastCounter
-        lastCounter = endCounter;
-        lastCycleCount = endCycleCount;
+        // We update the lastCounter so we can now how much
+        // time has passed until the next check is issued
+        lastCounter = Win32GetWallClock();
+
+        //uint64 endCycleCount = __rdtsc();
+        //uint64 cyclesElapsed = endCycleCount - lastCycleCount;
+        //lastCycleCount = endCycleCount;
 
         // We swap the controllers
         game_input *tempInputState = newInput;
@@ -431,4 +409,91 @@ WinMain(HINSTANCE hInstance,
   return(0);
 }
 
+inline LARGE_INTEGER
+Win32GetWallClock()
+{
+  LARGE_INTEGER result;
+  QueryPerformanceCounter(&result);
+  return result;
+}
 
+
+inline real32
+Win32GetSecondsElapsed(LARGE_INTEGER start, LARGE_INTEGER end)
+{
+  uint64 counterElapsed = end.QuadPart - start.QuadPart;
+  return (real32)counterElapsed / gPerformanceCounterFrequency;
+}
+
+
+/**
+ * The callback to be received from the Win32 Window call
+ */
+LRESULT CALLBACK
+Win32MainWindowCallback(HWND windowHandle,
+                        UINT message,
+                        WPARAM wParam,
+                        LPARAM lParam)
+{
+  LRESULT result = 0;
+  switch(message)
+  {
+    case WM_QUIT:
+    {
+      mainLoopIsRunning = false;
+    } break;
+    case WM_SIZE:
+      {
+      } break;
+    case WM_ACTIVATEAPP:
+      {
+        OutputDebugStringA("WM_ACTIVATEAPP\n");
+      } break;
+    case WM_CLOSE:
+      {
+        //TODO:(Cristián): Handle this with a message to the user
+        mainLoopIsRunning = false;
+      } break;
+    case WM_DESTROY:
+      {
+        //TODO:(Cristián): Handle this with an error - Recreate window?
+        mainLoopIsRunning = false;
+      } break;
+    // We use the switch to grab all the keys messages into one block
+    // (they all cascade into WM_KEYUP)
+    case WM_SYSKEYDOWN:
+    case WM_SYSKEYUP:
+    case WM_KEYDOWN:
+    case WM_KEYUP:
+      {
+        ASSERT("Keyboard input came through a dispatch event");
+      } break;
+    case WM_PAINT:
+      {
+        // We get the windows paint device context (and its dimensions)
+        PAINTSTRUCT paint;
+        HDC deviceContext = BeginPaint(windowHandle, &paint);
+        /*
+          // We do not care for the dirty rectangle because this is a game
+          // that renders the whole screen each frame. Otherwise, we could
+          // use the paint parameters to just update the part of the window
+          // that needs to be repainted.
+          int x = paint.rcPaint.left;
+          int y = paint.rcPaint.top;
+          int width = paint.rcPaint.right - paint.rcPaint.left;
+          int height = paint.rcPaint.bottom - paint.rcPaint.top;
+        */
+        win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
+        Win32TransferBufferToWindows(deviceContext,
+                                     &gBackBuffer,
+                                     dimension.width, dimension.height);
+        EndPaint(windowHandle, &paint);
+      } break;
+    default:
+      {
+        // In this case, we let windows handle the default result for this message
+        result = DefWindowProc(windowHandle, message, wParam, lParam);
+      } break;
+  }
+  return(result);
+}

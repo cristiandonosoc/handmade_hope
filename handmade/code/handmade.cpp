@@ -101,7 +101,7 @@ GameUpdateAndRender(game_memory *gameMemory,
 {
 
   ASSERT(((&gameInput->controllers[0].terminator) -
-          (&gameInput->controllers[0].buttons[0])) == 
+          (&gameInput->controllers[0].buttons[0])) ==
          ARRAY_COUNT(gameInput->controllers[0].buttons));
   ASSERT(sizeof(game_state) <= gameMemory->permanentStorageSize);
 
@@ -135,7 +135,7 @@ GameUpdateAndRender(game_memory *gameMemory,
       controllerIndex < ARRAY_COUNT(gameInput->controllers);
       controllerIndex++)
   {
-    game_controller_input *input = 
+    game_controller_input *input =
       GetController(gameInput, controllerIndex);
 
     if(input->isAnalog)
