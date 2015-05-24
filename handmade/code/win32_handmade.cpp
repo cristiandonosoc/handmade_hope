@@ -36,13 +36,15 @@
 // Platform specific code
 #include "handmade.cpp"
 #include "platform_layer/win32/win32_x_input_wrapper.cpp"
-#include "platform_layer/win32/win32_graphics_wrapper.cpp"
 #include "platform_layer/win32/win32_direct_sound_wrapper.cpp"
+#include "platform_layer/win32/win32_graphics_wrapper.cpp"
 #include "platform_layer/win32/win32_file_io.cpp"
+#if HANDMADE_INTERNAL
+#include "platform_layer/win32/win32_debug.cpp"
+#endif
 
 
 // Global Sound Buffer Management
-global_variable win32_sound_output gSoundOutput;
 global_variable bool32 mainLoopIsRunning;
 
 global_variable uint64 gPerformanceCounterFrequency;
@@ -81,8 +83,12 @@ WinMain(HINSTANCE hInstance,
 
   // TODO(Cristián): How do we reliably query this?
   //int monitorRefreshHz = 60;
-  int gameUpdateHz = 30;
+#define gameUpdateHz 30
   real32 targetSecondsPerFrame = 1.0f / (real32)gameUpdateHz;
+
+  // DEBUG(Cristián)
+  int debugMarkerIndex = 0;
+  win32_debug_time_marker debugMarkerCursors[gameUpdateHz / 2] = {0};
 
   if(RegisterClassA(&windowClass))
   {
@@ -349,7 +355,7 @@ WinMain(HINSTANCE hInstance,
             sleepMs = (DWORD)(1000.0f * (targetSecondsPerFrame - secondsElapsedForFrame));
             if(sleepMs > 1)
             {
-              Sleep(sleepMs- 1);
+              Sleep(sleepMs - 2);
             }
             real32 testSecondsElapsedForFrame =
               Win32GetSecondsElapsed(lastCounter,
@@ -364,12 +370,43 @@ WinMain(HINSTANCE hInstance,
           }
         }
 
+        // We update the lastCounter so we can now how much
+        // time has passed until the next check is issued
+        lastCounter = Win32GetWallClock();
+
+
+
         win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
+#if HANDMADE_INTERNAL
+        Win32DebugSyncDisplay(&gBackBuffer,
+                              &gSoundOutput,
+                              debugMarkerCursors,
+                              ARRAY_COUNT(debugMarkerCursors),
+                              targetSecondsPerFrame);
+#endif
         Win32TransferBufferToWindows(deviceContext,
                                      &gBackBuffer,
                                      dimension.width, dimension.height);
 
+#if HANDMADE_INTERNAL
+        // NOTE(Cristián): This is debug code
+        {
 
+          DWORD playCursor;
+          DWORD writeCursor;
+          gSecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor);
+          win32_debug_time_marker currentMarker = {};
+          currentMarker.playCursor = playCursor;
+          currentMarker.writeCursor = writeCursor;
+          debugMarkerCursors[debugMarkerIndex++] = currentMarker;
+          if (debugMarkerIndex >= ARRAY_COUNT(debugMarkerCursors))
+          {
+            debugMarkerIndex = 0;
+          }
+        }
+#endif
+
+#if HANDMADE_INTERNAL
         real32 fps = 1.0f / secondsElapsedForFrame;
         // TODO(Cristián): Remove from production
         char buffer[256];
@@ -380,10 +417,7 @@ WinMain(HINSTANCE hInstance,
                 fps,
                 sleepMs);
         OutputDebugStringA(buffer);
-
-        // We update the lastCounter so we can now how much
-        // time has passed until the next check is issued
-        lastCounter = Win32GetWallClock();
+#endif
 
         //uint64 endCycleCount = __rdtsc();
         //uint64 cyclesElapsed = endCycleCount - lastCycleCount;

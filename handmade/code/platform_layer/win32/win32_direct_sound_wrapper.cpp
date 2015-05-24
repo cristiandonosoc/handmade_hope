@@ -22,6 +22,7 @@
 
 /******** DIRECT SOUND CONFIG *******/
 global_variable LPDIRECTSOUNDBUFFER gSecondaryBuffer;
+global_variable win32_sound_output gSoundOutput;
 
 /**
  * We create our DirectSound API handler pointer.
@@ -39,6 +40,7 @@ Win32InitDirectSound(HWND windowHandle,
                      win32_sound_output *soundOutput)
 {
   // NOTE(Cristián): Load the library
+  //                 DLL Injection
   HMODULE DirectSoundLibrary = LoadLibraryA("dsound.dll");
   if(!DirectSoundLibrary) { return; } //TODO(Cristián): Diagnostics
 

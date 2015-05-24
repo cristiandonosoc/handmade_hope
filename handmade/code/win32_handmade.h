@@ -28,5 +28,11 @@ inline real32
 Win32GetSecondsElapsed(LARGE_INTEGER start,
                        LARGE_INTEGER end);
 
+struct win32_debug_time_marker
+{
+  DWORD playCursor;
+  DWORD writeCursor;
+};
+
 #define _WIN32_HANDMADE_H
 #endif

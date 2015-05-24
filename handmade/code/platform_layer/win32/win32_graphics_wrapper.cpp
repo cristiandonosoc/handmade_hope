@@ -113,17 +113,17 @@ Win32TransferBufferToWindows(HDC deviceContext,
   // TODO(Cristián): aspect ratio correction
   // TODO(Cristián): Play with stretch mode
   // NOTE(Cristián): We are avoiding dirty (partial) rectangles for now
-  StretchDIBits(
-    deviceContext,
-    /*
-    x, y, destWidth, destHeight,
-    x, y, originWidth, originHeight,
-    */
-    0, 0, windowWidth, windowHeight,
-    0, 0, buffer->width, buffer->height,
-    buffer->memory,
-    &buffer->info,
-    DIB_RGB_COLORS, SRCCOPY);
+  StretchDIBits(deviceContext,
+                /*
+                x, y, destWidth, destHeight,
+                x, y, originWidth, originHeight,
+                */
+                0, 0, windowWidth, windowHeight,
+                0, 0, buffer->width, buffer->height,
+                buffer->memory,
+                &buffer->info,
+                DIB_RGB_COLORS,
+                SRCCOPY);
 }
 
 #define _WIN32_GRAPHICS_WRAPPER_INCLUDED
