@@ -58,6 +58,8 @@ internal void
 OutputGameSound(game_sound_output_buffer *soundOutput,
                 int32 toneHz, int32 toneVolume)
 {
+  if(!soundOutput->valid) { return; }
+
   /**
    * We write into the buffer by writing and advancing the output pointer
    * We make two writes because we created 2 channels, which makes the buffer to look like this:

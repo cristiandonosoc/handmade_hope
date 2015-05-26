@@ -84,6 +84,7 @@ WinMain(HINSTANCE hInstance,
   // TODO(Cristián): How do we reliably query this?
   //int monitorRefreshHz = 60;
 #define gameUpdateHz 30
+#define framesOfLatency 3
   real32 targetSecondsPerFrame = 1.0f / (real32)gameUpdateHz;
 
   // DEBUG(Cristián)
@@ -117,10 +118,13 @@ WinMain(HINSTANCE hInstance,
        */
 
       gSoundOutput.samplesPerSecond = 48000; // 48kHz
-      gSoundOutput.latency = gSoundOutput.samplesPerSecond / 15;   // 15 frames of latency
+      gSoundOutput.latency = framesOfLatency * (gSoundOutput.samplesPerSecond / gameUpdateHz);
       gSoundOutput.nChannels = 2;
       gSoundOutput.bytesPerBlock = gSoundOutput.nChannels * sizeof(int16);
       gSoundOutput.bufferSize = gSoundOutput.samplesPerSecond * gSoundOutput.bytesPerBlock;
+
+      // Whether the sound this frame was valid
+      bool32 validSound = false;
 
       /**
        * NOTE(Cristián): VirtualAlloc by default clears the memory to 0,
@@ -136,10 +140,35 @@ WinMain(HINSTANCE hInstance,
       // to make a running index of our buffer
       Win32InitDirectSound(windowHandle, &gSoundOutput);
 
+
       // NOTE(Cristián): Test Code
       Win32ClearBuffer(&gSoundOutput);
       //Win32FillSoundBuffer(&gSoundOutput, 0, gSoundOutput.bufferSize);
       Win32PlayDirectSound();
+
+#if 0
+      // NOTE(Cristián): This tests the playCursor/writeCursor update frequency.
+      // On this machine it updates every 480 blocks
+      bool testSound = true;
+      while(testSound)
+      {
+        DWORD playCursor;
+        DWORD writeCursor;
+        if(SUCCEEDED(gSecondaryBuffer
+          ->GetCurrentPosition(&playCursor,
+                               &writeCursor)))
+        {
+          char buffer[256];
+          sprintf_s(buffer,
+                  "PC: %u, WC: %u\n",
+                  playCursor,
+                  writeCursor);
+          OutputDebugStringA(buffer);
+        }
+      }
+#endif
+
+
 
       /**
        *  GAME MEMORY INITIALIZATION
@@ -220,7 +249,7 @@ WinMain(HINSTANCE hInstance,
          * inside the scope or outside it.
          *
          * It is importante to note that is we use C++ constructors/destructors IT DOES MAKE
-         * A DIFFERENCE whether we put it in a loop because the spec requires it to call those
+         * A DIFFERENCE (RAII) whether we put it in a loop because the spec requires it to call those
          * callbacks everytime the structure (or class) is created/destroyed. This can mean a lot
          * of code of overhead if defined inside the loop. But this is not such case.
          */
@@ -296,16 +325,15 @@ WinMain(HINSTANCE hInstance,
         gameOffscreenBuffer.pitch = gBackBuffer.pitch;
 
         // The sound ouput to be passed to the game
-        bool32 validSound = false;
         game_sound_output_buffer gameSoundOutput = {};
-        if(Win32SetupSoundBuffer(&gSoundOutput))
+        if(validSound)
         {
 
           gameSoundOutput.bufferMemory = gSoundOutput.bufferMemory;
           gameSoundOutput.samplesPerSecond = gSoundOutput.samplesPerSecond;
           gameSoundOutput.sampleCount = gSoundOutput.bytesToWrite /
                                         gSoundOutput.bytesPerBlock;
-          validSound = true;
+          gameSoundOutput.valid = true;
         }
 
         /**
@@ -355,12 +383,16 @@ WinMain(HINSTANCE hInstance,
             sleepMs = (DWORD)(1000.0f * (targetSecondsPerFrame - secondsElapsedForFrame));
             if(sleepMs > 1)
             {
-              Sleep(sleepMs - 2);
+              // TODO(Cristián): See why the CPU is not sleeping by the amount we want!
+              Sleep(sleepMs);
             }
             real32 testSecondsElapsedForFrame =
               Win32GetSecondsElapsed(lastCounter,
                                      Win32GetWallClock());
-            ASSERT(testSecondsElapsedForFrame < targetSecondsPerFrame);
+            if(testSecondsElapsedForFrame < targetSecondsPerFrame)
+            {
+              // TODO(Cristián): Log this missed sleep
+            }
           }
 
           while(secondsElapsedForFrame < targetSecondsPerFrame)
@@ -388,16 +420,21 @@ WinMain(HINSTANCE hInstance,
                                      &gBackBuffer,
                                      dimension.width, dimension.height);
 
+        // If sound is invalid, it means it is either the first run
+        // or some strange sound buffer death
+        validSound = Win32SetupSoundBuffer(&gSoundOutput, !validSound);
+
 #if HANDMADE_INTERNAL
+
         // NOTE(Cristián): This is debug code
         {
-
-          DWORD playCursor;
-          DWORD writeCursor;
-          gSecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor);
+          ASSERT(debugMarkerIndex < ARRAY_COUNT(debugMarkerCursors));
           win32_debug_time_marker currentMarker = {};
-          currentMarker.playCursor = playCursor;
-          currentMarker.writeCursor = writeCursor;
+          currentMarker.playCursor = gSoundOutput.playCursor;
+          currentMarker.writeCursor = gSoundOutput.writeCursor;
+          currentMarker.runningBlockIndex =
+            (gSoundOutput.runningBlockIndex * gSoundOutput.bytesPerBlock) %
+            gSoundOutput.bufferSize;
           debugMarkerCursors[debugMarkerIndex++] = currentMarker;
           if (debugMarkerIndex >= ARRAY_COUNT(debugMarkerCursors))
           {

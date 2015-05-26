@@ -25,6 +25,9 @@ struct win32_sound_output
   int32 runningBlockIndex;
   uint32 byteToLock;
   uint32 bytesToWrite;
+  DWORD playCursor;
+  DWORD writeCursor;
+  real32 latencySeconds;
 };
 
 #define _WIN32_DIRECT_SOUND_WRAPPER_H_INCLUDED

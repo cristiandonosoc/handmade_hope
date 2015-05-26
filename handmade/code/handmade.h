@@ -89,6 +89,7 @@ struct game_sound_output_buffer
   int32 toneVolume;
   int32 samplesPerSecond;
   int32 toneHz;
+  bool32 valid;
 };
 
 struct game_button_state

@@ -11,7 +11,7 @@
 
     ===================================================================== */
 
-#ifndef _WIN32_DIRECT_SOUND_WRAPPER_CPP_INCLUDED
+#ifndef _WIN32_DIRECT_SOUND_CPP
 
 #include "common_types.h"
 #include "win32_direct_sound_wrapper.h"
@@ -51,17 +51,23 @@ Win32InitDirectSound(HWND windowHandle,
   // TODO(Cristián): Check that this works on XP - DirectSound 8 or 7
   /**
    * What happens here is that Windows gives us a LPDIRECTSOUND object that is defined
-   * in the dsound.h file. Afterwards we don't need to call GetProcAddress to get the calls
-   * to the DirectSound object methods because we make use of its vTable.
+   * in the dsound.h file. Afterwards we don't need to call GetProcAddress
+   * to get the calls to the DirectSound object methods
+   * because we make use of its vTable.
    *
-   * Basically, this object has it's methods defined as virtual methods. This means that
-   * it has a method to a global table associated with the class (or struct) that has all the
-   * pointers to its virtual methods. This way we can get the pointers to the methods by referencing
-   * the vTable.
+   * Basically, this object has it's methods defined as virtual methods.
+   * This means that it has a method to a global table associated
+   * with the class (or struct) that has all the pointers
+   * to its virtual methods.
+   * This way we can get the pointers to the methods
+   * by referencing the vTable.
    *
-   * This means that at RUNTIME we can get the pointers to the functions of the object without
-   * having to actually have its definitions compiled. This is the standard way Microsoft implements
-   * its COM (Component Object Model) layer in order to send functions outside the 'dll boundary'
+   * This means that at RUNTIME we can get the pointers
+   * to the functions of the object without having to
+   * actually have its definitions compiled.
+   * This is the standard way Microsoft implements
+   * its COM (Component Object Model) layer in order
+   * to send functions outside the 'dll boundary'
    */
   LPDIRECTSOUND directSound;
   if(!directSoundCreate || !SUCCEEDED(directSoundCreate(0, &directSound, 0)))
@@ -94,11 +100,14 @@ Win32InitDirectSound(HWND windowHandle,
   bufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
 
   LPDIRECTSOUNDBUFFER primaryBuffer;
-  if(!SUCCEEDED(directSound->CreateSoundBuffer(&bufferDescription, &primaryBuffer, 0)))
+  if(!SUCCEEDED(directSound->CreateSoundBuffer(&bufferDescription,
+                                               &primaryBuffer,
+                                               0)))
   {
     return; // TODO(Cristián): Diagnostics
   }
-  if(!SUCCEEDED(primaryBuffer->SetFormat(&waveFormat))) { return; } // TODO(Cristián): Diagnostics
+  // TODO(Cristián): Diagnostics
+  if(!SUCCEEDED(primaryBuffer->SetFormat(&waveFormat))) { return; }
 
   // "Create" a secondary buffer
   DSBUFFERDESC secBufferDescription = {};
@@ -107,14 +116,17 @@ Win32InitDirectSound(HWND windowHandle,
   secBufferDescription.dwBufferBytes = soundOutput->bufferSize;
   secBufferDescription.lpwfxFormat = &waveFormat;
   // The gSecondaryBuffer pointer is defined globally
-  if(!SUCCEEDED(directSound->CreateSoundBuffer(&secBufferDescription, &gSecondaryBuffer, 0)))
+  if(!SUCCEEDED(directSound->CreateSoundBuffer(&secBufferDescription,
+                                               &gSecondaryBuffer,
+                                               0)))
   {
     return; // TODO(Cristián): Diagnostics
   }
-
-  // NOTE(Cristián): Start it playing
 }
 
+/**
+ * Fills the given soundOutput's soundBuffer with 0
+ */
 internal void
 Win32ClearBuffer(win32_sound_output *soundOutput)
 {
@@ -147,9 +159,12 @@ Win32ClearBuffer(win32_sound_output *soundOutput)
     *destSample++ = 0;
   }
 
-  gSecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
+  gSecondaryBuffer->Unlock(region1, region1Size,
+                           region2, region2Size);
 }
 
+// Fills the direct sound buffer with the information provided
+// by the game sound output
 internal void
 Win32FillSoundBuffer(win32_sound_output *soundOutput,
                      game_sound_output_buffer *sourceOutput)
@@ -170,7 +185,8 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput,
 
   /**
    * We write into the buffer by writing and advancing the output pointer
-   * We make two writes because we created 2 channels, which makes the buffer to look like this:
+   * We make two writes because we created 2 channels,
+   * which makes the buffer to look like this:
    * [int16 int16] [int16 int16] ...
    * [LEFT  RIGHT] [LEFT  RIGHT] ...
    * [  SAMPLE   ] [  SAMPLE   ] ...
@@ -204,42 +220,78 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput,
     soundOutput->runningBlockIndex++;
   }
 
-  gSecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
+  gSecondaryBuffer->Unlock(region1, region1Size,
+                           region2, region2Size);
 }
 
+// Setups the next writeCursor position to be called in the next
+// FillSoundBuffer call
 internal bool32
-Win32SetupSoundBuffer(win32_sound_output *soundOutput)
+Win32SetupSoundBuffer(win32_sound_output *soundOutput, bool32 firstRun)
 {
   // We get the cursor IN BYTES of where the system is playing and writing in the
   // sound buffer
-  DWORD playCursor;
-  DWORD writeCursor;
   // TODO(Cristián): Tighten up sound logic so that we know where we should be
   // writing to and to anticipate time spent in the game output.
-  if(!SUCCEEDED(gSecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor)))
+  if(!SUCCEEDED(gSecondaryBuffer->GetCurrentPosition(&soundOutput->playCursor,
+                                                     &soundOutput->writeCursor)))
   {
     // If we can't get the current position, then the buffer died
     return false;
   }
 
+  if(firstRun)
+  {
+    soundOutput->runningBlockIndex = soundOutput->writeCursor /
+                                     soundOutput->bytesPerBlock;
+  }
+
   // We basically write from the last point we wrote until the playCursor
   DWORD bytesToWrite;
   DWORD byteToLock =
-    (soundOutput->runningBlockIndex * soundOutput->bytesPerBlock) % soundOutput->bufferSize;
+    (soundOutput->runningBlockIndex * soundOutput->bytesPerBlock) %
+    soundOutput->bufferSize;
 
-  DWORD targetCursor = (playCursor +
+  DWORD targetCursor = (soundOutput->playCursor +
     (soundOutput->latency * soundOutput->bytesPerBlock)) %
     soundOutput->bufferSize;
 
   // TODO(Cristián): Change to a lower latenxy offset from the playCursor
   //                 Right now we have 1 buffer latency
-  if(byteToLock <= targetCursor) { bytesToWrite = targetCursor - byteToLock; }
-  else { bytesToWrite = soundOutput->bufferSize - (byteToLock - targetCursor); }
+  if(byteToLock <= targetCursor)
+  {
+    bytesToWrite = targetCursor - byteToLock;
+  }
+  else
+  {
+    bytesToWrite = soundOutput->bufferSize - (byteToLock - targetCursor);
+  }
 
   //Win32FillSoundBuffer(soundOutput, byteToLock, bytesToWrite, sourceOutput);
 
   soundOutput->byteToLock = byteToLock;
   soundOutput->bytesToWrite = bytesToWrite;
+
+  DWORD unwrappedWriteCursor = soundOutput->writeCursor;
+  if (soundOutput->writeCursor < soundOutput->playCursor)
+  {
+    unwrappedWriteCursor += soundOutput->bufferSize;
+  }
+  DWORD minLatency = unwrappedWriteCursor - soundOutput->playCursor;
+  soundOutput->latencySeconds = ((real32)minLatency /
+                                 (real32)soundOutput->bytesPerBlock) /
+                                (real32)soundOutput->samplesPerSecond;
+
+  char buffer[256];
+  sprintf_s(buffer,
+          "PC: %u, WC: %u, Latency (bytes): %u, Latency (s): %f\n",
+          soundOutput->playCursor,
+          soundOutput->writeCursor,
+          minLatency,
+          soundOutput->latencySeconds);
+  OutputDebugStringA(buffer);
+
+
 
   return true;
 }
@@ -250,5 +302,5 @@ Win32PlayDirectSound()
   gSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 }
 
-#define _WIN32_DIRECT_SOUND_WRAPPER_CPP_INCLUDED
+#define _WIN32_DIRECT_SOUND_CPP
 #endif
