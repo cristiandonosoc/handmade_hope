@@ -11,9 +11,13 @@
 
 struct win32_debug_time_marker
 {
-  DWORD playCursor;
-  DWORD writeCursor;
-  int32 runningBlockIndex;
+  DWORD fillPlayCursor;
+  DWORD fillWriteCursor;
+  DWORD flipPlayCursor;
+  DWORD flipWriteCursor;
+  DWORD runningBlockIndex;
+  DWORD byteToLock;
+  DWORD byteToWrite;
 };
 
 #define _WIN32_DEBUG_H

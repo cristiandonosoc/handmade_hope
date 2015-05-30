@@ -12,6 +12,39 @@
 
 #include <math.h> // TODO(Cristián): Implement our own sine function
 
+internal void
+ClearScreenBuffer(game_offscreen_buffer *buffer)
+{
+  // TODO(Cristián): Let's see what the optimizer does if it is passed by reference
+  // instead of a pointer.
+  int bitmapWidth = buffer->width;
+  int bitmapHeight = buffer->height;
+  int pitch = buffer->pitch;
+  void *memory = buffer->memory;
+
+  uint8* row = (uint8 *)memory;
+  for(int y = 0;
+      y < bitmapHeight;
+      y++)
+  {
+    uint32 *pixel = (uint32 *)row;
+    for(int x = 0;
+        x < bitmapWidth;
+        x++)
+    {
+      /*
+        Pixel in Memory: BB GG RR xx
+        Little Endian Architecture
+        Pixel in Register: 0xXXRRGGBB
+       */
+
+      *pixel++ = 0;
+    }
+    row += pitch;
+  }
+
+}
+
 /**
  * Writes a 'weird' gradient into a memory buffer
  * @param *buffer A pointer to the buffer info struct. We can pass it by reference also
@@ -96,26 +129,18 @@ OutputGameSound(game_sound_output_buffer *soundOutput,
 }
 
 internal void
-GameUpdateAndRender(game_memory *gameMemory,
-                    game_offscreen_buffer *offscreenBuffer,
-                    game_sound_output_buffer *soundBuffer,
+GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
+                    game_memory *gameMemory,
                     game_input *gameInput)
 {
-
   ASSERT(((&gameInput->controllers[0].terminator) -
           (&gameInput->controllers[0].buttons[0])) ==
          ARRAY_COUNT(gameInput->controllers[0].buttons));
   ASSERT(sizeof(game_state) <= gameMemory->permanentStorageSize);
 
   game_state *gameState = (game_state *)gameMemory->permanentStorage;
-  if(!gameMemory->isInitialized)
+  if(!gameMemory->graphicsInitialized)
   {
-    gameState->toneHz = 440;
-    gameState->toneVolume = 7000;
-
-    // TODO(Cristián): This may be more appropiate to do in the platform layer
-    gameMemory->isInitialized = true;
-
     // We try to read from files
     // TODO(Cristián): Stop allocating new memory for the file
     //                 Instead reserve memory from the already allocated
@@ -129,9 +154,10 @@ GameUpdateAndRender(game_memory *gameMemory,
                                     gameFile.content);
       DEBUG_PlatformFreeGameFile(&gameFile);
     }
-  }
 
-  gameState->toneHz = 256;
+    // TODO(Cristián): This may be more appropiate to do in the platform layer
+    gameMemory->graphicsInitialized = true;
+  }
 
   for(int controllerIndex = 0;
       controllerIndex < ARRAY_COUNT(gameInput->controllers);
@@ -146,13 +172,6 @@ GameUpdateAndRender(game_memory *gameMemory,
       gameState->xOffset += (int32)(10 * input->leftStickAverageX);
       gameState->yOffset += (int32)(10 * input->leftStickAverageY);
     }
-    else
-    {
-      if (input->moveRight.endedDown)
-      {
-        gameState->toneHz = 256 + (int32)(120.0f * input->moveRight.endedDown);
-      }
-    }
 
     if(input->actionDown.endedDown)
     {
@@ -160,12 +179,64 @@ GameUpdateAndRender(game_memory *gameMemory,
     }
 
   }
+  bool32 debug = false;
+  if(debug && !debug)
+  {
+    RenderWeirdGradient(offscreenBuffer,
+                        gameState->xOffset,
+                        gameState->yOffset);
+  }
+  else
+  {
+    ClearScreenBuffer(offscreenBuffer);
+  }
+}
+
+internal void
+GameGetSound(game_sound_output_buffer *soundBuffer,
+             game_memory *gameMemory,
+             game_input *gameInput)
+{
+
+  ASSERT(((&gameInput->controllers[0].terminator) -
+          (&gameInput->controllers[0].buttons[0])) ==
+         ARRAY_COUNT(gameInput->controllers[0].buttons));
+  ASSERT(sizeof(game_state) <= gameMemory->permanentStorageSize);
+
+  game_state *gameState = (game_state *)gameMemory->permanentStorage;
+  if(!gameMemory->soundInitialized)
+  {
+    gameState->toneHz = 440;
+    gameState->toneVolume = 7000;
+
+    // TODO(Cristián): This may be more appropiate to do in the platform layer
+    gameMemory->soundInitialized = true;
+  }
+
+  gameState->toneHz = 256;
+
+  for(int controllerIndex = 0;
+      controllerIndex < ARRAY_COUNT(gameInput->controllers);
+      controllerIndex++)
+  {
+    game_controller_input *input =
+      GetController(gameInput, controllerIndex);
+
+    if(input->isAnalog)
+    {
+      // NOTE(Cristián): Use analog movement tuninY
+    }
+    else
+    {
+      if (input->moveRight.endedDown)
+      {
+        gameState->toneHz = 256 + (int32)(120.0f * input->moveRight.endedDown);
+      }
+    }
+  }
   OutputGameSound(soundBuffer,
                   gameState->toneHz,
                   gameState->toneVolume);
-  RenderWeirdGradient(offscreenBuffer,
-                      gameState->xOffset,
-                      gameState->yOffset);
 }
 
 #define _HANDMADE_CPP_INCLUDED

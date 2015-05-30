@@ -333,6 +333,13 @@ Win32ProcessKeyboardMessages(MSG message,
         else if(vKeyCode == VK_SPACE)
         {
         }
+        else if(vKeyCode == 'P')
+        {
+          if(keyIsDown)
+          {
+            gPauseApp = !gPauseApp;
+          }
+        }
         else // All other keys are treated by default
         {
           result.unprocessed = true;

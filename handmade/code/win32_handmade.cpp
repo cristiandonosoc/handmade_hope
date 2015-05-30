@@ -31,6 +31,11 @@
 #include <windows.h>
 #include "common_types.h"
 
+// App Global Variables
+global_variable bool32 gMainLoopIsRunning;
+global_variable uint64 gPerformanceCounterFrequency;
+global_variable bool32 gPauseApp;
+
 #include "win32_handmade.h"
 
 // Platform specific code
@@ -43,11 +48,6 @@
 #include "platform_layer/win32/win32_debug.cpp"
 #endif
 
-
-// Global Sound Buffer Management
-global_variable bool32 mainLoopIsRunning;
-
-global_variable uint64 gPerformanceCounterFrequency;
 
 /**
  * Main entrance for the program from the C-Runtime Library
@@ -93,20 +93,19 @@ WinMain(HINSTANCE hInstance,
 
   if(RegisterClassA(&windowClass))
   {
-    HWND windowHandle = CreateWindowExA(
-      0,
-      windowClass.lpszClassName,
-      "Handmade Hope",
-      WS_OVERLAPPEDWINDOW|WS_VISIBLE,
-      CW_USEDEFAULT,
-      CW_USEDEFAULT,
-      CW_USEDEFAULT,
-      CW_USEDEFAULT,
-      0,
-      0,
-      hInstance,
-      0
-    );
+    HWND windowHandle = CreateWindowExA(0,
+                                        windowClass.lpszClassName,
+                                        "Handmade Hope",
+                                        WS_OVERLAPPEDWINDOW|WS_VISIBLE,
+                                        CW_USEDEFAULT,
+                                        CW_USEDEFAULT,
+                                        CW_USEDEFAULT,
+                                        CW_USEDEFAULT,
+                                        0,
+                                        0,
+                                        hInstance,
+                                        0);
+
     if(windowHandle)
     {
       // NOTE(Cristián): Sice we specified CS_OWNDC for our WNDCLASS, we can just
@@ -118,10 +117,23 @@ WinMain(HINSTANCE hInstance,
        */
 
       gSoundOutput.samplesPerSecond = 48000; // 48kHz
-      gSoundOutput.latency = framesOfLatency * (gSoundOutput.samplesPerSecond / gameUpdateHz);
+      gSoundOutput.latency = framesOfLatency *
+        (gSoundOutput.samplesPerSecond / gameUpdateHz);
       gSoundOutput.nChannels = 2;
-      gSoundOutput.bytesPerBlock = gSoundOutput.nChannels * sizeof(int16);
-      gSoundOutput.bufferSize = gSoundOutput.samplesPerSecond * gSoundOutput.bytesPerBlock;
+      gSoundOutput.bytesPerBlock = gSoundOutput.nChannels *
+                                   sizeof(int16);
+      gSoundOutput.bufferSize = gSoundOutput.samplesPerSecond *
+                                gSoundOutput.bytesPerBlock;
+#define soundSafetyMs 10
+      gSoundOutput.safetyBytes = ((soundSafetyMs *
+                                   gSoundOutput.samplesPerSecond *
+                                   gSoundOutput.bytesPerBlock) /
+                                  1000);
+      gSoundOutput.expectedSoundBytesPerFrame =
+        ((gSoundOutput.samplesPerSecond *
+          gSoundOutput.bytesPerBlock) /
+         gameUpdateHz);
+
 
       // Whether the sound this frame was valid
       bool32 validSound = false;
@@ -133,17 +145,17 @@ WinMain(HINSTANCE hInstance,
 
       // We allocalte the buffer
       // TODO(Cristián): Pool with Graphics Virtual Alloc
-      gSoundOutput.bufferMemory = VirtualAlloc(0, gSoundOutput.bufferSize,
-                                               MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+      gSoundOutput.bufferMemory =
+        VirtualAlloc(0,
+                     gSoundOutput.bufferSize,
+                     MEM_RESERVE|MEM_COMMIT,
+                     PAGE_READWRITE);
 
       // An index that counts how many samples we've outputed. We can use the module operator
       // to make a running index of our buffer
       Win32InitDirectSound(windowHandle, &gSoundOutput);
-
-
-      // NOTE(Cristián): Test Code
+      // TODO(Cristián): This is test code?
       Win32ClearBuffer(&gSoundOutput);
-      //Win32FillSoundBuffer(&gSoundOutput, 0, gSoundOutput.bufferSize);
       Win32PlayDirectSound();
 
 #if 0
@@ -168,8 +180,6 @@ WinMain(HINSTANCE hInstance,
       }
 #endif
 
-
-
       /**
        *  GAME MEMORY INITIALIZATION
        */
@@ -179,6 +189,7 @@ WinMain(HINSTANCE hInstance,
 #else
       LPVOID baseAddress = 0;
 #endif
+
       game_memory gameMemory = {};
       gameMemory.permanentStorageSize = MEGABYTES(64);
       gameMemory.transientStorageSize = GIGABYTES(4);
@@ -213,8 +224,8 @@ WinMain(HINSTANCE hInstance,
 
       // ** MESSAGE LOOP **
       // We retrieve the messages from windows via the message queue
-      mainLoopIsRunning = true;
-      while(mainLoopIsRunning)
+      gMainLoopIsRunning = true;
+      while(gMainLoopIsRunning)
       {
 
         // TODO(Cristián): Zeroing macro
@@ -265,7 +276,7 @@ WinMain(HINSTANCE hInstance,
           // We manage the results from the keyboard process
           if (result.quit)
           {
-            mainLoopIsRunning = false;
+            gMainLoopIsRunning = false;
           }
 
           if (result.unprocessed)
@@ -317,6 +328,15 @@ WinMain(HINSTANCE hInstance,
 
         }
 
+        if(gPauseApp)
+        {
+          continue;
+        }
+
+        /**
+         * APP LOGIC UPDATE
+         */
+
         // The video buffer to be passed to the game
         game_offscreen_buffer gameOffscreenBuffer = {};
         gameOffscreenBuffer.memory = gBackBuffer.memory;
@@ -324,37 +344,51 @@ WinMain(HINSTANCE hInstance,
         gameOffscreenBuffer.height = gBackBuffer.height;
         gameOffscreenBuffer.pitch = gBackBuffer.pitch;
 
+
+        // If sound is invalid, it means it is either the first run
+        // or some strange sound buffer death
+        // TODO(Cristián): We need to compute the exepectedFrameBoundaryByte
+        //                 for the low latency case
+        //
+        //
+        //
+
+        real32 secondsElapsedSinceFrameFlip =
+          Win32GetSecondsElapsed(lastCounter,
+                                 Win32GetWallClock());
+        real32 secondsExpectedToFrameFlip =
+          targetSecondsPerFrame - secondsElapsedSinceFrameFlip;
+        validSound = Win32SetupSoundBuffer(&gSoundOutput,
+                                           secondsExpectedToFrameFlip,
+                                           !validSound);
+
         // The sound ouput to be passed to the game
         game_sound_output_buffer gameSoundOutput = {};
         if(validSound)
         {
-
           gameSoundOutput.bufferMemory = gSoundOutput.bufferMemory;
           gameSoundOutput.samplesPerSecond = gSoundOutput.samplesPerSecond;
           gameSoundOutput.sampleCount = gSoundOutput.bytesToWrite /
                                         gSoundOutput.bytesPerBlock;
           gameSoundOutput.valid = true;
         }
-
-        /**
-         * We call the game with the game memory, the graphics buffer,
-         * the sound output and the current input
-         *
-         * This will generate all the content needed for the frame
-         */
-        GameUpdateAndRender(&gameMemory,
-                            &gameOffscreenBuffer,
-                            &gameSoundOutput,
-                            newInput);
-
-        // TODO(Cristián): Sound is wrong right now! It hasn't been updated
-        // to go with the new frame loop.
-        if (validSound)
+        if (gameSoundOutput.valid)
         {
+          GameGetSound(&gameSoundOutput,
+                       &gameMemory,
+                       newInput);
           Win32FillSoundBuffer(&gSoundOutput,
                                &gameSoundOutput);
         }
 
+        // We call the game with the game memory, the graphics buffer,
+        // This will generate all the content needed for the frame
+        GameUpdateAndRender(&gameOffscreenBuffer,
+                            &gameMemory,
+                            newInput);
+
+        // We write to sound buffer inmediately because it has to sound even
+        // when we are sleeping waiting for the page flip
         /**
          * We calculate the wall clock time that happened since the last counter.
          * After we wait the appropiate amount of time, we can show the frame and
@@ -407,43 +441,61 @@ WinMain(HINSTANCE hInstance,
         lastCounter = Win32GetWallClock();
 
 
-
-        win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
 #if HANDMADE_INTERNAL
+        int displayCurrentMarkerIndex = debugMarkerIndex - 1;
+        if(displayCurrentMarkerIndex < 0)
+        {
+          displayCurrentMarkerIndex = ARRAY_COUNT(debugMarkerCursors);
+        }
+
+        // NOTE(Cristián): This is debug code
         Win32DebugSyncDisplay(&gBackBuffer,
                               &gSoundOutput,
                               debugMarkerCursors,
                               ARRAY_COUNT(debugMarkerCursors),
-                              targetSecondsPerFrame);
+                              displayCurrentMarkerIndex);
 #endif
+
+        /**
+         * FRAME FLIP
+         */
+        win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
         Win32TransferBufferToWindows(deviceContext,
                                      &gBackBuffer,
                                      dimension.width, dimension.height);
 
-        // If sound is invalid, it means it is either the first run
-        // or some strange sound buffer death
-        validSound = Win32SetupSoundBuffer(&gSoundOutput, !validSound);
+
+
+
 
 #if HANDMADE_INTERNAL
-
-        // NOTE(Cristián): This is debug code
         {
-          ASSERT(debugMarkerIndex < ARRAY_COUNT(debugMarkerCursors));
           win32_debug_time_marker currentMarker = {};
-          currentMarker.playCursor = gSoundOutput.playCursor;
-          currentMarker.writeCursor = gSoundOutput.writeCursor;
+
+          // We fill the currentMarker with the sound information
+          currentMarker.fillPlayCursor = gSoundOutput.playCursor;
+          currentMarker.fillWriteCursor = gSoundOutput.writeCursor;
+
+          gSecondaryBuffer->GetCurrentPosition(&currentMarker.flipPlayCursor,
+                                               &currentMarker.flipWriteCursor);
           currentMarker.runningBlockIndex =
             (gSoundOutput.runningBlockIndex * gSoundOutput.bytesPerBlock) %
             gSoundOutput.bufferSize;
+          currentMarker.byteToLock = gSoundOutput.byteToLock;
+          currentMarker.byteToWrite =
+            ((gSoundOutput.byteToLock + gSoundOutput.bytesToWrite) %
+            gSoundOutput.bufferSize);
           debugMarkerCursors[debugMarkerIndex++] = currentMarker;
+
           if (debugMarkerIndex >= ARRAY_COUNT(debugMarkerCursors))
           {
             debugMarkerIndex = 0;
           }
+          ASSERT(debugMarkerIndex < ARRAY_COUNT(debugMarkerCursors));
         }
-#endif
 
-#if HANDMADE_INTERNAL
+
+
         real32 fps = 1.0f / secondsElapsedForFrame;
         // TODO(Cristián): Remove from production
         char buffer[256];
@@ -465,6 +517,7 @@ WinMain(HINSTANCE hInstance,
         newInput = oldInput;
         oldInput = tempInputState;
         // TODO(Cristián): Clear the newInput??
+
       }
     }
     else
@@ -511,7 +564,7 @@ Win32MainWindowCallback(HWND windowHandle,
   {
     case WM_QUIT:
     {
-      mainLoopIsRunning = false;
+      gMainLoopIsRunning = false;
     } break;
     case WM_SIZE:
       {
@@ -523,12 +576,12 @@ Win32MainWindowCallback(HWND windowHandle,
     case WM_CLOSE:
       {
         //TODO:(Cristián): Handle this with a message to the user
-        mainLoopIsRunning = false;
+        gMainLoopIsRunning = false;
       } break;
     case WM_DESTROY:
       {
         //TODO:(Cristián): Handle this with an error - Recreate window?
-        mainLoopIsRunning = false;
+        gMainLoopIsRunning = false;
       } break;
     // We use the switch to grab all the keys messages into one block
     // (they all cascade into WM_KEYUP)

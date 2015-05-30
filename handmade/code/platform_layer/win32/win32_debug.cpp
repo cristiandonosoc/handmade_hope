@@ -34,10 +34,12 @@ internal void
 Win32DebugDrawVerticalLineFromValue(
   win32_offscreen_buffer *backBuffer,
   win32_sound_output *soundOutput,
-  int padX, int padY, int top, int bottom, 
+  int padX, int padY, int top, int bottom,
   real32 value, uint32 color)
 {
-  real32 c = (real32)(backBuffer->width - 2 * padX) / (real32)soundOutput->bufferSize;
+  ASSERT(value < soundOutput->bufferSize);
+  real32 c = (real32)(backBuffer->width - 2 * padX) /
+             (real32)soundOutput->bufferSize;
   int x = padX + (int)(c * value);
   Win32DebugDrawVerticalLine(backBuffer, x, top, bottom, color);
 }
@@ -47,35 +49,74 @@ Win32DebugSyncDisplay(win32_offscreen_buffer *backBuffer,
                       win32_sound_output *soundOutput,
                       win32_debug_time_marker* debugTimeMarkers,
                       int markerCount,
-                      real32 targetSecondsPerFrame)
+                      int currentMarkerIndex)
 {
-  int padX = 16;
-  int padY = 16;
-  int top = padY;
-  int bottom = backBuffer->height - padY;
+  DWORD playColor = 0xFFFFFFFF;
+  DWORD writeColor = 0xFF0000FF;
+  DWORD byteToLockColor = 0xFFFF0000;
+  DWORD byteToWriteColor = 0xFFFFFF00;
+  DWORD flipPlayCursorColor = 0xFFFFFFF;
+  DWORD flipWriteCursorColor = 0xFF0000FF;
 
   for(int markerIndex = 0;
       markerIndex < markerCount;
       markerIndex++)
   {
-    Win32DebugDrawVerticalLineFromValue(backBuffer,
-                                        soundOutput,
-                                        padX, padY, top, bottom,
-                                        (real32)debugTimeMarkers[markerIndex].playCursor,
-                                        0xFFFFFFFF);
+    int padX = 16;
+    int padY = 16;
+    int top = padY;
+    int bottom = backBuffer->height / 10;
+    if(markerIndex == currentMarkerIndex)
+    {
 
-    Win32DebugDrawVerticalLineFromValue(backBuffer,
-                                        soundOutput,
-                                        padX, padY, top, bottom,
-                                        (real32)debugTimeMarkers[markerIndex].writeCursor,
-                                        0x0000FF00);
-#if 0
-    Win32DebugDrawVerticalLineFromValue(backBuffer,
-                                        soundOutput,
-                                        padX, padY, top, bottom,
-                                        (real32)debugTimeMarkers[markerIndex].runningBlockIndex,
-                                        0xFF000000);
-#endif
+      top = backBuffer->height / 8;
+      bottom = backBuffer->height / 6;
+
+      Win32DebugDrawVerticalLineFromValue(
+          backBuffer,
+          soundOutput,
+          padX, padY, top, bottom,
+          (real32)debugTimeMarkers[markerIndex].byteToLock,
+          byteToLockColor);
+
+      Win32DebugDrawVerticalLineFromValue(
+          backBuffer,
+          soundOutput,
+          padX, padY, top, bottom,
+          (real32)debugTimeMarkers[markerIndex].byteToWrite,
+          byteToWriteColor);
+
+      Win32DebugDrawVerticalLineFromValue(
+          backBuffer,
+          soundOutput,
+          padX, padY, top, bottom,
+          (real32)debugTimeMarkers[markerIndex].flipPlayCursor,
+          flipPlayCursorColor);
+
+      Win32DebugDrawVerticalLineFromValue(
+          backBuffer,
+          soundOutput,
+          padX, padY, top, bottom,
+          (real32)debugTimeMarkers[markerIndex].flipWriteCursor,
+          flipWriteCursorColor);
+
+
+      top = padY;
+      bottom = backBuffer->height / 8;
+    }
+    Win32DebugDrawVerticalLineFromValue(
+        backBuffer,
+        soundOutput,
+        padX, padY, top, bottom,
+        (real32)debugTimeMarkers[markerIndex].fillPlayCursor,
+        playColor);
+
+    Win32DebugDrawVerticalLineFromValue(
+        backBuffer,
+        soundOutput,
+        padX, padY, top, bottom,
+        (real32)debugTimeMarkers[markerIndex].fillWriteCursor,
+        writeColor);
 
   }
 }

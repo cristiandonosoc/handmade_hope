@@ -17,6 +17,8 @@ struct win32_sound_output
   int32 bytesPerBlock;
   int32 bufferSize;
   int32 latency;
+  uint32 expectedSoundBytesPerFrame;
+  uint32 safetyBytes;
 
   // Buffer
   void *bufferMemory;

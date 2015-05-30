@@ -226,8 +226,30 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput,
 
 // Setups the next writeCursor position to be called in the next
 // FillSoundBuffer call
+//
+// NOTE(Cristián): Here is how the sound output works
+//
+// We define a safety value (in blocks) that represents the amount
+// by which we estimate our game loop can vary when querying the
+// sound card (say,up to 2ms).
+//
+// Some defined time before the page flip, we query the playCursor
+// and the writeCursor (by calling this method). We then can
+// forecast where the writeCursor will be in the next query time.
+// If that PWC (Projected Write Cursor) is before the next frame boundary,
+// (before the second page flip to come), by more that our safety value,
+// it means that we have a low latency sound card and
+// we can perfectly synchronize audio.
+//
+// If the PWC is *after* the next frame boundary minus the safety value,
+// then we assume that we can never perfectly sync audio because
+// the sound card is inherently latent.
+// This means that we merely write a frame's worth of audio
+// plus a number of guard samples (should be correlated by the safety value).
 internal bool32
-Win32SetupSoundBuffer(win32_sound_output *soundOutput, bool32 firstRun)
+Win32SetupSoundBuffer(win32_sound_output *soundOutput,
+                      real32 secondsExpectedToFrameFlip,
+                      bool32 firstRun)
 {
   // We get the cursor IN BYTES of where the system is playing and writing in the
   // sound buffer
@@ -247,17 +269,42 @@ Win32SetupSoundBuffer(win32_sound_output *soundOutput, bool32 firstRun)
   }
 
   // We basically write from the last point we wrote until the playCursor
-  DWORD bytesToWrite;
   DWORD byteToLock =
     (soundOutput->runningBlockIndex * soundOutput->bytesPerBlock) %
     soundOutput->bufferSize;
 
-  DWORD targetCursor = (soundOutput->playCursor +
-    (soundOutput->latency * soundOutput->bytesPerBlock)) %
-    soundOutput->bufferSize;
+  DWORD safeWriteCursor = soundOutput->writeCursor;
+  if (safeWriteCursor < soundOutput->playCursor)
+  {
+    safeWriteCursor += soundOutput->bufferSize;
+  }
+  safeWriteCursor += soundOutput->safetyBytes;
 
-  // TODO(Cristián): Change to a lower latenxy offset from the playCursor
-  //                 Right now we have 1 buffer latency
+  ASSERT(safeWriteCursor >= soundOutput->playCursor);
+
+  DWORD expectedFrameBoundaryByte = (soundOutput->playCursor +
+                                     (secondsExpectedToFrameFlip *
+                                      soundOutput->samplesPerSecond *
+                                      soundOutput->bytesPerBlock));
+
+  bool32 NonLatentAudioCard =
+    (safeWriteCursor < expectedFrameBoundaryByte);
+
+  DWORD targetCursor;
+  if(NonLatentAudioCard)
+  {
+    targetCursor = expectedFrameBoundaryByte +
+                   soundOutput->expectedSoundBytesPerFrame;
+  }
+  else
+  {
+    targetCursor = soundOutput->writeCursor +
+                   soundOutput->expectedSoundBytesPerFrame +
+                   soundOutput->safetyBytes;
+  }
+  targetCursor = targetCursor % soundOutput->bufferSize;
+
+  DWORD bytesToWrite;
   if(byteToLock <= targetCursor)
   {
     bytesToWrite = targetCursor - byteToLock;

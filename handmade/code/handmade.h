@@ -162,7 +162,8 @@ game_controller_input *GetController(game_input *input, int controllerIndex)
 
 struct game_memory
 {
-  bool32 isInitialized;
+  bool32 graphicsInitialized;
+  bool32 soundInitialized;
   uint64 permanentStorageSize;
   // NOTE(Cristián): REQUIRED to be cleared to 0 at startup
   void *permanentStorage;
@@ -173,10 +174,19 @@ struct game_memory
 };
 
 
-internal void GameUpdateAndRender(game_memory *gameMemory,
-                                  game_offscreen_buffer *offscreenBuffer,
-                                  game_sound_output_buffer *soundBuffer,
-                                  game_input *gameInput);
+internal void
+GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
+                    game_memory *gameMemory,
+                    game_input *gameInput);
+
+// NOTE(Cristián): At the moment, this has to be a very fast
+// function (1ms or so)
+// TODO(Cristián): Reduce the pressure on this function by
+// measuring or querying.
+internal void
+GameGetSound(game_sound_output_buffer *soundBuffer,
+             game_memory *gameMemory,
+             game_input *gameInput);
 
 // THIS IS NOT FOR THE PLATFORM LAYER TO KNOW
 
