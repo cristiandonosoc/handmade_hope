@@ -36,10 +36,10 @@ global_variable bool32 gMainLoopIsRunning;
 global_variable uint64 gPerformanceCounterFrequency;
 global_variable bool32 gPauseApp;
 
+#include "handmade.h"
 #include "win32_handmade.h"
 
 // Platform specific code
-#include "handmade.cpp"
 #include "platform_layer/win32/win32_x_input_wrapper.cpp"
 #include "platform_layer/win32/win32_direct_sound_wrapper.cpp"
 #include "platform_layer/win32/win32_graphics_wrapper.cpp"
@@ -48,6 +48,61 @@ global_variable bool32 gPauseApp;
 #include "platform_layer/win32/win32_debug.cpp"
 #endif
 
+struct win32_game_code
+{
+  HMODULE gameCodeDll;
+  bool32 valid;
+  game_update_and_render *updateAndRenderFunction;
+  game_get_sound *getSoundFunction;
+};
+
+internal win32_game_code
+Win32LoadGameCode()
+{
+  win32_game_code gameCode = {};
+
+  // TODO(Cristián): Need to get the proper path
+  // TODO(Cristián): Automatic determination for when game code
+  //                 update is necessary
+  char *dllName = "handmade.dll";
+  char *tempDllName = "handmade_temp.dll";
+
+  CopyFile(dllName,
+           tempDllName,
+           false);
+  gameCode.gameCodeDll = LoadLibraryA(tempDllName);
+  if(gameCode.gameCodeDll)
+  {
+    gameCode.updateAndRenderFunction =
+      (game_update_and_render *)GetProcAddress(gameCode.gameCodeDll,
+                                               "GameUpdateAndRender");
+    gameCode.getSoundFunction =
+      (game_get_sound *)GetProcAddress(gameCode.gameCodeDll, "GameGetSound");
+
+    gameCode.valid = (gameCode.updateAndRenderFunction &&
+                      gameCode.getSoundFunction);
+  }
+
+  if(!gameCode.valid)
+  {
+    gameCode.updateAndRenderFunction = GameUpdateAndRenderStub;
+    gameCode.getSoundFunction = GameGetSoundStub;
+  }
+
+  return gameCode;
+}
+
+internal void
+Win32UnloadGameCode(win32_game_code *gameCode)
+{
+  if(gameCode->gameCodeDll)
+  {
+    FreeLibrary(gameCode->gameCodeDll);
+  }
+  gameCode->valid = false;
+  gameCode->updateAndRenderFunction = GameUpdateAndRenderStub;
+  gameCode->getSoundFunction = GameGetSoundStub;
+}
 
 /**
  * Main entrance for the program from the C-Runtime Library
@@ -194,6 +249,13 @@ WinMain(HINSTANCE hInstance,
       gameMemory.permanentStorageSize = MEGABYTES(64);
       gameMemory.transientStorageSize = GIGABYTES(4);
 
+      /**
+       * PLATFORM SERVICES FUNCTIONS POINTERS INITIALIZATION
+       */
+      gameMemory.DEBUGPlatformReadEntireFileFunction = DEBUGPlatformReadEntireFile;
+      gameMemory.DEBUGPlatformFreeGameFileFunction = DEBUGPlatformFreeGameFile;
+      gameMemory.DEBUGPlatformWriteEntireFileFunction = DEBUGPlatformWriteEntireFile;
+
       // TODO(Cristián): Handle varios memory footprints
       //                 Use system metric on *physical* memory
       uint64 totalSize = gameMemory.permanentStorageSize + gameMemory.transientStorageSize;
@@ -218,9 +280,21 @@ WinMain(HINSTANCE hInstance,
       // We put the amount of cycles made by the processor
       //uint64 lastCycleCount = __rdtsc();
 
+
+      /**
+       * INPUT INITIALIZATION
+       */
+
       game_input gameInputs[2] = {};
       game_input *oldInput = &gameInputs[0];
       game_input *newInput = &gameInputs[1];
+
+      /**
+       * GAME CODE INITIALIZATION
+       */
+      win32_game_code currentGameCode = Win32LoadGameCode();
+      uint32 gameCodeLoadCounter = 0;
+#define gameCodeLoadCounterLimit 120
 
       // ** MESSAGE LOOP **
       // We retrieve the messages from windows via the message queue
@@ -228,6 +302,12 @@ WinMain(HINSTANCE hInstance,
       while(gMainLoopIsRunning)
       {
 
+        if(gameCodeLoadCounter++ > gameCodeLoadCounterLimit)
+        {
+          Win32UnloadGameCode(&currentGameCode);
+          currentGameCode = Win32LoadGameCode();
+          gameCodeLoadCounter = 0;
+        }
         // TODO(Cristián): Zeroing macro
         // NOTE(Cristián): We can't zero everything because the up/down state
         //                 will be wrong
@@ -374,18 +454,18 @@ WinMain(HINSTANCE hInstance,
         }
         if (gameSoundOutput.valid)
         {
-          GameGetSound(&gameSoundOutput,
-                       &gameMemory,
-                       newInput);
+          currentGameCode.getSoundFunction(&gameSoundOutput,
+                                           &gameMemory,
+                                           newInput);
           Win32FillSoundBuffer(&gSoundOutput,
                                &gameSoundOutput);
         }
 
         // We call the game with the game memory, the graphics buffer,
         // This will generate all the content needed for the frame
-        GameUpdateAndRender(&gameOffscreenBuffer,
-                            &gameMemory,
-                            newInput);
+        currentGameCode.updateAndRenderFunction(&gameOffscreenBuffer,
+                                                &gameMemory,
+                                                newInput);
 
         // We write to sound buffer inmediately because it has to sound even
         // when we are sleeping waiting for the page flip

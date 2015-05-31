@@ -89,7 +89,7 @@ RenderWeirdGradient(game_offscreen_buffer *buffer, int blueOffset, int greenOffs
 
 internal void
 OutputGameSound(game_sound_output_buffer *soundOutput,
-                int32 toneHz, int32 toneVolume)
+                game_state *gameState)
 {
   if(!soundOutput->valid) { return; }
 
@@ -102,8 +102,8 @@ OutputGameSound(game_sound_output_buffer *soundOutput,
    *
    */
 
-  local_persist real32 tSine;
-  int32 wavePeriod = soundOutput->samplesPerSecond / toneHz;
+  int32 wavePeriod = soundOutput->samplesPerSecond /
+                     gameState->toneHz;
 
   // We cast the region pointer into int16 pointers (it is a DWORD) so we can
   // write into each channel of the sound buffer
@@ -114,24 +114,25 @@ OutputGameSound(game_sound_output_buffer *soundOutput,
       sampleIndex < soundOutput->sampleCount;
       sampleIndex++)
   {
-    real32 sineValue = sinf(tSine);
-    int16 sampleValue = (int16)(sineValue * toneVolume);
+    real32 sineValue = sinf(gameState->tSine);
+    int16 sampleValue = (int16)(sineValue * gameState->toneVolume);
 
     *sampleOut++ = sampleValue;
     *sampleOut++ = sampleValue;
 
-    tSine += 2 * PI32 / (real32)wavePeriod;
-    while(tSine > 2 * PI32)
+    gameState->tSine += 2 * PI32 / (real32)wavePeriod;
+    while(gameState->tSine > 2 * PI32)
     {
-      tSine -= 2 * PI32;
+      gameState->tSine -= 2 * PI32;
     }
   }
 }
 
-internal void
-GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
-                    game_memory *gameMemory,
-                    game_input *gameInput)
+// void
+// GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
+//                     game_memory *gameMemory,
+//                     game_input *gameInput)
+extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
   ASSERT(((&gameInput->controllers[0].terminator) -
           (&gameInput->controllers[0].buttons[0])) ==
@@ -146,13 +147,15 @@ GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
     //                 Instead reserve memory from the already allocated
     //                 gameMemory
     char *fileName = __FILE__;
-    game_file gameFile = DEBUG_PlatformReadEntireFile(fileName);
+    game_file gameFile =
+      gameMemory->DEBUGPlatformReadEntireFileFunction(fileName);
     if (gameFile.content)
     {
-      DEBUG_PlatformWriteEntireFile("file_out.test",
-                                    gameFile.contentSize,
-                                    gameFile.content);
-      DEBUG_PlatformFreeGameFile(&gameFile);
+      gameMemory->DEBUGPlatformWriteEntireFileFunction(
+          "file_out.test",
+          gameFile.contentSize,
+          gameFile.content);
+      gameMemory->DEBUGPlatformFreeGameFileFunction(&gameFile);
     }
 
     // TODO(Cristián): This may be more appropiate to do in the platform layer
@@ -179,8 +182,8 @@ GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
     }
 
   }
-  bool32 debug = false;
-  if(debug && !debug)
+  bool32 renderGradient = true;
+  if(renderGradient)
   {
     RenderWeirdGradient(offscreenBuffer,
                         gameState->xOffset,
@@ -192,10 +195,11 @@ GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
   }
 }
 
-internal void
-GameGetSound(game_sound_output_buffer *soundBuffer,
-             game_memory *gameMemory,
-             game_input *gameInput)
+// void
+// GameGetSound(game_sound_output_buffer *soundBuffer,
+//              game_memory *gameMemory,
+//              game_input *gameInput)
+extern "C" GAME_GET_SOUND(GameGetSound)
 {
 
   ASSERT(((&gameInput->controllers[0].terminator) -
@@ -234,10 +238,21 @@ GameGetSound(game_sound_output_buffer *soundBuffer,
       }
     }
   }
-  OutputGameSound(soundBuffer,
-                  gameState->toneHz,
-                  gameState->toneVolume);
+  OutputGameSound(soundBuffer, gameState);
 }
+
+#if HANDMADE_WIN32
+// DLL ENTRY POINT
+
+#include "windows.h"
+BOOL WINAPI DllMain(HINSTANCE hinstDLL,
+                    DWORD     fdwReason,
+                    LPVOID    lpvReserved)
+{
+  return(true);
+}
+
+#endif
 
 #define _HANDMADE_CPP_INCLUDED
 #endif

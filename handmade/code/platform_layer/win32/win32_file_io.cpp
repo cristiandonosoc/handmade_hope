@@ -7,9 +7,12 @@
     $Notice: (c) Copyright 2015 Cristián Donoso $
     ===================================================================== */
 
+#ifndef _WIN32_FILE_IO_CPP
+
+#include "win32_file_io.h"
+
 // Platform Load File
-internal game_file
-DEBUG_PlatformReadEntireFile(char *fileName)
+DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUGPlatformReadEntireFile)
 {
   game_file gameFile = {};
   HANDLE fileHandle = CreateFileA(fileName,
@@ -69,14 +72,14 @@ DEBUG_PlatformReadEntireFile(char *fileName)
   goto LABEL_PLATFORM_READ_ENTIRE_FILE_CREATE_FILE_CLEANUP;
 
 LABEL_PLATFORM_READ_ENTIRE_FILE_GET_FILE_MEMORY_CLEANUP:
-  DEBUG_PlatformFreeGameFile(&gameFile);
+  DEBUGPlatformFreeGameFile(&gameFile);
 LABEL_PLATFORM_READ_ENTIRE_FILE_CREATE_FILE_CLEANUP:
   CloseHandle(fileHandle);
 LABEL_PLATFORM_READ_ENTIRE_FILE_RETURN:
   return(gameFile);
 }
-internal void
-DEBUG_PlatformFreeGameFile(game_file *gameFile)
+
+DEBUG_PLATFORM_FREE_GAME_FILE(DEBUGPlatformFreeGameFile)
 {
   if(gameFile->content)
   {
@@ -85,10 +88,7 @@ DEBUG_PlatformFreeGameFile(game_file *gameFile)
   *gameFile = {};
 }
 
-internal bool32
-DEBUG_PlatformWriteEntireFile(char *fileName,
-                              uint32 memorySize,
-                              void *fileMemory)
+DEBUG_PLATFORM_WRITE_ENTIRE_FILE(DEBUGPlatformWriteEntireFile)
 {
   bool32 successfulWrite = false;
   HANDLE fileHandle = CreateFileA(fileName,
@@ -132,4 +132,5 @@ LABEL_PLATFORM_WRITE_ENTIRE_FILE_RETURN:
   return(successfulWrite);
 }
 
-
+#define _WIN32_FILE_IO_CPP
+#endif

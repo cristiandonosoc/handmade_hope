@@ -20,6 +20,8 @@
  */
 #ifndef _HANDMADE_H_INCLUDED
 
+#include "common_types.h"
+
 #if HANDMADE_SLOW
 #define ASSERT(expression) if(!(expression)) { *(int *)0 = 0; }
 #else
@@ -42,35 +44,6 @@ SafeTruncateUInt64(uint64 value)
   return (uint32)value;
 }
 
-/**
- * TODO(Cristián): Services that the platform layer provides to the game
- */
-
-#if HANDMADE_INTERNAL
-/**
- * IMPORTANT(Cristián):
- *
- * These are not for doing anything in the shipping game.
- * Thay are blocking and the write doesn't protect against lost data.
- */
-struct game_file
-{
-  bool32 valid;
-  uint32 contentSize;
-  void *content;
-};
-
-internal game_file DEBUG_PlatformReadEntireFile(char *fileName);
-internal void DEBUG_PlatformFreeGameFile(game_file *gameFile);
-internal bool32 DEBUG_PlatformWriteEntireFile(char *fileName,
-                                     uint32 memorySize,
-                                     void *fileMemory);
-#endif
-
-/**
- * TODO(Cristián): Services that the game provides to the platform layer
- * (this may expand in the future (sound on a separate thread))
- */
 // TODO(Cristián): In the future, rendering *specifically* will become a
 // three-tier abstraction
 struct game_offscreen_buffer
@@ -160,6 +133,54 @@ game_controller_input *GetController(game_input *input, int controllerIndex)
   return(&input->controllers[controllerIndex]);
 }
 
+// THIS IS NOT FOR THE PLATFORM LAYER TO KNOW
+struct game_state
+{
+  int32 xOffset;
+  int32 yOffset;
+  int32 toneHz;
+  int32 toneVolume;
+  real32 tSine;
+};
+
+struct game_clocks
+{
+  // TODO(Cristián): What do we want to pass?
+  real32 secondsElapsed;
+};
+
+/**
+ * TODO(Cristián): Services that the game provides to the platform layer
+ * (this may expand in the future (sound on a separate thread))
+ */
+#if HANDMADE_INTERNAL
+/**
+ * IMPORTANT(Cristián):
+ *
+ * These are not for doing anything in the shipping game.
+ * Thay are blocking and the write doesn't protect against lost data.
+ */
+struct game_file
+{
+  bool32 valid;
+  uint32 contentSize;
+  void *content;
+};
+
+// File platform support
+#define DEBUG_PLATFORM_READ_ENTIRE_FILE(name)\
+  game_file name(char *fileName)
+typedef DEBUG_PLATFORM_READ_ENTIRE_FILE(debug_platform_read_entire_file);
+#define DEBUG_PLATFORM_FREE_GAME_FILE(name)\
+  void name(game_file *gameFile)
+typedef DEBUG_PLATFORM_FREE_GAME_FILE(debug_platform_free_game_file);
+#define DEBUG_PLATFORM_WRITE_ENTIRE_FILE(name)\
+  bool32 name(char *fileName,\
+              uint32 memorySize,\
+              void *fileMemory)
+typedef DEBUG_PLATFORM_WRITE_ENTIRE_FILE(debug_platform_write_entire_file);
+#endif
+
 struct game_memory
 {
   bool32 graphicsInitialized;
@@ -171,38 +192,48 @@ struct game_memory
   uint64 transientStorageSize;
   // NOTE(Cristián): REQUIRED to be cleared to 0 at startup
   void *transientStorage;
+
+
+  // Functions Pointers to be filled by the platform layer
+  debug_platform_read_entire_file *DEBUGPlatformReadEntireFileFunction;
+  debug_platform_free_game_file *DEBUGPlatformFreeGameFileFunction;
+  debug_platform_write_entire_file *DEBUGPlatformWriteEntireFileFunction;
 };
 
+/**
+ * GAME FUNCTIONS
+ */
 
-internal void
-GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
-                    game_memory *gameMemory,
-                    game_input *gameInput);
+// void
+// GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
+//                     game_memory *gameMemory,
+//                     game_input *gameInput);
+#define GAME_UPDATE_AND_RENDER(name)\
+  void name(game_offscreen_buffer *offscreenBuffer,\
+            game_memory *gameMemory,\
+            game_input *gameInput)
+typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
+GAME_UPDATE_AND_RENDER(GameUpdateAndRenderStub)
+{
+  /* STUB */
+}
 
 // NOTE(Cristián): At the moment, this has to be a very fast
 // function (1ms or so)
 // TODO(Cristián): Reduce the pressure on this function by
 // measuring or querying.
-internal void
-GameGetSound(game_sound_output_buffer *soundBuffer,
-             game_memory *gameMemory,
-             game_input *gameInput);
-
-// THIS IS NOT FOR THE PLATFORM LAYER TO KNOW
-
-struct game_state
+// void
+#define GAME_GET_SOUND(name)\
+  void name(game_sound_output_buffer *soundBuffer,\
+            game_memory *gameMemory,\
+            game_input *gameInput)
+typedef GAME_GET_SOUND(game_get_sound);
+GAME_GET_SOUND(GameGetSoundStub)
 {
-  int32 xOffset;
-  int32 yOffset;
-  int32 toneHz;
-  int32 toneVolume;
-};
+  /* STUB */
+}
 
-struct game_clocks
-{
-  // TODO(Cristián): What do we want to pass?
-  real32 secondsElapsed;
-};
+
 
 
 #define _HANDMADE_H_INCLUDED

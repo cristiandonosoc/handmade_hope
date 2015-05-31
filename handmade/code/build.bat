@@ -15,5 +15,11 @@ REM 32-Bit build
 REM cl %envconf% %warnings% %buildconf% -FC -Z7 %mapconf% ..\handmade\code\win32_handmade.cpp /link -subsystem:windows,5.1 %linkerconf% %dependencies%
 
 REM 64-Bit build
-cl %envconf% %warnings% %buildconf% -FC -Z7 %mapconf% ..\handmade\code\win32_handmade.cpp /link %linkerconf% %dependencies%
+cl %envconf% %warnings% %buildconf% -FC -Z7 -Fmhandmade.map ..\handmade\code\handmade.cpp /LD /link /DLL /EXPORT:GameGetSound /EXPORT:GameUpdateAndRender
+echo.
+echo.
+echo ------------------------------
+echo.
+echo.
+cl %envconf% %warnings% %buildconf% -FC -Z7 -Fmwin32_handmade.map ..\handmade\code\win32_handmade.cpp /link %linkerconf% %dependencies%
 popd
