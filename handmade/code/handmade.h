@@ -141,6 +141,9 @@ struct game_state
   int32 toneHz;
   int32 toneVolume;
   real32 tSine;
+
+  int playerX;
+  int playerY;
 };
 
 struct game_clocks
@@ -204,10 +207,6 @@ struct game_memory
  * GAME FUNCTIONS
  */
 
-// void
-// GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
-//                     game_memory *gameMemory,
-//                     game_input *gameInput);
 #define GAME_UPDATE_AND_RENDER(name)\
   void name(game_offscreen_buffer *offscreenBuffer,\
             game_memory *gameMemory,\
@@ -222,7 +221,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRenderStub)
 // function (1ms or so)
 // TODO(Cristián): Reduce the pressure on this function by
 // measuring or querying.
-// void
 #define GAME_GET_SOUND(name)\
   void name(game_sound_output_buffer *soundBuffer,\
             game_memory *gameMemory,\
@@ -232,8 +230,6 @@ GAME_GET_SOUND(GameGetSoundStub)
 {
   /* STUB */
 }
-
-
 
 
 #define _HANDMADE_H_INCLUDED

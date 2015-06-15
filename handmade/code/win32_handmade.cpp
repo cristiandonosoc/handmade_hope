@@ -44,65 +44,36 @@ global_variable bool32 gPauseApp;
 #include "platform_layer/win32/win32_direct_sound_wrapper.cpp"
 #include "platform_layer/win32/win32_graphics_wrapper.cpp"
 #include "platform_layer/win32/win32_file_io.cpp"
+#include "platform_layer/win32/win32_dll_loading.cpp"
 #if HANDMADE_INTERNAL
 #include "platform_layer/win32/win32_debug.cpp"
 #endif
 
-struct win32_game_code
+/**
+ * Concatenates two strings by creating a new char[]
+ * in the free-store. Remember to free afterwards!
+ */
+inline char*
+CatStrings(char* sourceA, char* sourceB)
 {
-  HMODULE gameCodeDll;
-  bool32 valid;
-  game_update_and_render *updateAndRenderFunction;
-  game_get_sound *getSoundFunction;
-};
+  int sizeA = sizeof(sourceA);
+  int sizeB = sizeof(sourceB);
+  char* resString = (char*)malloc(sizeA + sizeB);
+  char* scan = resString;
+  for(char* scanA = sourceA;
+      *scanA;
+      *(scan++) = *(scanA++));
 
-internal win32_game_code
-Win32LoadGameCode()
-{
-  win32_game_code gameCode = {};
+  for(char* scanB = sourceB;
+      *scanB;
+      *(scan++) = *(scanB++));
 
-  // TODO(Cristián): Need to get the proper path
-  // TODO(Cristián): Automatic determination for when game code
-  //                 update is necessary
-  char *dllName = "handmade.dll";
-  char *tempDllName = "handmade_temp.dll";
+  // We terminate the string
+  *scan++ = 0;
 
-  CopyFile(dllName,
-           tempDllName,
-           false);
-  gameCode.gameCodeDll = LoadLibraryA(tempDllName);
-  if(gameCode.gameCodeDll)
-  {
-    gameCode.updateAndRenderFunction =
-      (game_update_and_render *)GetProcAddress(gameCode.gameCodeDll,
-                                               "GameUpdateAndRender");
-    gameCode.getSoundFunction =
-      (game_get_sound *)GetProcAddress(gameCode.gameCodeDll, "GameGetSound");
-
-    gameCode.valid = (gameCode.updateAndRenderFunction &&
-                      gameCode.getSoundFunction);
-  }
-
-  if(!gameCode.valid)
-  {
-    gameCode.updateAndRenderFunction = GameUpdateAndRenderStub;
-    gameCode.getSoundFunction = GameGetSoundStub;
-  }
-
-  return gameCode;
+  return resString;
 }
 
-internal void
-Win32UnloadGameCode(win32_game_code *gameCode)
-{
-  if(gameCode->gameCodeDll)
-  {
-    FreeLibrary(gameCode->gameCodeDll);
-  }
-  gameCode->valid = false;
-  gameCode->updateAndRenderFunction = GameUpdateAndRenderStub;
-  gameCode->getSoundFunction = GameGetSoundStub;
-}
 
 /**
  * Main entrance for the program from the C-Runtime Library
@@ -113,6 +84,34 @@ WinMain(HINSTANCE hInstance,
         LPSTR commandLine,
         int showCode)
 {
+
+  /**
+   * FILENAME AND PATH INITIALIZATION
+   */
+  char exeFileName[MAX_PATH];
+  DWORD sizeOfFileName = GetModuleFileNameA(0,
+                                            exeFileName,
+                                            sizeof(exeFileName));
+  // We search for the filename pointer of the exe path
+  char* onePastLastSlash = exeFileName;
+  for(char* scan = exeFileName;
+      *scan; // We check for the NULL-terminated string
+      ++scan)
+  {
+    if(*scan == '\\')
+    {
+      onePastLastSlash = scan + 1;
+    }
+  }
+
+  // We eliminate the filename
+  *onePastLastSlash = 0;
+  char* sourceDllName = "handmade.dll";
+  char* targetDllName = "handmade_temp.dll";
+  // TODO(Cristián): use smart-pointers, so we free when we exit of scope
+  char* sourceDllPath = CatStrings(exeFileName, sourceDllName);
+  char* targetDllPath = CatStrings(exeFileName, targetDllName);
+
   // We initialize the XInput functions pointers
   Win32LoadXInput();
 
@@ -292,8 +291,10 @@ WinMain(HINSTANCE hInstance,
       /**
        * GAME CODE INITIALIZATION
        */
-      win32_game_code currentGameCode = Win32LoadGameCode();
-      uint32 gameCodeLoadCounter = 0;
+      win32_game_code currentGameCode = Win32LoadGameCode(sourceDllPath,
+                                                          targetDllPath);
+      int frameDelay = 20;
+      int delayFrames = 0;
 #define gameCodeLoadCounterLimit 120
 
       // ** MESSAGE LOOP **
@@ -302,12 +303,27 @@ WinMain(HINSTANCE hInstance,
       while(gMainLoopIsRunning)
       {
 
-        if(gameCodeLoadCounter++ > gameCodeLoadCounterLimit)
+        // TODO(Cristián): Find out WHY there is a process keeping a handle on the dll
+        FILETIME newDllWriteTime = Win32GetLastWriteTime(sourceDllPath);
+        // NOTE(Cristián): If one of the times is 0 (nullptr), the result
+        // will be 0 (same as if they're equal)
+        if(CompareFileTime(&currentGameCode.lastWriteTime,
+                           &newDllWriteTime) != 0)
         {
-          Win32UnloadGameCode(&currentGameCode);
-          currentGameCode = Win32LoadGameCode();
-          gameCodeLoadCounter = 0;
+          if(delayFrames++ == frameDelay)
+          {
+             Win32UnloadGameCode(&currentGameCode);
+             currentGameCode = Win32LoadGameCode(sourceDllPath, targetDllPath);
+             delayFrames = 0;
+          }
         }
+        // if(gameCodeLoadCounter++ > gameCodeLoadCounterLimit)
+        // {
+        //   Win32UnloadGameCode(&currentGameCode);
+        //   currentGameCode = Win32LoadGameCode();
+        //   gameCodeLoadCounter = 0;
+        // }
+
         // TODO(Cristián): Zeroing macro
         // NOTE(Cristián): We can't zero everything because the up/down state
         //                 will be wrong

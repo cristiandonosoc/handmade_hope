@@ -81,9 +81,34 @@ RenderWeirdGradient(game_offscreen_buffer *buffer, int blueOffset, int greenOffs
       uint8 blue = (uint8)(x + blueOffset);
       uint8 green = (uint8)(y + greenOffset);
 
-      *pixel++ = blue | (green << 8);
+      *pixel++ = blue | (green << 12);
     }
     row += pitch;
+  }
+}
+
+internal void
+RenderPlayer(game_offscreen_buffer* buffer, int playerX, int playerY)
+{
+  int color = 0xFFFFFFFF;
+  for(int x = playerX;
+      x < playerX + 10;
+      ++x)
+  {
+    int top = playerY;
+    int bottom = playerY + 10;
+
+    uint8 *pixel = (uint8 *)buffer->memory +
+                   4 * x +
+                   top * buffer->pitch;
+
+    for (int y = top;
+         y < bottom;
+         y++)
+    {
+      *(uint32 *)pixel = color;
+      pixel += buffer->pitch;
+    }
   }
 }
 
@@ -158,6 +183,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       gameMemory->DEBUGPlatformFreeGameFileFunction(&gameFile);
     }
 
+    gameState->playerX = 100;
+    gameState->playerY = 100;
+
     // TODO(Cristián): This may be more appropiate to do in the platform layer
     gameMemory->graphicsInitialized = true;
   }
@@ -175,10 +203,26 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       gameState->xOffset += (int32)(10 * input->leftStickAverageX);
       gameState->yOffset += (int32)(10 * input->leftStickAverageY);
     }
-
-    if(input->actionDown.endedDown)
+    else
     {
-      gameState->xOffset += 1;
+      int speed = 10;
+      if(input->actionUp.endedDown)
+      {
+        gameState->playerY -= speed;
+      }
+      if(input->actionDown.endedDown)
+      {
+        gameState->playerY += speed;
+      }
+
+      if(input->actionLeft.endedDown)
+      {
+        gameState->playerX -= speed;
+      }
+      if(input->actionRight.endedDown)
+      {
+        gameState->playerX += speed;
+      }
     }
 
   }
@@ -188,6 +232,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     RenderWeirdGradient(offscreenBuffer,
                         gameState->xOffset,
                         gameState->yOffset);
+    RenderPlayer(offscreenBuffer,
+                 gameState->playerX,
+                 gameState->playerY);
   }
   else
   {

@@ -9,6 +9,15 @@
 
 #ifndef _WIN32_HANDMADE_H
 
+struct win32_game_code
+{
+  HMODULE gameCodeDll;
+  bool32 valid;
+  game_update_and_render *updateAndRenderFunction;
+  game_get_sound *getSoundFunction;
+  FILETIME lastWriteTime;
+};
+
 int CALLBACK
 WinMain(HINSTANCE hInstance,
         HINSTANCE prevHInstance,
