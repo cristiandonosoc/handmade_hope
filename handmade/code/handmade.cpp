@@ -81,7 +81,7 @@ RenderWeirdGradient(game_offscreen_buffer *buffer, int blueOffset, int greenOffs
       uint8 blue = (uint8)(x + blueOffset);
       uint8 green = (uint8)(y + greenOffset);
 
-      *pixel++ = blue | (green << 12);
+      *pixel++ = blue | (green << 16);
     }
     row += pitch;
   }
@@ -205,23 +205,27 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
     else
     {
-      int speed = 10;
+      int speed = 12;
       if(input->actionUp.endedDown)
       {
         gameState->playerY -= speed;
+        gameState->yOffset -= speed;
       }
       if(input->actionDown.endedDown)
       {
         gameState->playerY += speed;
+        gameState->yOffset += speed;
       }
 
       if(input->actionLeft.endedDown)
       {
         gameState->playerX -= speed;
+        gameState->xOffset -= speed;
       }
       if(input->actionRight.endedDown)
       {
         gameState->playerX += speed;
+        gameState->xOffset += speed;
       }
     }
 

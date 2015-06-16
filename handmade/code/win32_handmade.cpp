@@ -238,6 +238,28 @@ WinMain(HINSTANCE hInstance,
       /**
        *  GAME MEMORY INITIALIZATION
        */
+
+      /*
+       The game memory has the following memory layout:
+        _________________________________________
+       |                                        |
+       |  PERMANENT STORAGE                     |
+       |  (game state) ~64 MB                   |
+       |________________________________________|
+       |                                        |
+       |  PERMANENT STORAGE SNAPSHOT COPY       |
+       |  (for game looping) ~64 MB             |
+       |________________________________________|
+       |                                        |
+       |  FRAME SNAPSHOTS                       |
+       |  (for game looping) ~< 1 MB            |
+       |________________________________________|
+       |                                        |
+       |  TRANSIENT STORE                       |
+       |  (assets) Possibly > 2 GB              |
+       |________________________________________|
+
+      */
 #if HANDMADE_INTERNAL
       // NOTE(Cristián): Specify the base address for memory allocation
       LPVOID baseAddress = (LPVOID)TERABYTES(2);
@@ -249,19 +271,13 @@ WinMain(HINSTANCE hInstance,
       gameMemory.permanentStorageSize = MEGABYTES(64);
       gameMemory.transientStorageSize = GIGABYTES(4);
 
-      /**
-       * PLATFORM SERVICES FUNCTIONS POINTERS INITIALIZATION
-       */
-      gameMemory.DEBUGPlatformReadEntireFileFunction = DEBUGPlatformReadEntireFile;
-      gameMemory.DEBUGPlatformFreeGameFileFunction = DEBUGPlatformFreeGameFile;
-      gameMemory.DEBUGPlatformWriteEntireFileFunction = DEBUGPlatformWriteEntireFile;
-
+      // PERMANENT STORE SNAPSHOT COPY
 
       // FRAME SNAPSHOT INITIALIZATION
       // -----------------------------
       // Frame snapshots begin right after the permanent storage
       // If sizeof(win32_frame_snapshot) == 1KB (1024)
-      // then total size needed = 1800KB
+      // then total size needed = 1800KB (for 60 seconds)
       win32_state win32State = {};
       win32State.snapshotMax = 60*30; // 60 seconds of recording at 30 fps
       win32State.snapshotsMemorySize = win32State.snapshotMax *
@@ -270,23 +286,45 @@ WinMain(HINSTANCE hInstance,
       // TODO(Cristián): Handle varios memory footprints
       //                 Use system metric on *physical* memory
       uint64 totalSize = gameMemory.permanentStorageSize +
+                         gameMemory.permanentStorageSize + // snapshot copy
                          win32State.snapshotsMemorySize +
                          gameMemory.transientStorageSize;
 
+      // Permanent storage pointer
       gameMemory.permanentStorage = VirtualAlloc(baseAddress,
                                                  (size_t)totalSize,
                                                  MEM_RESERVE|MEM_COMMIT,
                                                  PAGE_READWRITE);
 
+      // Permanent Snapshot pointer
+      win32State.permanentStorage = gameMemory.permanentStorage;
+      win32State.permanentSnapshot = ((uint8*)gameMemory.permanentStorage +
+                                      gameMemory.permanentStorageSize);
+      win32State.permanentSnapshotSize = gameMemory.permanentStorageSize;
+
+      // Frame Snapshots pointer
       win32State.snapshots = (win32_frame_snapshot*)
                              ((uint8*)gameMemory.permanentStorage +
-                              gameMemory.permanentStorageSize);
+                              gameMemory.permanentStorageSize +
+                              gameMemory.permanentStorageSize); // snapshot copy
 
-      // Transient begins after frame snapshots
-      gameMemory.transientStorage = ((uint8*)gameMemory.permanentStorage +
-                                     gameMemory.permanentStorageSize +
-                                     win32State.snapshotsMemorySize);
+      // Transient storage pointer
+      gameMemory.transientStorage =
+        ((uint8*)gameMemory.permanentStorage +
+         gameMemory.permanentStorageSize +
+         gameMemory.permanentStorageSize + // snapshot copy
+         win32State.snapshotsMemorySize);
 
+      /**
+       * PLATFORM SERVICES FUNCTIONS POINTERS INITIALIZATION
+       */
+      gameMemory.DEBUGPlatformReadEntireFileFunction = DEBUGPlatformReadEntireFile;
+      gameMemory.DEBUGPlatformFreeGameFileFunction = DEBUGPlatformFreeGameFile;
+      gameMemory.DEBUGPlatformWriteEntireFileFunction = DEBUGPlatformWriteEntireFile;
+
+      /**
+       * GAME SOUND INITIALIZATION
+       */
       if(!gSoundOutput.bufferMemory ||
          !gameMemory.permanentStorage ||
          !gameMemory.transientStorageSize)

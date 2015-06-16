@@ -25,6 +25,12 @@ struct win32_game_code
 
 struct win32_state
 {
+  // Permanent Store Snapshot
+  uint64 permanentSnapshotSize;
+  void* permanentStorage; // for snapshot copy
+  void* permanentSnapshot;
+
+  // Frame Snapshot Recording
   bool snapshotRecording;
   bool snapshotPlayback;
   int snapshotMax;
@@ -32,7 +38,6 @@ struct win32_state
   int snapshotPlaybackIndex;
   uint64 snapshotsMemorySize;
   win32_frame_snapshot* snapshots;
-
   game_input* gameInput;
 };
 

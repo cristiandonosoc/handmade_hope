@@ -14,6 +14,10 @@ Win32BeginRecordingInput(win32_state* win32State)
 {
   win32State->snapshotRecordingIndex = 0;
   win32State->snapshotRecording = true;
+
+  CopyMemory(win32State->permanentSnapshot,
+             win32State->permanentStorage,
+             win32State->permanentSnapshotSize);
 }
 
 internal void
@@ -42,6 +46,10 @@ Win32BeginPlaybackInput(win32_state* win32State)
 {
   win32State->snapshotPlaybackIndex = 0;
   win32State->snapshotPlayback = true;
+
+  CopyMemory(win32State->permanentStorage,
+             win32State->permanentSnapshot,
+             win32State->permanentSnapshotSize);
 }
 
 internal void
@@ -66,7 +74,7 @@ Win32PlaybackInput(win32_state* win32State, game_input* gameInput)
   // LOOP
   if(win32State->snapshotPlaybackIndex == win32State->snapshotRecordingIndex)
   {
-    win32State->snapshotPlaybackIndex = 0;
+    Win32BeginPlaybackInput(win32State);
   }
 }
 
