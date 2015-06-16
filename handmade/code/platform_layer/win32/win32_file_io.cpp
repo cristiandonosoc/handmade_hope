@@ -16,12 +16,12 @@ DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUGPlatformReadEntireFile)
 {
   game_file gameFile = {};
   HANDLE fileHandle = CreateFileA(fileName,
-      GENERIC_READ,
-      FILE_SHARE_READ,
-      0,
-      OPEN_EXISTING,
-      0,
-      0);
+                                  GENERIC_READ,
+                                  FILE_SHARE_READ,
+                                  0,
+                                  OPEN_EXISTING,
+                                  0,
+                                  0);
   if (fileHandle == INVALID_HANDLE_VALUE)
   {
     // TODO(Cristián): Better error code

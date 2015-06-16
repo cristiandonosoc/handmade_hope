@@ -9,6 +9,11 @@
 
 #ifndef _WIN32_HANDMADE_H
 
+struct win32_frame_snapshot
+{
+  game_input gameInput;
+};
+
 struct win32_game_code
 {
   HMODULE gameCodeDll;
@@ -16,6 +21,19 @@ struct win32_game_code
   game_update_and_render *updateAndRenderFunction;
   game_get_sound *getSoundFunction;
   FILETIME lastWriteTime;
+};
+
+struct win32_state
+{
+  bool snapshotRecording;
+  bool snapshotPlayback;
+  int snapshotMax;
+  int snapshotRecordingIndex;
+  int snapshotPlaybackIndex;
+  uint64 snapshotsMemorySize;
+  win32_frame_snapshot* snapshots;
+
+  game_input* gameInput;
 };
 
 int CALLBACK

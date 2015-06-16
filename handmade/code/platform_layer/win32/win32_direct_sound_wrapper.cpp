@@ -203,8 +203,8 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput,
       sampleIndex < region1SampleCount;
       sampleIndex++)
   {
-    *destSample++ = *sourceSample++;
-    *destSample++ = *sourceSample++;
+    // *destSample++ = *sourceSample++;
+    // *destSample++ = *sourceSample++;
     soundOutput->runningBlockIndex++;
   }
 
@@ -215,8 +215,8 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput,
       sampleIndex < region2SampleCount;
       sampleIndex++)
   {
-    *destSample++ = *sourceSample++;
-    *destSample++ = *sourceSample++;
+    // *destSample++ = *sourceSample++;
+    // *destSample++ = *sourceSample++;
     soundOutput->runningBlockIndex++;
   }
 
@@ -329,6 +329,7 @@ Win32SetupSoundBuffer(win32_sound_output *soundOutput,
                                  (real32)soundOutput->bytesPerBlock) /
                                 (real32)soundOutput->samplesPerSecond;
 
+#if 0
   char buffer[256];
   sprintf_s(buffer,
           "PC: %u, WC: %u, Latency (bytes): %u, Latency (s): %f\n",
@@ -337,8 +338,7 @@ Win32SetupSoundBuffer(win32_sound_output *soundOutput,
           minLatency,
           soundOutput->latencySeconds);
   OutputDebugStringA(buffer);
-
-
+#endif
 
   return true;
 }

@@ -272,8 +272,9 @@ struct win32_keyboard_process_result
 
 internal win32_keyboard_process_result
 Win32ProcessKeyboardMessages(MSG message,
-                             game_controller_input *oldKeyboardController,
-                             game_controller_input *newKeyboardController)
+                             game_controller_input* oldKeyboardController,
+                             game_controller_input* newKeyboardController,
+                             win32_state* win32State)
 {
   win32_keyboard_process_result result = {};
   switch(message.message)
@@ -295,49 +296,90 @@ Win32ProcessKeyboardMessages(MSG message,
       {
         if(vKeyCode == 'W')
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->moveUp, &newKeyboardController->moveUp, keyIsDown);
+          Win32ProcessKeyboardMessage(&oldKeyboardController->moveUp,
+                                      &newKeyboardController->moveUp,
+                                      keyIsDown);
         }
         else if(vKeyCode == 'S')
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->moveDown, &newKeyboardController->moveDown, keyIsDown);
+          Win32ProcessKeyboardMessage(&oldKeyboardController->moveDown,
+                                      &newKeyboardController->moveDown,
+                                      keyIsDown);
         }
         else if(vKeyCode == 'A')
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->moveLeft, &newKeyboardController->moveLeft, keyIsDown);
+          Win32ProcessKeyboardMessage(&oldKeyboardController->moveLeft,
+                                      &newKeyboardController->moveLeft,
+                                      keyIsDown);
         }
         else if(vKeyCode == 'D')
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->moveRight, &newKeyboardController->moveRight, keyIsDown);
+          Win32ProcessKeyboardMessage(&oldKeyboardController->moveRight,
+                                      &newKeyboardController->moveRight,
+                                      keyIsDown);
         }
         else if(vKeyCode == VK_UP)
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->actionUp, &newKeyboardController->actionUp, keyIsDown);
+          Win32ProcessKeyboardMessage(&oldKeyboardController->actionUp,
+                                      &newKeyboardController->actionUp,
+                                      keyIsDown);
         }
         else if(vKeyCode == VK_DOWN)
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->actionDown, &newKeyboardController->actionDown, keyIsDown);
+          Win32ProcessKeyboardMessage(&oldKeyboardController->actionDown,
+                                      &newKeyboardController->actionDown,
+                                      keyIsDown);
         }
         else if(vKeyCode == VK_LEFT)
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->actionLeft, &newKeyboardController->actionLeft, keyIsDown);
+          Win32ProcessKeyboardMessage(&oldKeyboardController->actionLeft,
+                                      &newKeyboardController->actionLeft,
+                                      keyIsDown);
         }
         else if(vKeyCode == VK_RIGHT)
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->actionRight, &newKeyboardController->actionRight, keyIsDown);
+          Win32ProcessKeyboardMessage(&oldKeyboardController->actionRight,
+                                      &newKeyboardController->actionRight,
+                                      keyIsDown);
         }
         else if(vKeyCode == VK_ESCAPE)
         {
           result.quit = true;
-          Win32ProcessKeyboardMessage(&oldKeyboardController->back, &newKeyboardController->back, keyIsDown);
+          Win32ProcessKeyboardMessage(&oldKeyboardController->back,
+                                      &newKeyboardController->back,
+                                      keyIsDown);
         }
         else if(vKeyCode == VK_SPACE)
-        {
-        }
-        else if(vKeyCode == 'P')
         {
           if(keyIsDown)
           {
             gPauseApp = !gPauseApp;
+          }
+        }
+        else if(vKeyCode == 'L')
+        {
+          if(!keyIsDown) { break; }
+          if(!win32State->snapshotRecording)
+          {
+            Win32BeginRecordingInput(win32State);
+          }
+          else
+          {
+            Win32EndRecordingInput(win32State);
+          }
+        }
+        else if(vKeyCode == 'P')
+        {
+          if(!keyIsDown) { break; }
+          if(win32State->snapshotRecording) { break; }
+
+          if(!win32State->snapshotPlayback)
+          {
+            Win32BeginPlaybackInput(win32State);
+          }
+          else
+          {
+            Win32EndPlaybackInput(win32State);
           }
         }
         else // All other keys are treated by default

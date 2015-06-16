@@ -126,8 +126,9 @@ struct game_input
 {
   game_controller_input controllers[5];
 };
-inline
-game_controller_input *GetController(game_input *input, int controllerIndex)
+
+inline game_controller_input*
+GetController(game_input *input, int controllerIndex)
 {
   ASSERT(controllerIndex < ARRAY_COUNT(input->controllers));
   return(&input->controllers[controllerIndex]);
@@ -195,7 +196,6 @@ struct game_memory
   uint64 transientStorageSize;
   // NOTE(Cristián): REQUIRED to be cleared to 0 at startup
   void *transientStorage;
-
 
   // Functions Pointers to be filled by the platform layer
   debug_platform_read_entire_file *DEBUGPlatformReadEntireFileFunction;

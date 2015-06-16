@@ -40,6 +40,7 @@ global_variable bool32 gPauseApp;
 #include "win32_handmade.h"
 
 // Platform specific code
+#include "platform_layer/win32/win32_input_recording.cpp"
 #include "platform_layer/win32/win32_x_input_wrapper.cpp"
 #include "platform_layer/win32/win32_direct_sound_wrapper.cpp"
 #include "platform_layer/win32/win32_graphics_wrapper.cpp"
@@ -255,16 +256,36 @@ WinMain(HINSTANCE hInstance,
       gameMemory.DEBUGPlatformFreeGameFileFunction = DEBUGPlatformFreeGameFile;
       gameMemory.DEBUGPlatformWriteEntireFileFunction = DEBUGPlatformWriteEntireFile;
 
+
+      // FRAME SNAPSHOT INITIALIZATION
+      // -----------------------------
+      // Frame snapshots begin right after the permanent storage
+      // If sizeof(win32_frame_snapshot) == 1KB (1024)
+      // then total size needed = 1800KB
+      win32_state win32State = {};
+      win32State.snapshotMax = 60*30; // 60 seconds of recording at 30 fps
+      win32State.snapshotsMemorySize = win32State.snapshotMax *
+                                       sizeof(win32_frame_snapshot);
+
       // TODO(Cristián): Handle varios memory footprints
       //                 Use system metric on *physical* memory
-      uint64 totalSize = gameMemory.permanentStorageSize + gameMemory.transientStorageSize;
+      uint64 totalSize = gameMemory.permanentStorageSize +
+                         win32State.snapshotsMemorySize +
+                         gameMemory.transientStorageSize;
+
       gameMemory.permanentStorage = VirtualAlloc(baseAddress,
                                                  (size_t)totalSize,
                                                  MEM_RESERVE|MEM_COMMIT,
                                                  PAGE_READWRITE);
-      gameMemory.transientStorage = ((uint8 *)gameMemory.permanentStorage +
-                                    gameMemory.permanentStorageSize);
 
+      win32State.snapshots = (win32_frame_snapshot*)
+                             ((uint8*)gameMemory.permanentStorage +
+                              gameMemory.permanentStorageSize);
+
+      // Transient begins after frame snapshots
+      gameMemory.transientStorage = ((uint8*)gameMemory.permanentStorage +
+                                     gameMemory.permanentStorageSize +
+                                     win32State.snapshotsMemorySize);
 
       if(!gSoundOutput.bufferMemory ||
          !gameMemory.permanentStorage ||
@@ -285,8 +306,11 @@ WinMain(HINSTANCE hInstance,
        */
 
       game_input gameInputs[2] = {};
-      game_input *oldInput = &gameInputs[0];
-      game_input *newInput = &gameInputs[1];
+      game_input* oldInput = &gameInputs[0];
+      game_input* newInput = &gameInputs[1];
+
+      // We copy the newInput into the win32State
+      win32State.gameInput = newInput;
 
       /**
        * GAME CODE INITIALIZATION
@@ -367,7 +391,8 @@ WinMain(HINSTANCE hInstance,
           win32_keyboard_process_result result =
             Win32ProcessKeyboardMessages(message,
                                          oldKeyboardController,
-                                         newKeyboardController);
+                                         newKeyboardController,
+                                         &win32State);
 
           // We manage the results from the keyboard process
           if (result.quit)
@@ -445,9 +470,6 @@ WinMain(HINSTANCE hInstance,
         // or some strange sound buffer death
         // TODO(Cristián): We need to compute the exepectedFrameBoundaryByte
         //                 for the low latency case
-        //
-        //
-        //
 
         real32 secondsElapsedSinceFrameFlip =
           Win32GetSecondsElapsed(lastCounter,
@@ -475,6 +497,15 @@ WinMain(HINSTANCE hInstance,
                                            newInput);
           Win32FillSoundBuffer(&gSoundOutput,
                                &gameSoundOutput);
+        }
+
+        if(win32State.snapshotRecording)
+        {
+          Win32RecordInput(&win32State, newInput);
+        }
+        else if(win32State.snapshotPlayback)
+        {
+          Win32PlaybackInput(&win32State, newInput);
         }
 
         // We call the game with the game memory, the graphics buffer,
