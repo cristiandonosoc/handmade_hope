@@ -8,7 +8,7 @@
     ===================================================================== */
 
 #ifndef _WIN32_DEBUG_CPP
-#include "win32_debug.h"
+#include "debug.h"
 
 internal void
 Win32DebugDrawVerticalLine(win32_offscreen_buffer *backBuffer,

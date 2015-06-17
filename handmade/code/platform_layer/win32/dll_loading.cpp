@@ -14,12 +14,12 @@ Win32GetLastWriteTime(char *filename)
 {
   FILETIME lastWriteTime = {};
 
-  WIN32_FIND_DATA findData;
-  HANDLE findHandle = FindFirstFileA(filename, &findData);
-  if(findHandle != INVALID_HANDLE_VALUE)
+  WIN32_FILE_ATTRIBUTE_DATA data;
+  if(GetFileAttributesEx(filename,
+                         GetFileExInfoStandard,
+                         &data))
   {
-    lastWriteTime = findData.ftLastWriteTime;
-    FindClose(findHandle);
+    lastWriteTime = data.ftLastWriteTime;
   }
 
   return lastWriteTime;

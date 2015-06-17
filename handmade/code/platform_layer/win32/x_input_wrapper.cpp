@@ -168,9 +168,7 @@ Win32ProcessGamepadState(game_controller_input *oldController,
                          game_controller_input *newController,
                          x_input_gamepad_state gamepadState)
 {
-
-  // We generate the game_input
-  newController->isAnalog = true;
+  newController->isAnalog = oldController->isAnalog;
 
   real32 threshold = 0.5f;
 
@@ -184,21 +182,23 @@ Win32ProcessGamepadState(game_controller_input *oldController,
   if(gamepadState.up)
   {
     newController->leftStickAverageY = 1.0f;
+    newController->isAnalog = false;
   }
   if(gamepadState.down)
   {
     newController->leftStickAverageY = -1.0f;
+    newController->isAnalog = false;
   }
   if(gamepadState.left)
   {
     newController->leftStickAverageX = -1.0f;
+    newController->isAnalog = false;
   }
   if(gamepadState.right)
   {
     newController->leftStickAverageX = 1.0f;
+    newController->isAnalog = false;
   }
-
-
 
   Win32ProcessButtonState(&oldController->moveUp,
                           &newController->moveUp,

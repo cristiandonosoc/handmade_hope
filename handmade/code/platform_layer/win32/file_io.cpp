@@ -9,7 +9,7 @@
 
 #ifndef _WIN32_FILE_IO_CPP
 
-#include "win32_file_io.h"
+#include "file_io.h"
 
 // Platform Load File
 DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUGPlatformReadEntireFile)

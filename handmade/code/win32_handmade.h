@@ -23,6 +23,7 @@ struct win32_game_code
   FILETIME lastWriteTime;
 };
 
+#define WIN32_MAX_PATH_LENGTH MAX_PATH
 struct win32_state
 {
   // Permanent Store Snapshot
@@ -39,6 +40,10 @@ struct win32_state
   uint64 snapshotsMemorySize;
   win32_frame_snapshot* snapshots;
   game_input* gameInput;
+
+  // File paths
+  char exeDirPath[WIN32_MAX_PATH_LENGTH];
+  char* filename;
 };
 
 int CALLBACK

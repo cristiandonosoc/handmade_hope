@@ -36,44 +36,21 @@ global_variable bool32 gMainLoopIsRunning;
 global_variable uint64 gPerformanceCounterFrequency;
 global_variable bool32 gPauseApp;
 
+#include "utils/string.cpp"
+
 #include "handmade.h"
 #include "win32_handmade.h"
 
 // Platform specific code
-#include "platform_layer/win32/win32_input_recording.cpp"
-#include "platform_layer/win32/win32_x_input_wrapper.cpp"
-#include "platform_layer/win32/win32_direct_sound_wrapper.cpp"
-#include "platform_layer/win32/win32_graphics_wrapper.cpp"
-#include "platform_layer/win32/win32_file_io.cpp"
-#include "platform_layer/win32/win32_dll_loading.cpp"
+#include "platform_layer/win32/input_recording.cpp"
+#include "platform_layer/win32/x_input_wrapper.cpp"
+#include "platform_layer/win32/direct_sound_wrapper.cpp"
+#include "platform_layer/win32/graphics_wrapper.cpp"
+#include "platform_layer/win32/file_io.cpp"
+#include "platform_layer/win32/dll_loading.cpp"
 #if HANDMADE_INTERNAL
-#include "platform_layer/win32/win32_debug.cpp"
+#include "platform_layer/win32/debug.cpp"
 #endif
-
-/**
- * Concatenates two strings by creating a new char[]
- * in the free-store. Remember to free afterwards!
- */
-inline char*
-CatStrings(char* sourceA, char* sourceB)
-{
-  int sizeA = sizeof(sourceA);
-  int sizeB = sizeof(sourceB);
-  char* resString = (char*)malloc(sizeA + sizeB);
-  char* scan = resString;
-  for(char* scanA = sourceA;
-      *scanA;
-      *(scan++) = *(scanA++));
-
-  for(char* scanB = sourceB;
-      *scanB;
-      *(scan++) = *(scanB++));
-
-  // We terminate the string
-  *scan++ = 0;
-
-  return resString;
-}
 
 
 /**
@@ -86,37 +63,32 @@ WinMain(HINSTANCE hInstance,
         int showCode)
 {
 
+  // The struct that holds the state of the platform
+  win32_state win32State = {};
+
   /**
    * FILENAME AND PATH INITIALIZATION
    */
-  char exeFileName[MAX_PATH];
   DWORD sizeOfFileName = GetModuleFileNameA(0,
-                                            exeFileName,
-                                            sizeof(exeFileName));
+                                            win32State.exeDirPath,
+                                            sizeof(win32State.exeDirPath));
   // We search for the filename pointer of the exe path
-  char* onePastLastSlash = exeFileName;
-  for(char* scan = exeFileName;
-      *scan; // We check for the NULL-terminated string
-      ++scan)
-  {
-    if(*scan == '\\')
-    {
-      onePastLastSlash = scan + 1;
-    }
-  }
+  char* onePastLastSlash = Utils::String::ScanForLastCharacter(win32State.exeDirPath, '\\');
 
-  // We eliminate the filename
+  // We copy the filename
+  win32State.filename = Utils::String::CopyString(onePastLastSlash);
+  // We eliminate the filename, so now exeDirPath is now only the dir
   *onePastLastSlash = 0;
+
   char* sourceDllName = "handmade.dll";
   char* targetDllName = "handmade_temp.dll";
   // TODO(Cristián): use smart-pointers, so we free when we exit of scope
-  char* sourceDllPath = CatStrings(exeFileName, sourceDllName);
-  char* targetDllPath = CatStrings(exeFileName, targetDllName);
+  char* sourceDllPath = Utils::String::CatStrings(win32State.exeDirPath, sourceDllName);
+  char* targetDllPath = Utils::String::CatStrings(win32State.exeDirPath, targetDllName);
 
   // We initialize the XInput functions pointers
   Win32LoadXInput();
 
-  // In C++, 0 Initialization of a struct is as follows
   WNDCLASSA windowClass = {};
   windowClass.style = CS_HREDRAW|CS_VREDRAW|CS_OWNDC;
   windowClass.lpfnWndProc = Win32MainWindowCallback;
@@ -278,7 +250,6 @@ WinMain(HINSTANCE hInstance,
       // Frame snapshots begin right after the permanent storage
       // If sizeof(win32_frame_snapshot) == 1KB (1024)
       // then total size needed = 1800KB (for 60 seconds)
-      win32_state win32State = {};
       win32State.snapshotMax = 60*30; // 60 seconds of recording at 30 fps
       win32State.snapshotsMemorySize = win32State.snapshotMax *
                                        sizeof(win32_frame_snapshot);
@@ -291,6 +262,7 @@ WinMain(HINSTANCE hInstance,
                          gameMemory.transientStorageSize;
 
       // Permanent storage pointer
+      // TODO(Cristián): Use MEM_LARGE_PAGES and call AdjustTokenPrivileges
       gameMemory.permanentStorage = VirtualAlloc(baseAddress,
                                                  (size_t)totalSize,
                                                  MEM_RESERVE|MEM_COMMIT,
@@ -506,9 +478,6 @@ WinMain(HINSTANCE hInstance,
 
         // If sound is invalid, it means it is either the first run
         // or some strange sound buffer death
-        // TODO(Cristián): We need to compute the exepectedFrameBoundaryByte
-        //                 for the low latency case
-
         real32 secondsElapsedSinceFrameFlip =
           Win32GetSecondsElapsed(lastCounter,
                                  Win32GetWallClock());

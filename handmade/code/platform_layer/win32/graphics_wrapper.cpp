@@ -110,15 +110,17 @@ Win32TransferBufferToWindows(HDC deviceContext,
                              win32_offscreen_buffer *buffer,
                              int windowWidth, int windowHeight)
 {
-  // TODO(Cristián): aspect ratio correction
-  // TODO(Cristián): Play with stretch mode
   // NOTE(Cristián): We are avoiding dirty (partial) rectangles for now
+  // NOTE(Cristián): For prototyping, we're are always going to blit 1-1 pixels
+  // to make sure we don't introduce artifacts. This will change when the renderer
+  // code is done.
   StretchDIBits(deviceContext,
                 /*
                 x, y, destWidth, destHeight,
                 x, y, originWidth, originHeight,
                 */
-                0, 0, windowWidth, windowHeight,
+                // 0, 0, windowWidth, windowHeight,
+                0, 0, buffer->width, buffer->height,
                 0, 0, buffer->width, buffer->height,
                 buffer->memory,
                 &buffer->info,

@@ -8,7 +8,7 @@ REM TODO(Cristián): Remove this warnings ignore on final build
 SET warnings=-WX -W4 -wd4100 -wd4201 -wd4244 -wd4189
 SET buildconf=-DHANDMADE_INTERNAL=1 -DHANDMADE_SLOW=1
 SET dependencies=user32.lib gdi32.lib winmm.lib
-SET envconf=-GR- -EHa- -Oi -MT -Gm- -Od -nologo
+SET envconf=-GR- -EHa- -Oi -MTd -Gm- -Od -nologo
 SET linkerconf=-opt:ref -incremental:no
 SET mapconf=-Fmwin32_handmade.map
 
@@ -17,7 +17,7 @@ REM cl %envconf% %warnings% %buildconf% -FC -Z7 %mapconf% ..\handmade\code\win32
 
 SET exports=-EXPORT:GameGetSound -EXPORT:GameUpdateAndRender
 REM SET pdb_path=-PDB:handmade_%time::=,%.pdb
-SET pdb_path=-PDB:"handmade%time::=,%.pdb"
+SET pdb_path=-PDB:handmade_%random%pdb
 
 REM 64-Bit build
 del *.pdb > NUL 2> NUL

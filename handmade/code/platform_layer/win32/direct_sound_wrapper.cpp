@@ -14,7 +14,7 @@
 #ifndef _WIN32_DIRECT_SOUND_CPP
 
 #include "common_types.h"
-#include "win32_direct_sound_wrapper.h"
+#include "direct_sound_wrapper.h"
 
 #include <windows.h>
 #include <dsound.h>
@@ -203,8 +203,8 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput,
       sampleIndex < region1SampleCount;
       sampleIndex++)
   {
-    // *destSample++ = *sourceSample++;
-    // *destSample++ = *sourceSample++;
+    *destSample++ = *sourceSample++;
+    *destSample++ = *sourceSample++;
     soundOutput->runningBlockIndex++;
   }
 
@@ -215,8 +215,8 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput,
       sampleIndex < region2SampleCount;
       sampleIndex++)
   {
-    // *destSample++ = *sourceSample++;
-    // *destSample++ = *sourceSample++;
+    *destSample++ = *sourceSample++;
+    *destSample++ = *sourceSample++;
     soundOutput->runningBlockIndex++;
   }
 
@@ -253,8 +253,6 @@ Win32SetupSoundBuffer(win32_sound_output *soundOutput,
 {
   // We get the cursor IN BYTES of where the system is playing and writing in the
   // sound buffer
-  // TODO(Cristián): Tighten up sound logic so that we know where we should be
-  // writing to and to anticipate time spent in the game output.
   if(!SUCCEEDED(gSecondaryBuffer->GetCurrentPosition(&soundOutput->playCursor,
                                                      &soundOutput->writeCursor)))
   {

@@ -81,7 +81,7 @@ RenderWeirdGradient(game_offscreen_buffer *buffer, int blueOffset, int greenOffs
       uint8 blue = (uint8)(x + blueOffset);
       uint8 green = (uint8)(y + greenOffset);
 
-      *pixel++ = blue | (green << 16);
+      *pixel++ = blue | (green << 8);
     }
     row += pitch;
   }
