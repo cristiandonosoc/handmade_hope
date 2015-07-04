@@ -9,11 +9,6 @@
 
 #ifndef _WIN32_HANDMADE_H
 
-struct win32_frame_snapshot
-{
-  game_input gameInput;
-};
-
 struct win32_game_code
 {
   HMODULE gameCodeDll;
@@ -21,6 +16,11 @@ struct win32_game_code
   game_update_and_render *updateAndRenderFunction;
   game_get_sound *getSoundFunction;
   FILETIME lastWriteTime;
+};
+
+struct win32_frame_snapshot
+{
+  game_input gameInput;
 };
 
 #define WIN32_MAX_PATH_LENGTH MAX_PATH

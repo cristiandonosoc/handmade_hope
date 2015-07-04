@@ -158,6 +158,11 @@ struct game_clocks
   real32 secondsElapsed;
 };
 
+struct thread_context
+{
+  int placeholder;
+};
+
 /**
  * TODO(Cristián): Services that the game provides to the platform layer
  * (this may expand in the future (sound on a separate thread))
@@ -178,13 +183,14 @@ struct game_file
 
 // File platform support
 #define DEBUG_PLATFORM_READ_ENTIRE_FILE(name)\
-  game_file name(char *fileName)
+  game_file name(thread_context *context, char *fileName)
 typedef DEBUG_PLATFORM_READ_ENTIRE_FILE(debug_platform_read_entire_file);
 #define DEBUG_PLATFORM_FREE_GAME_FILE(name)\
-  void name(game_file *gameFile)
+  void name(thread_context *context, game_file *gameFile)
 typedef DEBUG_PLATFORM_FREE_GAME_FILE(debug_platform_free_game_file);
 #define DEBUG_PLATFORM_WRITE_ENTIRE_FILE(name)\
-  bool32 name(char *fileName,\
+  bool32 name(thread_context *context,\
+              char *fileName,\
               uint32 memorySize,\
               void *fileMemory)
 typedef DEBUG_PLATFORM_WRITE_ENTIRE_FILE(debug_platform_write_entire_file);
@@ -213,7 +219,8 @@ struct game_memory
  */
 
 #define GAME_UPDATE_AND_RENDER(name)\
-  void name(game_offscreen_buffer *offscreenBuffer,\
+  void name(thread_context *threadContext,\
+            game_offscreen_buffer *offscreenBuffer,\
             game_memory *gameMemory,\
             game_input *gameInput)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
@@ -227,7 +234,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRenderStub)
 // TODO(Cristián): Reduce the pressure on this function by
 // measuring or querying.
 #define GAME_GET_SOUND(name)\
-  void name(game_sound_output_buffer *soundBuffer,\
+  void name(thread_context *threadContext,\
+            game_sound_output_buffer *soundBuffer,\
             game_memory *gameMemory,\
             game_input *gameInput)
 typedef GAME_GET_SOUND(game_get_sound);

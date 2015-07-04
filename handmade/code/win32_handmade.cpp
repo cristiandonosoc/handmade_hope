@@ -108,15 +108,10 @@ WinMain(HINSTANCE hInstance,
   UINT desiredSchedulerMs = 1;
   bool32 sleepIsGranular = (timeBeginPeriod(desiredSchedulerMs) == TIMERR_NOERROR);
 
-  // TODO(Cristián): How do we reliably query this?
-  //int monitorRefreshHz = 60;
-#define gameUpdateHz 30
-#define framesOfLatency 3
-  real32 targetSecondsPerFrame = 1.0f / (real32)gameUpdateHz;
-
   // DEBUG(Cristián)
+#define debugGameUpdateHz 30
   int debugMarkerIndex = 0;
-  win32_debug_time_marker debugMarkerCursors[gameUpdateHz / 2] = {0};
+  win32_debug_time_marker debugMarkerCursors[debugGameUpdateHz] = {0};
 
   if(RegisterClassA(&windowClass))
   {
@@ -140,12 +135,23 @@ WinMain(HINSTANCE hInstance,
       HDC deviceContext = GetDC(windowHandle);
 
       /**
+       * MONITOR REFRESH RATE INITIALIZATION
+       */
+      int monitorRefreshHz = 60;
+      int win32Refreshrate = GetDeviceCaps(deviceContext, VREFRESH);
+      if(win32Refreshrate > 1)
+      {
+        monitorRefreshHz = win32Refreshrate;
+      }
+      real32 gameUpdateHz = monitorRefreshHz / 2.0f;
+      real32 targetSecondsPerFrame = 1.0f / (real32)gameUpdateHz;
+
+
+      /**
        *  SOUND INITIALIZATION
        */
 
       gSoundOutput.samplesPerSecond = 48000; // 48kHz
-      gSoundOutput.latency = framesOfLatency *
-        (gSoundOutput.samplesPerSecond / gameUpdateHz);
       gSoundOutput.nChannels = 2;
       gSoundOutput.bytesPerBlock = gSoundOutput.nChannels *
                                    sizeof(int16);
@@ -156,10 +162,9 @@ WinMain(HINSTANCE hInstance,
                                    gSoundOutput.samplesPerSecond *
                                    gSoundOutput.bytesPerBlock) /
                                   1000);
-      gSoundOutput.expectedSoundBytesPerFrame =
-        ((gSoundOutput.samplesPerSecond *
-          gSoundOutput.bytesPerBlock) /
-         gameUpdateHz);
+      gSoundOutput.expectedSoundBytesPerFrame = ((gSoundOutput.samplesPerSecond *
+                                                  gSoundOutput.bytesPerBlock) /
+                                                 gameUpdateHz);
 
 
       // Whether the sound this frame was valid
@@ -331,6 +336,11 @@ WinMain(HINSTANCE hInstance,
       int delayFrames = 0;
 #define gameCodeLoadCounterLimit 120
 
+      /**
+       * GAME CONTEXT INITIALIZATION
+       */
+      thread_context threadContext {};
+
       // ** MESSAGE LOOP **
       // We retrieve the messages from windows via the message queue
       gMainLoopIsRunning = true;
@@ -338,6 +348,7 @@ WinMain(HINSTANCE hInstance,
       {
 
         // TODO(Cristián): Find out WHY there is a process keeping a handle on the dll
+        // TODO(Cristian): Check if this happens on different machines
         FILETIME newDllWriteTime = Win32GetLastWriteTime(sourceDllPath);
         // NOTE(Cristián): If one of the times is 0 (nullptr), the result
         // will be 0 (same as if they're equal)
@@ -524,7 +535,8 @@ WinMain(HINSTANCE hInstance,
         }
         if (gameSoundOutput.valid)
         {
-          currentGameCode.getSoundFunction(&gameSoundOutput,
+          currentGameCode.getSoundFunction(&threadContext,
+                                           &gameSoundOutput,
                                            &gameMemory,
                                            newInput);
           Win32FillSoundBuffer(&gSoundOutput,
@@ -542,7 +554,8 @@ WinMain(HINSTANCE hInstance,
 
         // We call the game with the game memory, the graphics buffer,
         // This will generate all the content needed for the frame
-        currentGameCode.updateAndRenderFunction(&gameOffscreenBuffer,
+        currentGameCode.updateAndRenderFunction(&threadContext,
+                                                &gameOffscreenBuffer,
                                                 &gameMemory,
                                                 newInput);
 
@@ -657,14 +670,14 @@ WinMain(HINSTANCE hInstance,
 
         real32 fps = 1.0f / secondsElapsedForFrame;
         // TODO(Cristián): Remove from production
-        char buffer[256];
+        char mbuffer[256];
         //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
-        sprintf_s(buffer,
+        sprintf_s(mbuffer,
                 "%f ms\t| %f FPS\t| %d sleepMs\n",
                 1000.0f * secondsElapsedForFrame,
                 fps,
                 sleepMs);
-        OutputDebugStringA(buffer);
+        OutputDebugStringA(mbuffer);
 #endif
 
         //uint64 endCycleCount = __rdtsc();
