@@ -351,12 +351,12 @@ WinMain(HINSTANCE hInstance,
              delayFrames = 0;
           }
         }
-        // if(gameCodeLoadCounter++ > gameCodeLoadCounterLimit)
-        // {
-        //   Win32UnloadGameCode(&currentGameCode);
-        //   currentGameCode = Win32LoadGameCode();
-        //   gameCodeLoadCounter = 0;
-        // }
+
+        /**
+         * INPUT UPDATE
+         */
+
+        /*** KEYBOARD ***/
 
         // TODO(Cristián): Zeroing macro
         // NOTE(Cristián): We can't zero everything because the up/down state
@@ -419,6 +419,32 @@ WinMain(HINSTANCE hInstance,
           }
         }
 
+        /*** MOUSE ***/
+
+        POINT mouseP;
+        GetCursorPos(&mouseP); // Mouse Position in the _screen_
+        ScreenToClient(windowHandle, &mouseP);
+        newInput->mouseX = mouseP.x;
+        newInput->mouseY = mouseP.y;
+        newInput->mouseZ = 0;
+
+        // char buffer[256];
+        // sprintf_s(buffer, "%d\n", GetKeyState(VK_LBUTTON));
+        // OutputDebugStringA(buffer);
+
+        Win32ProcessKeyboardMessage(&newInput->mouseButtons[0],
+                                    GetKeyState(VK_LBUTTON) & 0x8000);
+        Win32ProcessKeyboardMessage(&newInput->mouseButtons[1],
+                                    GetKeyState(VK_LBUTTON) & 0x8000);
+        Win32ProcessKeyboardMessage(&newInput->mouseButtons[2],
+                                    GetKeyState(VK_LBUTTON) & 0x8000);
+        Win32ProcessKeyboardMessage(&newInput->mouseButtons[3],
+                                    GetKeyState(VK_LBUTTON) & 0x8000);
+        Win32ProcessKeyboardMessage(&newInput->mouseButtons[4],
+                                    GetKeyState(VK_LBUTTON) & 0x8000);
+
+        /*** GAMEPADS ***/
+
         // Xinput is a polling based API
         // TODO(Cristián): Should we pull this more frequently?
         DWORD maxControllerCount = XUSER_MAX_COUNT + 1;
@@ -436,10 +462,8 @@ WinMain(HINSTANCE hInstance,
           // NOTE(Cristián): We traduce to our controller index because
           // currently the keyboard is game_input 0
           int internalControllerIndex = controllerIndex - 1;
-          game_controller_input *oldController =
-            GetController(oldInput, internalControllerIndex);
-          game_controller_input *newController =
-            GetController(newInput, internalControllerIndex);
+          game_controller_input *oldController = GetController(oldInput, internalControllerIndex);
+          game_controller_input *newController = GetController(newInput, internalControllerIndex);
 
           if(XInputGetState(internalControllerIndex,
                             &controllerState) == ERROR_SUCCESS) // Amazing success key code name
@@ -447,6 +471,7 @@ WinMain(HINSTANCE hInstance,
             newController->isConnected = true;
             // TODO(Cristián): See if controllerState.swPacketNumber incrementes too rapidly
             x_input_gamepad_state gamepadState = GetGamepadState(&controllerState);
+            // We update the state of the gamepad
             Win32ProcessGamepadState(oldController,
                                      newController,
                                      gamepadState);

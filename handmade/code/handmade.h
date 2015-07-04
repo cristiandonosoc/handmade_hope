@@ -124,6 +124,11 @@ struct game_controller_input
  */
 struct game_input
 {
+  game_button_state mouseButtons[5];
+  uint32 mouseX;
+  uint32 mouseY;
+  uint32 mouseZ;
+
   game_controller_input controllers[5];
 };
 

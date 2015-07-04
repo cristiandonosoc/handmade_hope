@@ -81,22 +81,29 @@ RenderWeirdGradient(game_offscreen_buffer *buffer, int blueOffset, int greenOffs
       uint8 blue = (uint8)(x + blueOffset);
       uint8 green = (uint8)(y + greenOffset);
 
-      *pixel++ = blue | (green << 8);
+      *pixel++ = blue | (green << 16);
     }
     row += pitch;
   }
 }
 
 internal void
-RenderPlayer(game_offscreen_buffer* buffer, int playerX, int playerY)
+RenderPlayer(game_offscreen_buffer* buffer, int playerX, int playerY, int color)
 {
-  int color = 0xFFFFFFFF;
+  int playerSize = 10;
+  if(playerX < 0 ||
+     playerX > buffer->width - playerSize  ||
+     playerY < 0 ||
+     playerY > buffer->height - playerSize)
+  {
+    return;
+  }
   for(int x = playerX;
-      x < playerX + 10;
+      x < playerX + playerSize;
       ++x)
   {
     int top = playerY;
-    int bottom = playerY + 10;
+    int bottom = playerY + playerSize;
 
     uint8 *pixel = (uint8 *)buffer->memory +
                    4 * x +
@@ -173,14 +180,14 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     //                 gameMemory
     char *fileName = __FILE__;
     game_file gameFile =
-      gameMemory->DEBUGPlatformReadEntireFileFunction(fileName);
+      gameMemory->DEBUGPlatformReadEntireFileFunction(threadContext, fileName);
     if (gameFile.content)
     {
-      gameMemory->DEBUGPlatformWriteEntireFileFunction(
-          "file_out.test",
-          gameFile.contentSize,
-          gameFile.content);
-      gameMemory->DEBUGPlatformFreeGameFileFunction(&gameFile);
+      gameMemory->DEBUGPlatformWriteEntireFileFunction(threadContext,
+                                                       "file_out.test",
+                                                       gameFile.contentSize,
+                                                       gameFile.content);
+      gameMemory->DEBUGPlatformFreeGameFileFunction(threadContext, &gameFile);
     }
 
     gameState->playerX = 100;
@@ -238,7 +245,14 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                         gameState->yOffset);
     RenderPlayer(offscreenBuffer,
                  gameState->playerX,
-                 gameState->playerY);
+                 gameState->playerY,
+                 0xFF00FF00);
+
+    RenderPlayer(offscreenBuffer,
+                 gameInput->mouseX,
+                 gameInput->mouseY,
+                 gameInput->mouseButtons[0].endedDown ?
+                   0xFFFF0000 : 0xFFFFFFFF);
   }
   else
   {

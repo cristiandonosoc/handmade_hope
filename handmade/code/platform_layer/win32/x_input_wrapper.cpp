@@ -255,11 +255,11 @@ Win32ProcessGamepadState(game_controller_input *oldController,
 
 
 internal void
-Win32ProcessKeyboardMessage(game_button_state *oldState,
-                            game_button_state *newState,
+Win32ProcessKeyboardMessage(game_button_state *newState,
                             bool32 currentState)
 {
-  ASSERT(newState->endedDown != currentState)
+  // We only track toggles
+  if(newState->endedDown == currentState) { return; }
   newState->halfTransitionCount++;
   newState->endedDown = currentState;
 }
@@ -296,57 +296,48 @@ Win32ProcessKeyboardMessages(MSG message,
       {
         if(vKeyCode == 'W')
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->moveUp,
-                                      &newKeyboardController->moveUp,
+          Win32ProcessKeyboardMessage(&newKeyboardController->moveUp,
                                       keyIsDown);
         }
         else if(vKeyCode == 'S')
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->moveDown,
-                                      &newKeyboardController->moveDown,
+          Win32ProcessKeyboardMessage(&newKeyboardController->moveDown,
                                       keyIsDown);
         }
         else if(vKeyCode == 'A')
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->moveLeft,
-                                      &newKeyboardController->moveLeft,
+          Win32ProcessKeyboardMessage(&newKeyboardController->moveLeft,
                                       keyIsDown);
         }
         else if(vKeyCode == 'D')
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->moveRight,
-                                      &newKeyboardController->moveRight,
+          Win32ProcessKeyboardMessage(&newKeyboardController->moveRight,
                                       keyIsDown);
         }
         else if(vKeyCode == VK_UP)
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->actionUp,
-                                      &newKeyboardController->actionUp,
+          Win32ProcessKeyboardMessage(&newKeyboardController->actionUp,
                                       keyIsDown);
         }
         else if(vKeyCode == VK_DOWN)
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->actionDown,
-                                      &newKeyboardController->actionDown,
+          Win32ProcessKeyboardMessage(&newKeyboardController->actionDown,
                                       keyIsDown);
         }
         else if(vKeyCode == VK_LEFT)
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->actionLeft,
-                                      &newKeyboardController->actionLeft,
+          Win32ProcessKeyboardMessage(&newKeyboardController->actionLeft,
                                       keyIsDown);
         }
         else if(vKeyCode == VK_RIGHT)
         {
-          Win32ProcessKeyboardMessage(&oldKeyboardController->actionRight,
-                                      &newKeyboardController->actionRight,
+          Win32ProcessKeyboardMessage(&newKeyboardController->actionRight,
                                       keyIsDown);
         }
         else if(vKeyCode == VK_ESCAPE)
         {
           result.quit = true;
-          Win32ProcessKeyboardMessage(&oldKeyboardController->back,
-                                      &newKeyboardController->back,
+          Win32ProcessKeyboardMessage(&newKeyboardController->back,
                                       keyIsDown);
         }
         else if(vKeyCode == VK_SPACE)
