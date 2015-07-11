@@ -97,7 +97,7 @@ WinMain(HINSTANCE hInstance,
   windowClass.lpszClassName = "HandmadeHopeWindowClass";
 
   // We setup the backbuffer
-  Win32ResizeDIBSection(&gBackBuffer, 1280, 740);
+  Win32ResizeDIBSection(&gBackBuffer, 960, 540);
 
   LARGE_INTEGER perfCounterFrequecyResult;
   QueryPerformanceFrequency(&perfCounterFrequecyResult);
@@ -347,6 +347,22 @@ WinMain(HINSTANCE hInstance,
       while(gMainLoopIsRunning)
       {
 
+        /**
+         * TIME MANAGEMENT
+         */
+
+        // If sound is invalid, it means it is either the first run
+        // or some strange sound buffer death
+        real32 secondsElapsedSinceFrameFlip = Win32GetSecondsElapsed(lastCounter,
+                                                                     Win32GetWallClock());
+        real32 secondsExpectedToFrameFlip = targetSecondsPerFrame -
+                                            secondsElapsedSinceFrameFlip;
+
+
+        /**
+         * GAME DLL RELOADING
+         */
+
         // TODO(Cristián): Find out WHY there is a process keeping a handle on the dll
         // TODO(Cristian): Check if this happens on different machines
         FILETIME newDllWriteTime = Win32GetLastWriteTime(sourceDllPath);
@@ -366,6 +382,10 @@ WinMain(HINSTANCE hInstance,
         /**
          * INPUT UPDATE
          */
+
+        // NOTE(Cristian): We need to pass the game by how much will the game
+        //                 simulation advance
+        newInput->secondsToUpdate = secondsExpectedToFrameFlip;
 
         /*** KEYBOARD ***/
 
@@ -510,15 +530,9 @@ WinMain(HINSTANCE hInstance,
         gameOffscreenBuffer.width = gBackBuffer.width;
         gameOffscreenBuffer.height = gBackBuffer.height;
         gameOffscreenBuffer.pitch = gBackBuffer.pitch;
+        gameOffscreenBuffer.bytesPerPixel = gBackBuffer.bytesPerPixel;
 
 
-        // If sound is invalid, it means it is either the first run
-        // or some strange sound buffer death
-        real32 secondsElapsedSinceFrameFlip =
-          Win32GetSecondsElapsed(lastCounter,
-                                 Win32GetWallClock());
-        real32 secondsExpectedToFrameFlip =
-          targetSecondsPerFrame - secondsElapsedSinceFrameFlip;
         validSound = Win32SetupSoundBuffer(&gSoundOutput,
                                            secondsExpectedToFrameFlip,
                                            !validSound);
@@ -614,18 +628,21 @@ WinMain(HINSTANCE hInstance,
 
 
 #if HANDMADE_INTERNAL
+        // NOTE(Cristián): This is debug code
         int displayCurrentMarkerIndex = debugMarkerIndex - 1;
         if(displayCurrentMarkerIndex < 0)
         {
           displayCurrentMarkerIndex = ARRAY_COUNT(debugMarkerCursors);
         }
 
-        // NOTE(Cristián): This is debug code
+#if 0
+        // NOTE(Cristian): This code display several soundBuffer marker information
         Win32DebugSyncDisplay(&gBackBuffer,
                               &gSoundOutput,
                               debugMarkerCursors,
                               ARRAY_COUNT(debugMarkerCursors),
                               displayCurrentMarkerIndex);
+#endif
 #endif
 
         /**

@@ -5,7 +5,7 @@ REM TODO - can we just build both with one compiler version?
 IF NOT EXIST ..\..\build mkdir ..\..\build
 pushd ..\..\build
 REM TODO(Cristián): Remove this warnings ignore on final build
-SET warnings=-WX -W4 -wd4100 -wd4201 -wd4244 -wd4189
+SET warnings=-WX -W4 -wd4100 -wd4201 -wd4244 -wd4189 -wd4505
 SET buildconf=-DHANDMADE_INTERNAL=1 -DHANDMADE_SLOW=1
 SET dependencies=user32.lib gdi32.lib winmm.lib
 SET envconf=-GR- -EHa- -Oi -MTd -Gm- -Od -nologo

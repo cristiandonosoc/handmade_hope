@@ -12,6 +12,9 @@
 #include "file_io.h"
 
 // Platform Load File
+// TODO(Cristián): Stop allocating new memory for the file
+//                 Instead reserve memory from the already allocated
+//                 gameMemory
 DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUGPlatformReadEntireFile)
 {
   game_file gameFile = {};

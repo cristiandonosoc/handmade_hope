@@ -23,6 +23,7 @@ struct win32_offscreen_buffer
   int width;
   int height;
   int pitch;
+  int bytesPerPixel;
 };
 
 struct win32_window_dimension {
@@ -72,7 +73,7 @@ Win32ResizeDIBSection(win32_offscreen_buffer *buffer, int width, int height)
   // We update the buffer width
   buffer->width = width;
   buffer->height = height;
-  int bytesPerPixel = 4;
+  buffer->bytesPerPixel = 4;
 
   // We set the BITMAPINFO data
   buffer->info.bmiHeader.biSize = sizeof(buffer->info.bmiHeader);
@@ -89,11 +90,11 @@ Win32ResizeDIBSection(win32_offscreen_buffer *buffer, int width, int height)
   // and maintain the memory ourselves.
 
   // We allocate the memory necesary for the buffer
-  int bitmapMemorySize =  bytesPerPixel *
+  int bitmapMemorySize =  buffer->bytesPerPixel *
                           buffer->width *
                           buffer->height;
   buffer->memory = VirtualAlloc(0, bitmapMemorySize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-  buffer->pitch = buffer->width * bytesPerPixel;
+  buffer->pitch = buffer->width * buffer->bytesPerPixel;
 
   //TODO:(Cristián): Probably clear screen to black
 }

@@ -87,34 +87,44 @@ RenderWeirdGradient(game_offscreen_buffer *buffer, int blueOffset, int greenOffs
   }
 }
 
-internal void
-RenderPlayer(game_offscreen_buffer* buffer, int playerX, int playerY, int color)
+inline int32
+RoundReal32ToInt32(real32 val)
 {
-  int playerSize = 10;
-  if(playerX < 0 ||
-     playerX > buffer->width - playerSize  ||
-     playerY < 0 ||
-     playerY > buffer->height - playerSize)
-  {
-    return;
-  }
-  for(int x = playerX;
-      x < playerX + playerSize;
-      ++x)
-  {
-    int top = playerY;
-    int bottom = playerY + playerSize;
+  // TODO(Cristian): Intrinsic?
+  return (int)(val + 0.5f);
+}
 
+internal void
+DrawRectangle(game_offscreen_buffer* buffer, real32 realMinX, real32 realMinY,
+                                             real32 realMaxX, real32 realMaxY)
+{
+  // TODO(Cristian): Pass in the color
+  int32 color = 0xFFFFFFFF;
+
+  int32 minX = RoundReal32ToInt32(realMinX);
+  int32 maxX = RoundReal32ToInt32(realMaxX);
+  int32 minY = RoundReal32ToInt32(realMinY);
+  int32 maxY = RoundReal32ToInt32(realMaxY);
+
+  if(minX < 0) { minX = 0; }
+  if(minY < 0) { minY = 0; }
+  if(maxX > buffer->width) { maxX = buffer->width; }
+  if(maxY > buffer->height) { maxY = buffer->height; }
+
+  for(int y = minY;
+      y < maxY;
+      y++)
+  {
     uint8 *pixel = (uint8 *)buffer->memory +
-                   4 * x +
-                   top * buffer->pitch;
+                   buffer->bytesPerPixel * minX +
+                   y * buffer->pitch;
 
-    for (int y = top;
-         y < bottom;
-         y++)
+    for (int x = minX;
+         x < maxX;
+         x++)
     {
       *(uint32 *)pixel = color;
-      pixel += buffer->pitch;
+      pixel += buffer->bytesPerPixel;
     }
   }
 }
@@ -146,17 +156,24 @@ OutputGameSound(game_sound_output_buffer *soundOutput,
       sampleIndex < soundOutput->sampleCount;
       sampleIndex++)
   {
+#if 0
+    // This is the logic required to output a sine wave
     real32 sineValue = sinf(gameState->tSine);
     int16 sampleValue = (int16)(sineValue * gameState->toneVolume);
-
-    *sampleOut++ = sampleValue;
-    *sampleOut++ = sampleValue;
 
     gameState->tSine += 2 * PI32 / (real32)wavePeriod;
     while(gameState->tSine > 2 * PI32)
     {
       gameState->tSine -= 2 * PI32;
     }
+
+#else
+    int16 sampleValue = 0; // Silence for now...
+#endif
+
+    *sampleOut++ = sampleValue;
+    *sampleOut++ = sampleValue;
+
   }
 }
 
@@ -240,23 +257,21 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   bool32 renderGradient = true;
   if(renderGradient)
   {
-    RenderWeirdGradient(offscreenBuffer,
-                        gameState->xOffset,
-                        gameState->yOffset);
-    RenderPlayer(offscreenBuffer,
-                 gameState->playerX,
-                 gameState->playerY,
-                 0xFF00FF00);
-
-    RenderPlayer(offscreenBuffer,
-                 gameInput->mouseX,
-                 gameInput->mouseY,
-                 gameInput->mouseButtons[0].endedDown ?
-                   0xFFFF0000 : 0xFFFFFFFF);
+    // ClearScreenBuffer(offscreenBuffer);
+    // RenderWeirdGradient(offscreenBuffer,
+    //                     gameState->xOffset,
+    //                     gameState->yOffset);
+    // RenderPlayer(offscreenBuffer,
+    //              gameState->playerX,
+    //              gameState->playerY,
+    //              0xFF00FF00);
+    //
+    DrawRectangle(offscreenBuffer,
+                 gameInput->mouseX, gameInput->mouseY,
+                 gameInput->mouseX + 10, gameInput->mouseY + 10);
   }
   else
   {
-    ClearScreenBuffer(offscreenBuffer);
   }
 }
 

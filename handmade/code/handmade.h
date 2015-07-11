@@ -52,6 +52,7 @@ struct game_offscreen_buffer
   int width;
   int height;
   int pitch;
+  int bytesPerPixel;
 };
 
 struct game_sound_output_buffer
@@ -124,12 +125,16 @@ struct game_controller_input
  */
 struct game_input
 {
+  // Controller information
   game_button_state mouseButtons[5];
   uint32 mouseX;
   uint32 mouseY;
   uint32 mouseZ;
 
   game_controller_input controllers[5];
+
+  // Time information
+  real32 secondsToUpdate;
 };
 
 inline game_controller_input*
