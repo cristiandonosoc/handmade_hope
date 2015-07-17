@@ -96,8 +96,16 @@ Win32ResizeDIBSection(win32_offscreen_buffer *buffer, int width, int height)
   buffer->memory = VirtualAlloc(0, bitmapMemorySize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
   buffer->pitch = buffer->width * buffer->bytesPerPixel;
 
-  //TODO:(Cristián): Probably clear screen to black
 }
+
+internal void
+Win32ClearWindow(HDC deviceContext, int windowWidth, int windowHeight)
+{
+  PatBlt(deviceContext, 0, 0,
+                        windowWidth, windowHeight,
+                        BLACKNESS);
+}
+
 
 /**
  * Transfer our buffer into windows via StretchDIBits syscall.
@@ -111,6 +119,12 @@ Win32TransferBufferToWindows(HDC deviceContext,
                              win32_offscreen_buffer *buffer,
                              int windowWidth, int windowHeight)
 {
+
+
+
+  int offsetX = 10;
+  int offsetY = 10;
+
   // NOTE(Cristián): We are avoiding dirty (partial) rectangles for now
   // NOTE(Cristián): For prototyping, we're are always going to blit 1-1 pixels
   // to make sure we don't introduce artifacts. This will change when the renderer
@@ -121,7 +135,7 @@ Win32TransferBufferToWindows(HDC deviceContext,
                 x, y, originWidth, originHeight,
                 */
                 // 0, 0, windowWidth, windowHeight,
-                0, 0, buffer->width, buffer->height,
+                offsetX, offsetY, buffer->width, buffer->height,
                 0, 0, buffer->width, buffer->height,
                 buffer->memory,
                 &buffer->info,

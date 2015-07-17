@@ -147,14 +147,14 @@ GetController(game_input *input, int controllerIndex)
 // THIS IS NOT FOR THE PLATFORM LAYER TO KNOW
 struct game_state
 {
-  int32 xOffset;
-  int32 yOffset;
   int32 toneHz;
   int32 toneVolume;
   real32 tSine;
 
-  int playerX;
-  int playerY;
+  real32 playerX;
+  real32 playerY;
+
+  int tileMapIndex;
 };
 
 struct game_clocks
@@ -248,6 +248,27 @@ GAME_GET_SOUND(GameGetSoundStub)
 {
   /* STUB */
 }
+
+
+/*** GAME OBJECTS ***/
+#define TILE_ROWS 9
+#define TILE_COLUMNS 17
+struct tile_map
+{
+  uint32 rows;
+  uint32 columns;
+  uint32 tileWidth;
+  uint32 tileHeight;
+  int offsetX;
+  int offsetY;
+
+  uint32* tiles;
+
+  // Functions
+  uint32* getTile(uint32 x, uint32 y) {
+    return tiles + y * columns + x;
+  }
+};
 
 
 #define _HANDMADE_H_INCLUDED

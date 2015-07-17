@@ -134,6 +134,10 @@ WinMain(HINSTANCE hInstance,
       // get one device context and use it forever, because we don't need to return it.
       HDC deviceContext = GetDC(windowHandle);
 
+      // We clear the screen the first time
+      win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
+      Win32ClearWindow(deviceContext, dimension.width, dimension.height);
+
       /**
        * MONITOR REFRESH RATE INITIALIZATION
        */
@@ -648,7 +652,7 @@ WinMain(HINSTANCE hInstance,
         /**
          * FRAME FLIP
          */
-        win32_window_dimension dimension = Win32GetWindowDimension(windowHandle);
+        dimension = Win32GetWindowDimension(windowHandle);
         Win32TransferBufferToWindows(deviceContext,
                                      &gBackBuffer,
                                      dimension.width, dimension.height);
@@ -684,6 +688,7 @@ WinMain(HINSTANCE hInstance,
         }
 
 
+#if 0
 
         real32 fps = 1.0f / secondsElapsedForFrame;
         // TODO(Cristián): Remove from production
@@ -695,6 +700,7 @@ WinMain(HINSTANCE hInstance,
                 fps,
                 sleepMs);
         OutputDebugStringA(mbuffer);
+#endif
 #endif
 
         //uint64 endCycleCount = __rdtsc();
