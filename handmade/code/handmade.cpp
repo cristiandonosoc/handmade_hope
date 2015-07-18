@@ -160,8 +160,8 @@ CalculateTilePosition(world_map* world, world_coordinates* coords)
   if(coords->pX < 0.0f) { coords->pX -= world->tileWidth; }
   if(coords->pY < 0.0f) { coords->pY -= world->tileHeight; }
   int32_point res = {};
-  res.x = UTILS::TruncateReal32ToInt32((coords->pX - world->offsetX) / world->tileWidth);
-  res.y = UTILS::TruncateReal32ToInt32((coords->pY - world->offsetY) / world->tileHeight);
+  res.x = UTILS::FloorReal32ToInt32((coords->pX - world->offsetX) / world->tileWidth);
+  res.y = UTILS::FloorReal32ToInt32((coords->pY - world->offsetY) / world->tileHeight);
   return res;
 }
 
@@ -329,6 +329,8 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
 #define PLAYER_WIDTH 20
 #define PLAYER_HEIGHT 20
 
+    // TODO(Cristian): Recheck coordinates offset working (packing and unpacking)
+    // Now is all mingled up and it WILL bring problems
     gameState->coords.pX = 400;
     gameState->coords.pY = 400;
     gameState->coords.tileX = 6;
@@ -558,9 +560,9 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
         int currentTile = 0;
 
         int32 playerTileX =
-          UTILS::TruncateReal32ToInt32((coords->pX - world.offsetX) / world.tileWidth);
+          UTILS::FloorReal32ToInt32((coords->pX - world.offsetX) / world.tileWidth);
         int32 playerTileY =
-          UTILS::TruncateReal32ToInt32((coords->pY - world.offsetY) / world.tileHeight);
+          UTILS::FloorReal32ToInt32((coords->pY - world.offsetY) / world.tileHeight);
 
         if (col == playerTileX && row == playerTileY) { currentTile = 1; }
 

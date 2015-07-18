@@ -17,18 +17,22 @@ RoundReal32ToUInt32(real32 val)
 {
   // TODO(Cristian): Intrinsic?
   // TODO(Cristian): Fix negative rounding
-  return (uint32)(val + 0.5f);
+  real32 offset = 0.5f;
+  if(val < 0.0f) { offset = -0.5f; }
+  return (uint32)(val + offset);
 }
 
 inline uint32
-TruncateReal32ToUInt32(real32 val)
+FloorReal32ToUInt32(real32 val)
 {
+  ASSERT(val >= 0.0f);
   return (uint32)val;
 }
 
 inline int32
-TruncateReal32ToInt32(real32 val)
+FloorReal32ToInt32(real32 val)
 {
+  if(val < 0.0f) { val -= 1.0f; }
   return (int32)val;
 }
 
