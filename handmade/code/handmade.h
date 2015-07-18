@@ -255,28 +255,22 @@ struct game_state
   int32 tileMapY;
 };
 
+struct world_map; // Forward-declare
 struct tile_map
 {
-  int32 rows;
-  int32 columns;
+  uint32* tiles;
+  world_map* world;
+};
+
+struct world_map
+{
+  int32 tileCountX;
+  int32 tileCountY;
   int32 tileWidth;
   int32 tileHeight;
   int offsetX;
   int offsetY;
 
-  uint32* tiles;
-
-  // Functions
-  uint32* getTile(int32 x, int32 y) {
-    ASSERT(x >= 0 || x < this->rows);
-    ASSERT(y >= 0 || y < this->columns);
-
-    return tiles + (y * columns) + x;
-  }
-};
-
-struct world_map
-{
   // TODO(Cristian): Sparseness
   int32 tileMapCountX;
   int32 tileMapCountY;
@@ -286,13 +280,26 @@ struct world_map
   // Functions
   tile_map* getTileMap(int32 x, int32 y)
   {
-    ASSERT(x >= 0 || x < this->tileMapCountX);
-    ASSERT(y >= 0 || y < this->tileMapCountY);
+    if((x >= 0 && x < this->tileMapCountX) &&
+       (y >= 0 || y < this->tileMapCountY))
+    {
+      return tileMaps + (y * tileMapCountY) + x;
+    }
 
-    return tileMaps + (y * tileMapCountY) + x;
+    return nullptr;
   }
-};
 
+  int32 getTileMapWidth()
+  {
+    return this->tileCountX * this->tileWidth;
+  }
+
+  int32 getTileMapHeight()
+  {
+    return this->tileCountY * this->tileHeight;
+  }
+
+};
 
 #define _HANDMADE_H_INCLUDED
 #endif
