@@ -4,3 +4,4 @@ extras/*
 *.suo
 *.test
 *.un~
+original_source/*
