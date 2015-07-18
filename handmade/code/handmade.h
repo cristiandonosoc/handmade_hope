@@ -58,24 +58,21 @@ GAME_GET_SOUND(GameGetSoundStub)
 #define TILE_ROWS 9
 #define TILE_COLUMNS 17
 
-struct game_state
-{
-  int32 toneHz;
-  int32 toneVolume;
-  real32 tSine;
-
-  real32 playerX;
-  real32 playerY;
-
-  int32 tileMapX;
-  int32 tileMapY;
-};
-
 struct world_map; // Forward-declare
 struct tile_map
 {
   uint32* tiles;
   world_map* world;
+};
+
+struct world_coordinates
+{
+  int32 tileMapX;
+  int32 tileMapY;
+  int32 tileX;
+  int32 tileY;
+  real32 pX;
+  real32 pY;
 };
 
 struct world_map
@@ -94,8 +91,11 @@ struct world_map
   tile_map* tileMaps;
 
   // Functions
-  tile_map* getTileMap(int32 x, int32 y)
+  tile_map* getTileMap(world_coordinates* coords)
   {
+    int32 x = coords->tileMapX;
+    int32 y = coords->tileMapY;
+
     if((x >= 0 && x < this->tileMapCountX) &&
        (y >= 0 || y < this->tileMapCountY))
     {
@@ -116,6 +116,17 @@ struct world_map
   }
 
 };
+
+struct game_state
+{
+  int32 toneHz;
+  int32 toneVolume;
+  real32 tSine;
+
+  world_coordinates coords;
+};
+
+
 
 #define _HANDMADE_H_INCLUDED
 #endif
