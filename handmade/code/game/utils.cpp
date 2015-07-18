@@ -12,7 +12,7 @@
 namespace UTILS
 {
 
-internal inline uint32
+inline uint32
 RoundReal32ToUInt32(real32 val)
 {
   // TODO(Cristian): Intrinsic?
@@ -20,13 +20,19 @@ RoundReal32ToUInt32(real32 val)
   return (uint32)(val + 0.5f);
 }
 
-internal inline uint32
+inline uint32
 TruncateReal32ToUInt32(real32 val)
 {
   return (uint32)val;
 }
 
-internal inline uint32
+inline int32
+TruncateReal32ToInt32(real32 val)
+{
+  return (int32)val;
+}
+
+inline uint32
 RealRGBToUInt32(real32 R, real32 G, real32 B)
 {
   // NOTE(Cristian): Color bit pattern 0xAARRGGBB

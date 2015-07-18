@@ -482,21 +482,21 @@ WinMain(HINSTANCE hInstance,
 
         // Xinput is a polling based API
         // TODO(Cristián): Should we pull this more frequently?
-        DWORD maxControllerCount = XUSER_MAX_COUNT + 1;
+        DWORD maxControllerCount = XUSER_MAX_COUNT;
         if (maxControllerCount > ARRAY_COUNT(oldInput->controllers))
         {
           maxControllerCount = ARRAY_COUNT(oldInput->controllers);
         }
 
         // We iterate over all the controllers (gamepads)
-        for(DWORD controllerIndex = 1;
+        for(DWORD controllerIndex = 0;
             controllerIndex < maxControllerCount;
             controllerIndex++)
         {
           XINPUT_STATE controllerState;
           // NOTE(Cristián): We traduce to our controller index because
           // currently the keyboard is game_input 0
-          int internalControllerIndex = controllerIndex - 1;
+          int internalControllerIndex = controllerIndex + 1;
           game_controller_input *oldController = GetController(oldInput, internalControllerIndex);
           game_controller_input *newController = GetController(newInput, internalControllerIndex);
 

@@ -145,18 +145,6 @@ GetController(game_input *input, int controllerIndex)
 }
 
 // THIS IS NOT FOR THE PLATFORM LAYER TO KNOW
-struct game_state
-{
-  int32 toneHz;
-  int32 toneVolume;
-  real32 tSine;
-
-  real32 playerX;
-  real32 playerY;
-
-  int tileMapIndex;
-};
-
 struct game_clocks
 {
   // TODO(Cristián): What do we want to pass?
@@ -253,20 +241,55 @@ GAME_GET_SOUND(GameGetSoundStub)
 /*** GAME OBJECTS ***/
 #define TILE_ROWS 9
 #define TILE_COLUMNS 17
+
+struct game_state
+{
+  int32 toneHz;
+  int32 toneVolume;
+  real32 tSine;
+
+  real32 playerX;
+  real32 playerY;
+
+  int32 tileMapX;
+  int32 tileMapY;
+};
+
 struct tile_map
 {
-  uint32 rows;
-  uint32 columns;
-  uint32 tileWidth;
-  uint32 tileHeight;
+  int32 rows;
+  int32 columns;
+  int32 tileWidth;
+  int32 tileHeight;
   int offsetX;
   int offsetY;
 
   uint32* tiles;
 
   // Functions
-  uint32* getTile(uint32 x, uint32 y) {
-    return tiles + y * columns + x;
+  uint32* getTile(int32 x, int32 y) {
+    ASSERT(x >= 0 || x < this->rows);
+    ASSERT(y >= 0 || y < this->columns);
+
+    return tiles + (y * columns) + x;
+  }
+};
+
+struct world_map
+{
+  // TODO(Cristian): Sparseness
+  int32 tileMapCountX;
+  int32 tileMapCountY;
+
+  tile_map* tileMaps;
+
+  // Functions
+  tile_map* getTileMap(int32 x, int32 y)
+  {
+    ASSERT(x >= 0 || x < this->tileMapCountX);
+    ASSERT(y >= 0 || y < this->tileMapCountY);
+
+    return tileMaps + (y * tileMapCountY) + x;
   }
 };
 

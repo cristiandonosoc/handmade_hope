@@ -119,9 +119,6 @@ Win32TransferBufferToWindows(HDC deviceContext,
                              win32_offscreen_buffer *buffer,
                              int windowWidth, int windowHeight)
 {
-
-
-
   int offsetX = 10;
   int offsetY = 10;
 

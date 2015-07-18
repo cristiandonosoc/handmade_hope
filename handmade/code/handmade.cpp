@@ -134,40 +134,48 @@ DrawRectangle(game_offscreen_buffer* buffer, real32 realMinX, real32 realMinY,
   }
 }
 
-struct uint32_point
+struct int32_point
 {
-  uint32 x;
-  uint32 y;
+  int32 x;
+  int32 y;
 };
 
-inline uint32_point
+inline int32_point
 PlayerTilePosition(tile_map* tileMap, real32 pX, real32 pY)
 {
   // NOTE(Cristian): We substract the tile size when the coord
   // is negative in order to get a correct tile index
   if(pX < 0.0f) { pX -= tileMap->tileWidth; }
   if(pY < 0.0f) { pY -= tileMap->tileHeight; }
-  uint32_point res = {};
-  res.x = UTILS::TruncateReal32ToUInt32((pX - tileMap->offsetX) / tileMap->tileWidth);
-  res.y = UTILS::TruncateReal32ToUInt32((pY - tileMap->offsetY) / tileMap->tileHeight);
+  int32_point res = {};
+  res.x = UTILS::TruncateReal32ToInt32((pX - tileMap->offsetX) / tileMap->tileWidth);
+  res.y = UTILS::TruncateReal32ToInt32((pY - tileMap->offsetY) / tileMap->tileHeight);
   return res;
 }
 
-internal bool32
+#define TILE_VALID 0
+#define TILE_INVALID 1
+#define TILE_OUT 2
+
+internal int32
 PointValidInTileMap(tile_map* tileMap, real32 pX, real32 pY)
 {
-  uint32_point tilePos = PlayerTilePosition(tileMap, pX, pY);
+  int32_point tilePos = PlayerTilePosition(tileMap, pX, pY);
 
   if(tilePos.x >= 0 && tilePos.x < tileMap->columns &&
      tilePos.y >= 0 && tilePos.y < tileMap->rows)
   {
     if(*(tileMap->getTile(tilePos.x, tilePos.y)) == 0) // Being explicit
     {
-      return true;
+      return TILE_VALID;
+    }
+    else
+    {
+      return TILE_INVALID;
     }
   }
 
-  return false;
+  return TILE_OUT;
 }
 
 internal void
@@ -236,15 +244,68 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
 
 #define PLAYER_WIDTH 20
 #define PLAYER_HEIGHT 20
-    gameState->playerX = 500;
-    gameState->playerY = 500;
-    gameState->tileMapIndex = 0;
+    gameState->playerX = 400;
+    gameState->playerY = 400;
+    gameState->tileMapX = 0;
+    gameState->tileMapY = 0;
 
     // TODO(Cristián): This may be more appropiate to do in the platform layer
     gameMemory->graphicsInitialized = true;
   }
 
-  tile_map tileMaps[2];
+  // We create the tiles arrays
+  uint32 worldTiles[4][TILE_ROWS][TILE_COLUMNS] =
+  {
+    {
+      {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
+      {1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+      {1, 1, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1},
+      {1, 0, 0, 0,  0, 1, 1, 1,  0, 0, 1, 0,  1, 1, 0, 0,  0},
+      {1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  1, 0, 0, 0,  1},
+      {1, 0, 0, 0,  0, 1, 0, 0,  1, 1, 1, 0,  1, 0, 0, 0,  1},
+      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  1},
+      {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1},
+    },
+    {
+      {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
+      {1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+      {1, 1, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+      {1, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1},
+      {0, 0, 1, 0,  0, 0, 0, 1,  0, 0, 0, 0,  1, 1, 0, 0,  1},
+      {1, 0, 1, 0,  0, 0, 0, 0,  0, 0, 1, 1,  1, 0, 0, 0,  1},
+      {1, 0, 1, 0,  0, 0, 0, 0,  1, 1, 1, 0,  1, 0, 0, 0,  1},
+      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  1},
+      {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1},
+    },
+    {
+      {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1},
+      {1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+      {1, 1, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1},
+      {1, 0, 0, 0,  0, 1, 1, 1,  0, 0, 1, 0,  1, 1, 0, 0,  0},
+      {1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  1, 0, 0, 0,  1},
+      {1, 0, 0, 0,  0, 1, 0, 0,  1, 1, 1, 0,  1, 0, 0, 0,  1},
+      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  1},
+      {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
+    },
+    {
+      {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1},
+      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+      {1, 0, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1},
+      {0, 0, 0, 0,  0, 1, 1, 1,  0, 0, 1, 0,  1, 1, 0, 0,  1},
+      {1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  1, 0, 0, 0,  1},
+      {1, 0, 0, 0,  0, 1, 0, 0,  1, 1, 1, 0,  1, 0, 0, 0,  1},
+      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  1},
+      {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
+    },
+
+
+  };
+
+  // We create the tile_maps
+  tile_map tileMaps[4];
   tileMaps[0].rows = TILE_ROWS;
   tileMaps[0].columns = TILE_COLUMNS;
   tileMaps[0].tileWidth = 60;
@@ -252,38 +313,25 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
   tileMaps[0].offsetX = -30;
   tileMaps[0].offsetY = 0;
 
-  tileMaps[1] = tileMaps[0]; // TODO(Cristian): HORROR
+  tileMaps[0].tiles = (uint32*)worldTiles[0];
 
-  uint32 tiles0[TILE_ROWS][TILE_COLUMNS] =
-  {
-    {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
-    {1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
-    {1, 1, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
-    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1},
-    {1, 0, 0, 0,  0, 1, 1, 1,  0, 0, 1, 0,  1, 1, 0, 0,  1},
-    {1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  1, 0, 0, 0,  1},
-    {1, 0, 0, 0,  0, 1, 0, 0,  1, 1, 1, 0,  1, 0, 0, 0,  1},
-    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  1},
-    {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1},
-  };
-  tileMaps[0].tiles = (uint32*)tiles0;
+  tileMaps[1] = tileMaps[0]; // TODO(Cristian): HORROR, DON'T COPY
+  tileMaps[1].tiles = (uint32*)worldTiles[1];
 
-  uint32 tiles1[TILE_ROWS][TILE_COLUMNS] =
-  {
-    {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1},
-    {1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
-    {1, 1, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
-    {1, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1},
-    {1, 0, 1, 0,  0, 0, 0, 1,  0, 0, 0, 0,  1, 1, 0, 0,  1},
-    {1, 0, 1, 0,  0, 0, 0, 0,  0, 0, 1, 1,  1, 0, 0, 0,  1},
-    {1, 0, 1, 0,  0, 0, 0, 0,  1, 1, 1, 0,  1, 0, 0, 0,  1},
-    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  1},
-    {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
-  };
-  tileMaps[1].tiles = (uint32*)tiles1;
+  tileMaps[2] = tileMaps[0]; // TODO(Cristian): HORROR, DON'T COPY
+  tileMaps[2].tiles = (uint32*)worldTiles[2];
 
+  tileMaps[3] = tileMaps[0]; // TODO(Cristian): HORROR, DON'T COPY
+  tileMaps[3].tiles = (uint32*)worldTiles[3];
 
-  int currentTileIndex = gameState->tileMapIndex;
+  // We create the world
+  world_map world = {};
+  world.tileMapCountX = 2;
+  world.tileMapCountY = 2;
+  world.tileMaps = (tile_map*)tileMaps;
+
+  // We get the current tileMap
+  tile_map* currentTileMap = world.getTileMap(gameState->tileMapX, gameState->tileMapY);
 
   for(int controllerIndex = 0;
       controllerIndex < ARRAY_COUNT(gameInput->controllers);
@@ -292,13 +340,15 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
     game_controller_input *input =
       GetController(gameInput, controllerIndex);
 
+    if(!input->isConnected) { continue; }
+
     if(input->isAnalog)
     {
       // NOTE(Cristián): Use analog movement tuning
     }
     else
     {
-      // NOTE(cristiandonosoc@gmail.com): Use digital movement tuning
+      // NOTE(Cristian): Use digital movement tuning
       real32 dX = 0.0f;
       real32 dY = 0.0f;
       // NOTE(Cristian): The speed is pixels/second
@@ -327,40 +377,69 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
       bool32 updateX = true;
       bool32 updateY = true;
 
-      bool32 validMove =
-        PointValidInTileMap(&tileMaps[currentTileIndex], proposedX, proposedY) &&
-        PointValidInTileMap(&tileMaps[currentTileIndex], proposedX - PLAYER_WIDTH / 2, proposedY) &&
-        PointValidInTileMap(&tileMaps[currentTileIndex], proposedX + PLAYER_WIDTH / 2, proposedY);
+      int32 moveResult =
+        PointValidInTileMap(currentTileMap, proposedX, proposedY) &
+        PointValidInTileMap(currentTileMap, proposedX - PLAYER_WIDTH / 2, proposedY) &
+        PointValidInTileMap(currentTileMap, proposedX + PLAYER_WIDTH / 2, proposedY);
 
 
-      uint32_point tilePos = PlayerTilePosition(&tileMaps[currentTileIndex], proposedX, proposedY);
+      int32_point tilePos = PlayerTilePosition(currentTileMap, proposedX, proposedY);
+
       char mbuffer[256];
       //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
       sprintf_s(mbuffer,
-        "X: %f, Y: %f, TX: %d, TY: %d\n",
-        proposedX, proposedY, tilePos.x, tilePos.y);
+        "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d\n",
+        proposedX, proposedY,
+        tilePos.x, tilePos.y,
+        gameState->tileMapX, gameState->tileMapY);
       OutputDebugStringA(mbuffer);
 
 
-      if(validMove)
+      if(moveResult == TILE_VALID)
       {
         gameState->playerX = proposedX;
         gameState->playerY = proposedY;
       }
-      else
+      else if(moveResult == TILE_OUT)
       {
 
-        // We check to see if we left the map
-        if(tilePos.y < 0 || tilePos.y >= tileMaps[currentTileIndex].rows)
+        // We check to see if we left the map (X-style)
+        if(tilePos.x < 0 || tilePos.x >= currentTileMap->columns)
         {
-          // We switch the map!
-          gameState->tileMapIndex = currentTileIndex ^ 1;
-          if(gameState->playerY > 500)
+          // We switch the tile_map!
+          if(tilePos.x < 0)
           {
-            gameState->playerY = 20;
+            gameState->tileMapX--;
+
+            // TODO(Cristian): Improve (unharcode) this!
+            gameState->playerX = offscreenBuffer->width - 20;
           }
-          else {
-            gameState->playerY = 520;
+          else
+          {
+            gameState->tileMapX++;
+
+            // TODO(Cristian): Improve (unharcode) this!
+            gameState->playerX = 20;
+          }
+        }
+
+        // We check to see if we left the map (Y-style)
+        if(tilePos.y < 0 || tilePos.y >= currentTileMap->rows)
+        {
+          // We switch the tile_map!
+          if(tilePos.y < 0)
+          {
+            gameState->tileMapY--;
+
+            // TODO(Cristian): Improve (unharcode) this!
+            gameState->playerY = offscreenBuffer->height - 20;
+          }
+          else
+          {
+            gameState->tileMapY++;
+
+            // TODO(Cristian): Improve (unharcode) this!
+            gameState->playerY = 20;
           }
         }
       }
@@ -372,30 +451,29 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
   /*** RENDERING ***/
   ClearScreenBuffer(offscreenBuffer, 1.0f, 0.0f, 1.0f);
 
-  tile_map currentTileMap = tileMaps[currentTileIndex];
-  for(uint32 row = 0;
-      row < currentTileMap.rows;
+  for(int32 row = 0;
+      row < currentTileMap->rows;
       row++)
   {
-    for(uint32 col = 0;
-        col < currentTileMap.columns;
+    for(int32 col = 0;
+        col < currentTileMap->columns;
         col++)
       {
 
         int currentTile = 0;
 
-        uint32 playerTileX =
-          UTILS::TruncateReal32ToUInt32((gameState->playerX - currentTileMap.offsetX) / currentTileMap.tileWidth);
-        uint32 playerTileY =
-          UTILS::TruncateReal32ToUInt32((gameState->playerY - currentTileMap.offsetY) / currentTileMap.tileHeight);
+        int32 playerTileX =
+          UTILS::TruncateReal32ToInt32((gameState->playerX - currentTileMap->offsetX) / currentTileMap->tileWidth);
+        int32 playerTileY =
+          UTILS::TruncateReal32ToInt32((gameState->playerY - currentTileMap->offsetY) / currentTileMap->tileHeight);
         if (col == playerTileX && row == playerTileY) { currentTile = 1; }
         DrawRectangle(offscreenBuffer,
-                      currentTileMap.offsetX + (col * currentTileMap.tileWidth),
-                      currentTileMap.offsetY + (row * currentTileMap.tileHeight),
-                      currentTileMap.offsetX + (col * currentTileMap.tileWidth) + currentTileMap.tileWidth - 1,
-                      currentTileMap.offsetY + (row * currentTileMap.tileHeight) + currentTileMap.tileHeight - 1,
+                      currentTileMap->offsetX + (col * currentTileMap->tileWidth),
+                      currentTileMap->offsetY + (row * currentTileMap->tileHeight),
+                      currentTileMap->offsetX + (col * currentTileMap->tileWidth) + currentTileMap->tileWidth - 1,
+                      currentTileMap->offsetY + (row * currentTileMap->tileHeight) + currentTileMap->tileHeight - 1,
                       currentTile * 0.8f,
-                      *currentTileMap.getTile(col, row) * 0.5f,
+                      *(currentTileMap->getTile(col, row)) * 0.5f,
                       0.7f);
       }
   }
