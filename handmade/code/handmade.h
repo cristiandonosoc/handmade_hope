@@ -59,20 +59,24 @@ GAME_GET_SOUND(GameGetSoundStub)
 #define TILE_COLUMNS 17
 
 struct world_map; // Forward-declare
-struct tile_map
-{
-  uint32* tiles;
-  world_map* world;
-};
 
 struct world_coordinates
 {
-  int32 tileMapX;
-  int32 tileMapY;
+  // NOTE(Cristian): Represent the global (obsolute) position of the tile
+  // in the world
   int32 tileX;
   int32 tileY;
+
+  // NOTE(Cristian): This go from 0.0 to 1.0
   real32 pX;
   real32 pY;
+};
+
+
+struct tile_map
+{
+
+  uint32* tiles;
 };
 
 struct world_map
@@ -84,26 +88,13 @@ struct world_map
   int offsetX;
   int offsetY;
 
+  int tileAddressingBitCount;
+
   // TODO(Cristian): Sparseness
   int32 tileMapCountX;
   int32 tileMapCountY;
 
   tile_map* tileMaps;
-
-  // Functions
-  tile_map* getTileMap(world_coordinates* coords)
-  {
-    int32 x = coords->tileMapX;
-    int32 y = coords->tileMapY;
-
-    if((x >= 0 && x < this->tileMapCountX) &&
-       (y >= 0 || y < this->tileMapCountY))
-    {
-      return tileMaps + (y * tileMapCountY) + x;
-    }
-
-    return nullptr;
-  }
 
   int32 getTileMapWidth()
   {
