@@ -27,8 +27,8 @@ struct int32_point
 inline tile_map*
 GetTileMap(world_map* world, world_coordinates* coords)
 {
-  int32 x = coords->tileX >> world->tileAddressingBitCount;
-  int32 y = coords->tileY >> world->tileAddressingBitCount;
+  int32 x = coords->tileX >> world->tileShift;
+  int32 y = coords->tileY >> world->tileShift;
 
   if((x >= 0 && x < world->tileMapCountX) &&
      (y >= 0 || y < world->tileMapCountY))
@@ -43,20 +43,20 @@ GetTileMap(world_map* world, world_coordinates* coords)
 inline uint32*
 GetTile(world_map* world, world_coordinates* coords)
 {
-  int32 tileMapX = coords->tileX >> world->tileAddressingBitCount;
-  int32 tileMapY = coords->tileY >> world->tileAddressingBitCount;
+  int32 tileMapX = coords->tileX >> world->tileShift;
+  int32 tileMapY = coords->tileY >> world->tileShift;
 
   ASSERT(tileMapX >= 0 || tileMapX < world->tileMapCountX);
   ASSERT(tileMapY >= 0 || tileMapY < world->tileMapCountY);
 
-  int32 tileX = coords->tileX & 0xF;
-  int32 tileY = coords->tileY & 0xF;
+  int32 tileX = coords->tileX & world->tileMask;
+  int32 tileY = coords->tileY & world->tileMask;
 
-  ASSERT(tileX >= 0 || tileX < world->tileCountX);
-  ASSERT(tileY >= 0 || tileY < world->tileCountY);
+  ASSERT(tileX >= 0 || tileX < world->tileMax);
+  ASSERT(tileY >= 0 || tileY < world->tileMax);
 
   tile_map* tileMap = GetTileMap(world, coords);
-  uint32* res = tileMap->tiles + (tileY * world->tileCountX) + tileX;
+  uint32* res = tileMap->tiles + (tileY * world->tileMax) + tileX;
   uint32 a = *res;
   return res;
 }
@@ -94,9 +94,9 @@ PointValidInTileMap(world_map* world, world_coordinates* coords)
 {
   // We check for out of tile movement
   if(coords->tileX < 0) { return TILE_OUT_LEFT; }
-  if(coords->tileX >= world->tileCountX) { return TILE_OUT_RIGHT; }
+  if(coords->tileX >= world->tileMax) { return TILE_OUT_RIGHT; }
   if(coords->tileY < 0) { return TILE_OUT_UP; }
-  if(coords->tileY >= world->tileCountY) { return TILE_OUT_DOWN; }
+  if(coords->tileY >= world->tileMax) { return TILE_OUT_DOWN; }
 
   // See if we need the tileMap checking
   tile_map* tileMap = GetTileMap(world, coords);
@@ -115,24 +115,24 @@ internal void
 NormalizeCoordinates(world_map* world, world_coordinates* coords)
 {
   // NOTE(Cristian): This assumes uniform tileMaps
-  if(coords->pX < 0 + world->offsetX)
-  {
-    // NOTE(Cristian): pX is negative
-    coords->pX = world->getTileMapWidth() + world->offsetX + coords->pX;
-  }
-  else if(coords->pX >= world->getTileMapWidth() + world->offsetX)
-  {
-    coords->pX = coords->pX - (world->getTileMapWidth() + world->offsetX);
-  }
-  else if(coords->pY < 0 + world->offsetY)
-  {
-    // NOTE(Cristian): pY is negative
-    coords->pY = world->getTileMapHeight() + world->offsetY + coords->pY;
-  }
-  else if(coords->pY >= world->getTileMapHeight() + world->offsetY)
-  {
-    coords->pY = coords->pY - (world->getTileMapHeight() + world->offsetY);
-  }
+  // if(coords->pX < 0 + world->offsetX)
+  // {
+  //   // NOTE(Cristian): pX is negative
+  //   coords->pX = world->getTileMapWidth() + world->offsetX + coords->pX;
+  // }
+  // else if(coords->pX >= world->getTileMapWidth() + world->offsetX)
+  // {
+  //   coords->pX = coords->pX - (world->getTileMapWidth() + world->offsetX);
+  // }
+  // else if(coords->pY < 0 + world->offsetY)
+  // {
+  //   // NOTE(Cristian): pY is negative
+  //   coords->pY = world->getTileMapHeight() + world->offsetY + coords->pY;
+  // }
+  // else if(coords->pY >= world->getTileMapHeight() + world->offsetY)
+  // {
+  //   coords->pY = coords->pY - (world->getTileMapHeight() + world->offsetY);
+  // }
 
   CalculateTilePositionForCoordinates(world, coords);
 }
@@ -246,84 +246,60 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
     gameMemory->graphicsInitialized = true;
   }
 
+#define TILE_MAP_SIZE 256
   // TODO(Cristian): CHANGE THE TILEMAP INTO THE CANNONICAL PACKING!
   // We create the tiles arrays
-  uint32 worldTiles[4][TILE_ROWS][TILE_COLUMNS] =
+  uint32 worldTiles[TILE_MAP_SIZE][TILE_MAP_SIZE] =
   {
-    {
-      {0, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
-      {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
-      {1, 1, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
-      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1},
-      {1, 0, 0, 0,  0, 1, 1, 1,  0, 0, 1, 0,  1, 1, 0, 0,  0},
-      {1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  1, 0, 0, 0,  1},
-      {1, 0, 0, 0,  0, 1, 0, 0,  1, 1, 1, 0,  1, 0, 0, 0,  1},
-      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  1},
-      {1, 1, 1, 1,  1, 0, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1},
-    },
-    {
-      {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
-      {1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
-      {1, 1, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
-      {1, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1},
-      {0, 0, 1, 0,  0, 0, 0, 1,  0, 0, 0, 0,  1, 1, 0, 0,  1},
-      {1, 0, 1, 0,  0, 0, 0, 0,  0, 0, 1, 1,  1, 0, 0, 0,  1},
-      {1, 0, 1, 0,  0, 0, 0, 0,  1, 1, 1, 0,  1, 0, 0, 0,  1},
-      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  1},
-      {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1},
-    },
-    {
-      {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1},
-      {1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
-      {1, 1, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
-      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1},
-      {1, 0, 0, 0,  0, 1, 1, 1,  0, 0, 1, 0,  1, 1, 0, 0,  0},
-      {1, 0, 0, 0,  0, 1, 0, 1,  0, 0, 1, 0,  1, 0, 0, 0,  1},
-      {1, 0, 0, 0,  0, 1, 0, 1,  1, 1, 1, 0,  1, 0, 0, 0,  1},
-      {1, 0, 0, 0,  0, 0, 0, 1,  1, 1, 1, 1,  1, 1, 0, 0,  1},
-      {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
-    },
-    {
-      {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1},
-      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
-      {1, 0, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
-      {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1},
-      {0, 0, 0, 0,  0, 1, 1, 1,  0, 0, 1, 0,  1, 1, 0, 0,  1},
-      {1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  1, 0, 0, 0,  1},
-      {1, 0, 0, 0,  0, 1, 0, 0,  1, 1, 1, 0,  1, 0, 0, 0,  1},
-      {1, 0, 1, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1, 0, 0, 0,  1},
-      {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
-    },
-
-
+    {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
+    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+    {1, 1, 1, 1,  1, 0, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1,  1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1},
+    {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1,  1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1,  1},
+    {1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+    {1, 1, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1,  1, 0, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1},
+    {1, 0, 0, 0,  0, 1, 1, 1,  0, 0, 1, 0,  1, 1, 0, 0,  0,  0, 0, 0, 0,  0, 1, 1, 1,  0, 0, 1, 0,  1, 1, 0, 0,  1},
+    {1, 0, 0, 0,  0, 1, 0, 1,  0, 0, 1, 0,  1, 0, 0, 0,  1,  1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  1, 0, 0, 0,  1},
+    {1, 0, 0, 0,  0, 1, 0, 1,  1, 1, 1, 0,  1, 0, 0, 0,  1,  1, 0, 0, 0,  0, 1, 0, 0,  1, 1, 1, 0,  1, 0, 0, 0,  1},
+    {1, 0, 0, 0,  0, 0, 0, 1,  1, 1, 1, 1,  1, 1, 0, 0,  1,  1, 0, 1, 0,  0, 0, 0, 0,  0, 1, 1, 0,  1, 0, 0, 0,  1},
+    {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
   };
 
   // We create the world
   world_map world = {};
-  world.tileMapCountX = 2;
-  world.tileMapCountY = 2;
-  world.tileCountX = TILE_COLUMNS;
-  world.tileCountY = TILE_ROWS;
+  world.tileMapCountX = 1;
+  world.tileMapCountY = 1;
+
+  world.tileShift = 8;
+  world.tileMask = (1 << world.tileShift) - 1;
+  world.tileMax = (1 << world.tileShift);
+
   world.tileWidth = 60;
   world.tileHeight = 60;
   world.offsetX = -30;
   world.offsetY = 0;
 
   // We create the tile_maps
-  tile_map tileMaps[4];
+  tile_map tileMaps[1];
   tileMaps[0] = {};
   // TODO(Cristian): See if we need a world reference in each tileMap
   // tileMaps[0].world = &world;
   tileMaps[0].tiles = (uint32*)worldTiles[0];
 
-  tileMaps[1] = tileMaps[0]; // TODO(Cristian): Don't Copy
-  tileMaps[1].tiles = (uint32*)worldTiles[1];
-
-  tileMaps[2] = tileMaps[0]; // TODO(Cristian): Don't Copy
-  tileMaps[2].tiles = (uint32*)worldTiles[2];
-
-  tileMaps[3] = tileMaps[0]; // TODO(Cristian): Don't Copy
-  tileMaps[3].tiles = (uint32*)worldTiles[3];
+  // tileMaps[1] = tileMaps[0]; // TODO(Cristian): Don't Copy
+  // tileMaps[1].tiles = (uint32*)worldTiles[1];
+  //
+  // tileMaps[2] = tileMaps[0]; // TODO(Cristian): Don't Copy
+  // tileMaps[2].tiles = (uint32*)worldTiles[2];
+  //
+  // tileMaps[3] = tileMaps[0]; // TODO(Cristian): Don't Copy
+  // tileMaps[3].tiles = (uint32*)worldTiles[3];
 
   // We assign the tile maps
   world.tileMaps = (tile_map*)tileMaps;
@@ -384,32 +360,33 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
       CalculateTilePositionForCoordinates(&world, &leftLowerCorner);
 
       // We check left-lower corner
-      int32 moveResult = PointValidInWorldMap(&world, &leftLowerCorner);
-      if(moveResult == TILE_VALID)
-      {
-        world_coordinates rightLowerCorner = *coords;
-        rightLowerCorner.pX = proposedX + PLAYER_WIDTH / 2;
-        rightLowerCorner.pY = proposedY;
-        CalculateTilePositionForCoordinates(&world, &rightLowerCorner);
+      // int32 moveResult = PointValidInWorldMap(&world, &leftLowerCorner);
+      // if(moveResult == TILE_VALID)
+      // {
+      //   world_coordinates rightLowerCorner = *coords;
+      //   rightLowerCorner.pX = proposedX + PLAYER_WIDTH / 2;
+      //   rightLowerCorner.pY = proposedY;
+      //   CalculateTilePositionForCoordinates(&world, &rightLowerCorner);
+      //
+      //   // We check ther right-lower corner
+      //   moveResult = PointValidInWorldMap(&world, &rightLowerCorner);
+      // }
+      //
+      // int32_point tilePos = CalculateTilePosition(&world, coords);
+      //
+      // char mbuffer[256];
+      // //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
+      // sprintf_s(mbuffer,
+      //   "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d\n",
+      //   proposedX, proposedY,
+      //   tilePos.x, tilePos.y,
+      //   0, 0
+      //   // coords->tileMapX, coords->tileMapY
+      // );
+      // OutputDebugStringA(mbuffer);
+      //
 
-        // We check ther right-lower corner
-        moveResult = PointValidInWorldMap(&world, &rightLowerCorner);
-      }
-
-      int32_point tilePos = CalculateTilePosition(&world, coords);
-
-      char mbuffer[256];
-      //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
-      sprintf_s(mbuffer,
-        "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d\n",
-        proposedX, proposedY,
-        tilePos.x, tilePos.y,
-        0, 0
-        // coords->tileMapX, coords->tileMapY
-      );
-      OutputDebugStringA(mbuffer);
-
-
+      int32 moveResult = TILE_VALID;
       if(moveResult == TILE_VALID)
       {
         coords->pX = proposedX;
@@ -456,15 +433,21 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
   /*** RENDERING ***/
   ClearScreenBuffer(offscreenBuffer, 1.0f, 0.0f, 1.0f);
 
+#define TOTAL_X 17
+#define TOTAL_Y 9
+  int totalHeight = TOTAL_Y * world.tileHeight;
+
   // TODO(Cristian): TILEMAP RENDERING!!!!
   for(int32 row = 0;
-      row < world.tileCountY;
+      row < TOTAL_Y;
       row++)
   {
     for(int32 col = 0;
-        col < world.tileCountX;
+        col < TOTAL_X;
         col++)
       {
+
+
 
         int currentTile = 0;
 
@@ -476,26 +459,27 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
         if (col == playerTileX && row == playerTileY) { currentTile = 1; }
 
         world_coordinates rectCoords = {};
-        rectCoords.tileX = (0 << world.tileAddressingBitCount) & col;
-        rectCoords.tileY = (0 << world.tileAddressingBitCount) & row;
+        rectCoords.tileX = col;
+        rectCoords.tileY = row;
+        int32 tile = *GetTile(&world, &rectCoords);
 
         DrawRectangle(offscreenBuffer,
                       world.offsetX + (col * world.tileWidth),
-                      world.offsetY + (row * world.tileHeight),
+                      world.offsetY + (totalHeight - world.tileHeight * (row + 1)),
                       world.offsetX + (col * world.tileWidth) + world.tileWidth - 1,
-                      world.offsetY + (row * world.tileHeight) + world.tileHeight - 1,
+                      world.offsetY + (totalHeight - world.tileHeight * (row + 1)) + world.tileHeight - 1,
                       currentTile * 0.8f,
-                      (*GetTile(&world, &rectCoords)) * 0.5f,
+                      tile * 0.5f,
                       0.7f);
       }
   }
 
   // Draw Player
   DrawRectangle(offscreenBuffer,
-                coords->pX - PLAYER_WIDTH / 2,
-                coords->pY - PLAYER_HEIGHT,
-                coords->pX + PLAYER_WIDTH / 2,
-                coords->pY,
+                world.offsetX + (coords->tileX + coords->pX) * world.tileWidth - PLAYER_WIDTH / 2,
+                world.offsetY + (totalHeight - (coords->tileY + coords->pY) * world.tileHeight)  - PLAYER_HEIGHT,
+                world.offsetX + (coords->tileX + coords->pX) * world.tileWidth + PLAYER_WIDTH / 2,
+                world.offsetY + (totalHeight - (coords->tileY + coords->pY) * world.tileHeight),
                 1.0f, 1.0f, 0.0f);
 
   // Draw Mouse

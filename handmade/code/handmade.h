@@ -55,8 +55,6 @@ GAME_GET_SOUND(GameGetSoundStub)
 
 
 /*** GAME OBJECTS ***/
-#define TILE_ROWS 9
-#define TILE_COLUMNS 17
 
 struct world_map; // Forward-declare
 
@@ -81,31 +79,20 @@ struct tile_map
 
 struct world_map
 {
-  int32 tileCountX;
-  int32 tileCountY;
   int32 tileWidth;
   int32 tileHeight;
   int offsetX;
   int offsetY;
 
-  int tileAddressingBitCount;
+  int tileShift;
+  int tileMask;
+  int tileMax;
 
   // TODO(Cristian): Sparseness
   int32 tileMapCountX;
   int32 tileMapCountY;
 
   tile_map* tileMaps;
-
-  int32 getTileMapWidth()
-  {
-    return this->tileCountX * this->tileWidth;
-  }
-
-  int32 getTileMapHeight()
-  {
-    return this->tileCountY * this->tileHeight;
-  }
-
 };
 
 struct game_state

@@ -32,7 +32,7 @@ FloorReal32ToUInt32(real32 val)
 inline int32
 FloorReal32ToInt32(real32 val)
 {
-  if(val < 0.0f) { val -= 1.0f; }
+   if(val < 0.0f) { val -= 1.0f; }
   return (int32)val;
 }
 
