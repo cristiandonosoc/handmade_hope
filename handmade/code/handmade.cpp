@@ -61,27 +61,6 @@ GetTile(world_map* world, world_coordinates* coords)
   return res;
 }
 
-inline int32_point
-CalculateTilePosition(world_map* world, world_coordinates* coords)
-{
-  // NOTE(Cristian): We substract the tile size when the coord
-  // is negative in order to get a correct tile index
-  if(coords->pX < 0.0f) { coords->pX -= world->tileWidth; }
-  if(coords->pY < 0.0f) { coords->pY -= world->tileHeight; }
-  int32_point res = {};
-  res.x = UTILS::FloorReal32ToInt32((coords->pX - world->offsetX) / world->tileWidth);
-  res.y = UTILS::FloorReal32ToInt32((coords->pY - world->offsetY) / world->tileHeight);
-  return res;
-}
-
-inline void
-CalculateTilePositionForCoordinates(world_map* world, world_coordinates* coords)
-{
-  int32_point tilePos = CalculateTilePosition(world, coords);
-  coords->tileX = tilePos.x;
-  coords->tileY = tilePos.y;
-}
-
 #define TILE_VALID 0
 #define TILE_INVALID 1
 #define TILE_OUT_LEFT 2
@@ -115,26 +94,26 @@ internal void
 NormalizeCoordinates(world_map* world, world_coordinates* coords)
 {
   // NOTE(Cristian): This assumes uniform tileMaps
-  // if(coords->pX < 0 + world->offsetX)
-  // {
-  //   // NOTE(Cristian): pX is negative
-  //   coords->pX = world->getTileMapWidth() + world->offsetX + coords->pX;
-  // }
-  // else if(coords->pX >= world->getTileMapWidth() + world->offsetX)
-  // {
-  //   coords->pX = coords->pX - (world->getTileMapWidth() + world->offsetX);
-  // }
-  // else if(coords->pY < 0 + world->offsetY)
-  // {
-  //   // NOTE(Cristian): pY is negative
-  //   coords->pY = world->getTileMapHeight() + world->offsetY + coords->pY;
-  // }
-  // else if(coords->pY >= world->getTileMapHeight() + world->offsetY)
-  // {
-  //   coords->pY = coords->pY - (world->getTileMapHeight() + world->offsetY);
-  // }
-
-  CalculateTilePositionForCoordinates(world, coords);
+  if(coords->pX < 0)
+  {
+    // NOTE(Cristian): pX is negative
+    coords->tileX--;
+    coords->pX = world->tileInMeters + coords->pX;
+  }
+  else if(coords->pX >= world->tileInMeters)
+  {
+    coords->pX = coords->pX - world->tileInMeters;
+  }
+  else if(coords->pY < 0)
+  {
+    // NOTE(Cristian): pY is negative
+    coords->tileY--;
+    coords->pY = world->tileInMeters + coords->pY;
+  }
+  else if(coords->pY >= world->tileInMeters)
+  {
+    coords->pY = coords->pY - world->tileInMeters;
+  }
 }
 
 internal int32
@@ -280,8 +259,9 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
   world.tileMask = (1 << world.tileShift) - 1;
   world.tileMax = (1 << world.tileShift);
 
-  world.tileWidth = 60;
-  world.tileHeight = 60;
+  world.tileInMeters = 1.0f;
+  world.tileInPixels = 60;
+
   world.offsetX = -30;
   world.offsetY = 0;
 
@@ -357,7 +337,7 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
       world_coordinates leftLowerCorner = *coords;
       leftLowerCorner.pX = proposedX - PLAYER_WIDTH / 2;
       leftLowerCorner.pY = proposedY;
-      CalculateTilePositionForCoordinates(&world, &leftLowerCorner);
+      // TODO(Cristian): Re-normalize position after update
 
       // We check left-lower corner
       // int32 moveResult = PointValidInWorldMap(&world, &leftLowerCorner);
@@ -435,7 +415,7 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
 
 #define TOTAL_X 17
 #define TOTAL_Y 9
-  int totalHeight = TOTAL_Y * world.tileHeight;
+  int totalHeight = TOTAL_Y * world.tileInPixels;
 
   // TODO(Cristian): TILEMAP RENDERING!!!!
   for(int32 row = 0;
@@ -452,9 +432,9 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
         int currentTile = 0;
 
         int32 playerTileX =
-          UTILS::FloorReal32ToInt32((coords->pX - world.offsetX) / world.tileWidth);
+          UTILS::FloorReal32ToInt32((coords->pX - world.offsetX) / world.tileInPixels);
         int32 playerTileY =
-          UTILS::FloorReal32ToInt32((coords->pY - world.offsetY) / world.tileHeight);
+          UTILS::FloorReal32ToInt32((coords->pY - world.offsetY) / world.tileInPixels);
 
         if (col == playerTileX && row == playerTileY) { currentTile = 1; }
 
@@ -464,10 +444,10 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
         int32 tile = *GetTile(&world, &rectCoords);
 
         DrawRectangle(offscreenBuffer,
-                      world.offsetX + (col * world.tileWidth),
-                      world.offsetY + (totalHeight - world.tileHeight * (row + 1)),
-                      world.offsetX + (col * world.tileWidth) + world.tileWidth - 1,
-                      world.offsetY + (totalHeight - world.tileHeight * (row + 1)) + world.tileHeight - 1,
+                      world.offsetX + (col * world.tileInPixels),
+                      world.offsetY + (totalHeight - world.tileInPixels * (row + 1)),
+                      world.offsetX + (col * world.tileInPixels) + world.tileInPixels - 1,
+                      world.offsetY + (totalHeight - world.tileInPixels * (row + 1)) + world.tileInPixels - 1,
                       currentTile * 0.8f,
                       tile * 0.5f,
                       0.7f);
@@ -476,10 +456,10 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
 
   // Draw Player
   DrawRectangle(offscreenBuffer,
-                world.offsetX + (coords->tileX + coords->pX) * world.tileWidth - PLAYER_WIDTH / 2,
-                world.offsetY + (totalHeight - (coords->tileY + coords->pY) * world.tileHeight)  - PLAYER_HEIGHT,
-                world.offsetX + (coords->tileX + coords->pX) * world.tileWidth + PLAYER_WIDTH / 2,
-                world.offsetY + (totalHeight - (coords->tileY + coords->pY) * world.tileHeight),
+                world.offsetX + (coords->tileX * world.tileInPixels) + coords->pX - PLAYER_WIDTH / 2,
+                world.offsetY + (totalHeight - ((coords->tileY * world.tileInPixels) + coords->pY) - PLAYER_HEIGHT),
+                world.offsetX + (coords->tileX * world.tileInPixels) + coords->pX + PLAYER_WIDTH / 2,
+                world.offsetY + (totalHeight - ((coords->tileY * world.tileInPixels) + coords->pY)),
                 1.0f, 1.0f, 0.0f);
 
   // Draw Mouse

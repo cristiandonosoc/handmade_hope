@@ -65,7 +65,9 @@ struct world_coordinates
   int32 tileX;
   int32 tileY;
 
-  // NOTE(Cristian): This go from 0.0 to 1.0
+  // Movement (in world) meters from the referenced tile ny (tileX, tileY)
+  // If the coordinates are normalized, both pX and pY should be
+  // 0 <= pX, pY < tileInMeters
   real32 pX;
   real32 pY;
 };
@@ -79,14 +81,15 @@ struct tile_map
 
 struct world_map
 {
-  int32 tileWidth;
-  int32 tileHeight;
   int offsetX;
   int offsetY;
 
   int tileShift;
   int tileMask;
   int tileMax;
+
+  real32 tileInMeters;
+  real32 tileInPixels;
 
   // TODO(Cristian): Sparseness
   int32 tileMapCountX;
