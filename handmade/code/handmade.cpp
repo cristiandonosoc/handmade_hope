@@ -96,30 +96,22 @@ PointValidInTileMap(world_map* world, world_coordinates* coords)
   }
 }
 
+/**
+ * Modifies the coordinates so that pX and pY, which represent the offset from the tile,
+ * are within the tile bounds. If they're not, we must move the tile into the correct offset.
+ */
 internal void
 NormalizeCoordinates(world_map* world, world_coordinates* coords)
 {
-  // NOTE(Cristian): This assumes uniform tileMaps
-  if(coords->pX < 0)
-  {
-    // NOTE(Cristian): pX is negative
-    coords->tileX--;
-    coords->pX = world->tileInMeters + coords->pX;
-  }
-  else if(coords->pX >= world->tileInMeters)
-  {
-    coords->pX = coords->pX - world->tileInMeters;
-  }
-  else if(coords->pY < 0)
-  {
-    // NOTE(Cristian): pY is negative
-    coords->tileY--;
-    coords->pY = world->tileInMeters + coords->pY;
-  }
-  else if(coords->pY >= world->tileInMeters)
-  {
-    coords->pY = coords->pY - world->tileInMeters;
-  }
+  real32 divX = UTILS::FloorReal32ToInt32(coords->pX / world->tileInMeters);
+  real32 divY = UTILS::FloorReal32ToInt32(coords->pY / world->tileInMeters);
+  // We move the tile offset
+  coords->tileX += divX;
+  coords->tileY += divY;
+
+  // We correct the correct offset
+  coords->pX -= divX * world->tileInMeters;
+  coords->pY -= divY * world->tileInMeters;
 }
 
 internal int32_point
@@ -326,7 +318,7 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
       real32 dX = 0.0f;
       real32 dY = 0.0f;
       // NOTE(Cristian): The speed is pixels/second
-      real32 speed = gameInput->secondsToUpdate * 128.0f;
+      real32 speed = gameInput->secondsToUpdate * 2.0f;
 
       if(input->moveLeft.endedDown)
       {
@@ -336,11 +328,11 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
       {
         dX += speed;
       }
-      if(input->moveUp.endedDown)
+      if(input->moveDown.endedDown)
       {
         dY -= speed;
       }
-      if(input->moveDown.endedDown)
+      if(input->moveUp.endedDown)
       {
         dY += speed;
       }
@@ -348,14 +340,15 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
       world_coordinates proposedCoords = *(coords);
       proposedCoords.pX = coords->pX + dX;
       proposedCoords.pY = coords->pY + dY;
-      NormalizeCoordinates(&proposedCoords);
+      NormalizeCoordinates(&world, &proposedCoords);
+
 
       bool32 updateX = true;
       bool32 updateY = true;
 
-      world_coordinates leftLowerCorner = *coords;
-      leftLowerCorner.pX = proposedCoords.pX - PLAYER_WIDTH / 2;
-      leftLowerCorner.pY = proposedCoords.pY;
+      // world_coordinates leftLowerCorner = *coords;
+      // leftLowerCorner.pX = proposedCoords.pX - PLAYER_WIDTH / 2;
+      // leftLowerCorner.pY = proposedCoords.pY;
       // TODO(Cristian): Re-normalize position after update
 
       // We check left-lower corner
@@ -471,11 +464,13 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
 
   // Draw Player
   DrawRectangle(offscreenBuffer,
-                world.offsetX + (coords->tileX * world.tileInPixels) + coords->pX - PLAYER_WIDTH / 2,
-                world.offsetY + (totalHeight - ((coords->tileY * world.tileInPixels) + coords->pY) - PLAYER_HEIGHT),
-                world.offsetX + (coords->tileX * world.tileInPixels) + coords->pX + PLAYER_WIDTH / 2,
-                world.offsetY + (totalHeight - ((coords->tileY * world.tileInPixels) + coords->pY)),
+                world.offsetX + ((coords->tileX * world.tileInMeters) + coords->pX) * world.tileInPixels - PLAYER_WIDTH / 2,
+                world.offsetY + (totalHeight - (((coords->tileY * world.tileInMeters) + coords->pY) * world.tileInPixels) - PLAYER_HEIGHT),
+                world.offsetX + ((coords->tileX * world.tileInMeters) + coords->pX) * world.tileInPixels + PLAYER_WIDTH / 2,
+                world.offsetY + (totalHeight - (((coords->tileY * world.tileInMeters) + coords->pY) * world.tileInPixels)),
                 1.0f, 1.0f, 0.0f);
+
+
 
   // Draw Mouse
   DrawRectangle(offscreenBuffer,
