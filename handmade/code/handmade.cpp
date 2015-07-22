@@ -24,6 +24,12 @@ struct int32_point
   int32 y;
 };
 
+struct uint32_point
+{
+  uint32 x;
+  uint32 y;
+};
+
 inline tile_map*
 GetTileMap(world_map* world, world_coordinates* coords)
 {
@@ -114,6 +120,26 @@ NormalizeCoordinates(world_map* world, world_coordinates* coords)
   {
     coords->pY = coords->pY - world->tileInMeters;
   }
+}
+
+internal int32_point
+GetTileCoordinates(world_map* world, world_coordinates* coords)
+{
+  int32_point point = {};
+  point.x = coords->tileX & world->tileMask;
+  point.y = coords->tileY & world->tileMask;
+
+  return point;
+}
+
+internal int32_point
+GetTileMapCoordinates(world_map* world, world_coordinates* coords)
+{
+  int32_point point = {};
+  point.x = coords->tileX >> world->tileShift;
+  point.y = coords->tileY >> world->tileShift;
+
+  return point;
 }
 
 internal int32
@@ -272,15 +298,6 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
   // tileMaps[0].world = &world;
   tileMaps[0].tiles = (uint32*)worldTiles[0];
 
-  // tileMaps[1] = tileMaps[0]; // TODO(Cristian): Don't Copy
-  // tileMaps[1].tiles = (uint32*)worldTiles[1];
-  //
-  // tileMaps[2] = tileMaps[0]; // TODO(Cristian): Don't Copy
-  // tileMaps[2].tiles = (uint32*)worldTiles[2];
-  //
-  // tileMaps[3] = tileMaps[0]; // TODO(Cristian): Don't Copy
-  // tileMaps[3].tiles = (uint32*)worldTiles[3];
-
   // We assign the tile maps
   world.tileMaps = (tile_map*)tileMaps;
 
@@ -328,15 +345,17 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
         dY += speed;
       }
 
-      real32 proposedX = coords->pX + dX;
-      real32 proposedY = coords->pY + dY;
+      world_coordinates proposedCoords = *(coords);
+      proposedCoords.pX = coords->pX + dX;
+      proposedCoords.pY = coords->pY + dY;
+      NormalizeCoordinates(&proposedCoords);
 
       bool32 updateX = true;
       bool32 updateY = true;
 
       world_coordinates leftLowerCorner = *coords;
-      leftLowerCorner.pX = proposedX - PLAYER_WIDTH / 2;
-      leftLowerCorner.pY = proposedY;
+      leftLowerCorner.pX = proposedCoords.pX - PLAYER_WIDTH / 2;
+      leftLowerCorner.pY = proposedCoords.pY;
       // TODO(Cristian): Re-normalize position after update
 
       // We check left-lower corner
@@ -351,26 +370,23 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
       //   // We check ther right-lower corner
       //   moveResult = PointValidInWorldMap(&world, &rightLowerCorner);
       // }
-      //
-      // int32_point tilePos = CalculateTilePosition(&world, coords);
-      //
-      // char mbuffer[256];
-      // //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
-      // sprintf_s(mbuffer,
-      //   "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d\n",
-      //   proposedX, proposedY,
-      //   tilePos.x, tilePos.y,
-      //   0, 0
-      //   // coords->tileMapX, coords->tileMapY
-      // );
-      // OutputDebugStringA(mbuffer);
-      //
+
+      int32_point tileCoords = GetTileCoordinates(&world, &proposedCoords);
+      char mbuffer[256];
+      //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
+      sprintf_s(mbuffer,
+        "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d\n",
+        proposedCoords.pX, proposedCoords.pY,
+        tileCoords.x, tileCoords.y,
+        0, 0
+        // coords->tileMapX, coords->tileMapY
+      );
+      OutputDebugStringA(mbuffer);
 
       int32 moveResult = TILE_VALID;
       if(moveResult == TILE_VALID)
       {
-        coords->pX = proposedX;
-        coords->pY = proposedY;
+        *coords = proposedCoords;
       }
       else if(moveResult != TILE_INVALID)
       {
@@ -426,17 +442,16 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
         col < TOTAL_X;
         col++)
       {
-
-
-
         int currentTile = 0;
 
-        int32 playerTileX =
-          UTILS::FloorReal32ToInt32((coords->pX - world.offsetX) / world.tileInPixels);
-        int32 playerTileY =
-          UTILS::FloorReal32ToInt32((coords->pY - world.offsetY) / world.tileInPixels);
 
-        if (col == playerTileX && row == playerTileY) { currentTile = 1; }
+        int32_point playerTilePos = GetTileCoordinates(&world, coords);
+
+        if (col == playerTilePos.x &&
+            row == playerTilePos.y)
+        {
+          currentTile = 1;
+        }
 
         world_coordinates rectCoords = {};
         rectCoords.tileX = col;
