@@ -49,6 +49,9 @@ GetTileMap(world_map* world, world_coordinates* coords)
 inline uint32*
 GetTile(world_map* world, world_coordinates* coords)
 {
+  // TODO(Cristian): REMOVE THIS FIX CODE!
+  if(coords->tileX < 0 || coords->tileY < 0) { return 0; }
+
   int32 tileMapX = coords->tileX >> world->tileShift;
   int32 tileMapY = coords->tileY >> world->tileShift;
 
@@ -67,35 +70,6 @@ GetTile(world_map* world, world_coordinates* coords)
   return res;
 }
 
-#define TILE_VALID 0
-#define TILE_INVALID 1
-#define TILE_OUT_LEFT 2
-#define TILE_OUT_RIGHT 3
-#define TILE_OUT_UP 4
-#define TILE_OUT_DOWN 5
-
-internal int32
-PointValidInTileMap(world_map* world, world_coordinates* coords)
-{
-  // We check for out of tile movement
-  if(coords->tileX < 0) { return TILE_OUT_LEFT; }
-  if(coords->tileX >= world->tileMax) { return TILE_OUT_RIGHT; }
-  if(coords->tileY < 0) { return TILE_OUT_UP; }
-  if(coords->tileY >= world->tileMax) { return TILE_OUT_DOWN; }
-
-  // See if we need the tileMap checking
-  tile_map* tileMap = GetTileMap(world, coords);
-  if(tileMap == nullptr) { return TILE_INVALID; }
-  if(*(GetTile(world, coords)) == 0) // Being explicit
-  {
-    return TILE_VALID;
-  }
-  else
-  {
-    return TILE_INVALID;
-  }
-}
-
 /**
  * Modifies the coordinates so that pX and pY, which represent the offset from the tile,
  * are within the tile bounds. If they're not, we must move the tile into the correct offset.
@@ -103,6 +77,7 @@ PointValidInTileMap(world_map* world, world_coordinates* coords)
 internal void
 NormalizeCoordinates(world_map* world, world_coordinates* coords)
 {
+  // We normalize the real coordinates of the point within the tile
   real32 divX = UTILS::FloorReal32ToInt32(coords->pX / world->tileInMeters);
   real32 divY = UTILS::FloorReal32ToInt32(coords->pY / world->tileInMeters);
   // We move the tile offset
@@ -134,35 +109,24 @@ GetTileMapCoordinates(world_map* world, world_coordinates* coords)
   return point;
 }
 
-internal int32
-PointValidInWorldMap(world_map* world, world_coordinates* coords)
+internal world_coordinates
+ModifyCoordinates(world_map* world, world_coordinates coords, real32 dX, real32 dY)
 {
-  // We check the current tile
-  int32 result = PointValidInTileMap(world, coords);
+  coords.pX += dX;
+  coords.pY += dY;
 
-  if(result == TILE_VALID) { return TILE_VALID; }
-  if(result == TILE_INVALID) { return TILE_INVALID; }
+  NormalizeCoordinates(world, &coords);
 
-  // We take the coords of the new tile
-  world_coordinates newCoords = *coords;
-  NormalizeCoordinates(world, &newCoords);
+  return coords;
+}
 
-  tile_map* currentTileMap = GetTileMap(world, &newCoords);
-  if(currentTileMap == nullptr) { return TILE_INVALID; }
 
-  // If it is a valid tile, we want to tell the caller what was the result.
-  // A TILE_OUT_* means that there was a valid movement to such tile.
-  // Otherwhise we just tell them that the movement was invalid.
-  // TODO(Cristian): Warn about edge of world? Now we just return TILE_INVALID
-  if(PointValidInTileMap(world, &newCoords) == TILE_VALID)
-  {
-    return result;
-  }
-  else
-  {
-    return TILE_INVALID;
-  }
+internal bool32
+PointValid(world_map* world, world_coordinates* coords)
+{
+  uint32 tileValue = *GetTile(world, coords);
 
+  return tileValue == 0;
 }
 
 internal void
@@ -225,19 +189,19 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
          ARRAY_COUNT(gameInput->controllers[0].buttons));
   ASSERT(sizeof(game_state) <= gameMemory->permanentStorageSize);
 
-game_state *gameState = (game_state *)gameMemory->permanentStorage;
+  game_state *gameState = (game_state *)gameMemory->permanentStorage;
   if(!gameMemory->graphicsInitialized)
   {
 
-#define PLAYER_WIDTH 20
-#define PLAYER_HEIGHT 20
+#define PLAYER_WIDTH 0.6f
+#define PLAYER_HEIGHT 1.0f
 
     // TODO(Cristian): Recheck coordinates offset working (packing and unpacking)
     // Now is all mingled up and it WILL bring problems
     gameState->coords.pX = 0.5f;
     gameState->coords.pY = 0.5f;
-    gameState->coords.tileX = 6;
-    gameState->coords.tileY = 6;
+    gameState->coords.tileX = 2;
+    gameState->coords.tileY = 2;
 
     // TODO(Cristián): This may be more appropiate to do in the platform layer
     gameMemory->graphicsInitialized = true;
@@ -337,32 +301,24 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
         dY += speed;
       }
 
-      world_coordinates proposedCoords = *(coords);
-      proposedCoords.pX = coords->pX + dX;
-      proposedCoords.pY = coords->pY + dY;
-      NormalizeCoordinates(&world, &proposedCoords);
-
-
+      world_coordinates proposedCoords = ModifyCoordinates(&world, *coords, dX, dY);
       bool32 updateX = true;
       bool32 updateY = true;
 
-      // world_coordinates leftLowerCorner = *coords;
-      // leftLowerCorner.pX = proposedCoords.pX - PLAYER_WIDTH / 2;
-      // leftLowerCorner.pY = proposedCoords.pY;
-      // TODO(Cristian): Re-normalize position after update
+      world_coordinates leftLowerCorner = ModifyCoordinates(&world,
+                                                            proposedCoords,
+                                                            -(PLAYER_WIDTH / 2), 0.0f);
 
       // We check left-lower corner
-      // int32 moveResult = PointValidInWorldMap(&world, &leftLowerCorner);
-      // if(moveResult == TILE_VALID)
-      // {
-      //   world_coordinates rightLowerCorner = *coords;
-      //   rightLowerCorner.pX = proposedX + PLAYER_WIDTH / 2;
-      //   rightLowerCorner.pY = proposedY;
-      //   CalculateTilePositionForCoordinates(&world, &rightLowerCorner);
-      //
-      //   // We check ther right-lower corner
-      //   moveResult = PointValidInWorldMap(&world, &rightLowerCorner);
-      // }
+      bool32 moveValid = PointValid(&world, &leftLowerCorner);
+      if(moveValid)
+      {
+        world_coordinates rightLowerCorner = ModifyCoordinates(&world,
+                                                               proposedCoords,
+                                                               (PLAYER_WIDTH / 2), 0.0f);
+        // We check ther right-lower corner
+        moveValid = PointValid(&world, &rightLowerCorner);
+      }
 
       int32_point tileCoords = GetTileCoordinates(&world, &proposedCoords);
       char mbuffer[256];
@@ -376,47 +332,11 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
       );
       OutputDebugStringA(mbuffer);
 
-      int32 moveResult = TILE_VALID;
-      if(moveResult == TILE_VALID)
+      if(moveValid)
       {
         *coords = proposedCoords;
       }
-      else if(moveResult != TILE_INVALID)
-      {
-
-        // We switch the tile_map!
-        if(moveResult == TILE_OUT_LEFT)
-        {
-          // coords->tileMapX--;
-          //
-          // // TODO(Cristian): Improve (unharcode) this!
-          // coords->pX = offscreenBuffer->width - 20;
-        }
-        else if(moveResult == TILE_OUT_RIGHT)
-        {
-          // coords->tileMapX++;
-          //
-          // // TODO(Cristian): Improve (unharcode) this!
-          // coords->pX = 20;
-        }
-        else if(moveResult == TILE_OUT_UP)
-        {
-          // coords->tileMapY--;
-          //
-          // // TODO(Cristian): Improve (unharcode) this!
-          // coords->pY = offscreenBuffer->height - 20;
-        }
-        else if(moveResult == TILE_OUT_DOWN)
-        {
-          // coords->tileMapY++;
-          //
-          // // TODO(Cristian): Improve (unharcode) this!
-          // coords->pY = 20;
-        }
-      }
-
     }
-
   }
 
   /*** RENDERING ***/
@@ -425,49 +345,63 @@ game_state *gameState = (game_state *)gameMemory->permanentStorage;
 #define TOTAL_X 17
 #define TOTAL_Y 9
   int totalHeight = TOTAL_Y * world.tileInPixels;
+  int32_point playerTilePos = GetTileCoordinates(&world, coords);
 
   // TODO(Cristian): TILEMAP RENDERING!!!!
-  for(int32 row = 0;
-      row < TOTAL_Y;
+  for(int32 row = -1;
+      row < TOTAL_Y + 1;
       row++)
   {
-    for(int32 col = 0;
-        col < TOTAL_X;
+    for(int32 col = -1;
+        col < TOTAL_X + 1;
         col++)
       {
+
+
+        world_coordinates rectCoords = {};
+        rectCoords.tileX = coords->tileX - (TOTAL_X / 2) + col;
+        rectCoords.tileY = coords->tileY - (TOTAL_Y / 2) + row;
+        uint32 tile = 0;
+        uint32* tilePtr = GetTile(&world, &rectCoords);
+        if(tilePtr) { tile = *tilePtr; }
+        else { tile = 0.2; }
+
         int currentTile = 0;
-
-
-        int32_point playerTilePos = GetTileCoordinates(&world, coords);
-
-        if (col == playerTilePos.x &&
-            row == playerTilePos.y)
+        if (rectCoords.tileX == coords->tileX &&
+            rectCoords.tileY == coords->tileY)
         {
           currentTile = 1;
         }
 
-        world_coordinates rectCoords = {};
-        rectCoords.tileX = col;
-        rectCoords.tileY = row;
-        int32 tile = *GetTile(&world, &rectCoords);
-
         DrawRectangle(offscreenBuffer,
-                      world.offsetX + (col * world.tileInPixels),
-                      world.offsetY + (totalHeight - world.tileInPixels * (row + 1)),
-                      world.offsetX + (col * world.tileInPixels) + world.tileInPixels - 1,
-                      world.offsetY + (totalHeight - world.tileInPixels * (row + 1)) + world.tileInPixels - 1,
+                      world.offsetX + ((col - coords->pX + PLAYER_WIDTH / 2) * world.tileInPixels),
+                      world.offsetY + (totalHeight - world.tileInPixels * (row + 1 - coords->pY + PLAYER_HEIGHT)),
+                      world.offsetX + ((col - coords->pX + PLAYER_WIDTH / 2) * world.tileInPixels) + world.tileInPixels - 1,
+                      world.offsetY + (totalHeight - world.tileInPixels * (row + 1 - coords->pY + PLAYER_HEIGHT)) + world.tileInPixels - 1,
                       currentTile * 0.8f,
                       tile * 0.5f,
                       0.7f);
       }
   }
 
+  real32 playerPixelX = (coords->tileX * world.tileInMeters) + coords->pX;
+  real32 playerPixelY = (coords->tileY * world.tileInMeters) + coords->pY;
+
   // Draw Player
+  // // This is movement player
+  // DrawRectangle(offscreenBuffer,
+  //               world.offsetX + (playerPixelX - (PLAYER_WIDTH / 2)) * world.tileInPixels,
+  //               world.offsetY + (totalHeight - ((playerPixelY + PLAYER_HEIGHT) * world.tileInPixels)),
+  //               world.offsetX + (playerPixelX + (PLAYER_WIDTH / 2)) * world.tileInPixels,
+  //               world.offsetY + (totalHeight - ((playerPixelY) * world.tileInPixels)),
+  //               1.0f, 1.0f, 0.0f);
+  real32 centerX = offscreenBuffer->width / 2;
+  real32 centerY = offscreenBuffer->height / 2;
   DrawRectangle(offscreenBuffer,
-                world.offsetX + ((coords->tileX * world.tileInMeters) + coords->pX) * world.tileInPixels - PLAYER_WIDTH / 2,
-                world.offsetY + (totalHeight - (((coords->tileY * world.tileInMeters) + coords->pY) * world.tileInPixels) - PLAYER_HEIGHT),
-                world.offsetX + ((coords->tileX * world.tileInMeters) + coords->pX) * world.tileInPixels + PLAYER_WIDTH / 2,
-                world.offsetY + (totalHeight - (((coords->tileY * world.tileInMeters) + coords->pY) * world.tileInPixels)),
+                centerX - (PLAYER_WIDTH / 2) * world.tileInPixels,
+                centerY - PLAYER_HEIGHT * world.tileInPixels,
+                centerX + (PLAYER_WIDTH / 2) * world.tileInPixels,
+                centerY,
                 1.0f, 1.0f, 0.0f);
 
 
