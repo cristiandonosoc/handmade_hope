@@ -198,8 +198,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // TODO(Cristian): Recheck coordinates offset working (packing and unpacking)
     // Now is all mingled up and it WILL bring problems
-    gameState->coords.pX = 0.5f;
-    gameState->coords.pY = 0.5f;
+    gameState->coords.pX = 0.0f;
+    gameState->coords.pY = 0.0f;
     gameState->coords.tileX = 2;
     gameState->coords.tileY = 2;
 
@@ -374,10 +374,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
 
         DrawRectangle(offscreenBuffer,
-                      world.offsetX + ((col - coords->pX + PLAYER_WIDTH / 2) * world.tileInPixels),
-                      world.offsetY + (totalHeight - world.tileInPixels * (row + 1 - coords->pY + PLAYER_HEIGHT)),
-                      world.offsetX + ((col - coords->pX + PLAYER_WIDTH / 2) * world.tileInPixels) + world.tileInPixels - 1,
-                      world.offsetY + (totalHeight - world.tileInPixels * (row + 1 - coords->pY + PLAYER_HEIGHT)) + world.tileInPixels - 1,
+                      world.offsetX + ((col - coords->pX) * world.tileInPixels),
+                      world.offsetY + (totalHeight - world.tileInPixels * (row + 1.5f - coords->pY)),
+                      world.offsetX + ((col - coords->pX) * world.tileInPixels) + world.tileInPixels - 1,
+                      world.offsetY + (totalHeight - world.tileInPixels * (row + 1.5f - coords->pY)) + world.tileInPixels - 1,
                       currentTile * 0.8f,
                       tile * 0.5f,
                       0.7f);
@@ -397,12 +397,19 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //               1.0f, 1.0f, 0.0f);
   real32 centerX = offscreenBuffer->width / 2;
   real32 centerY = offscreenBuffer->height / 2;
+  // DrawRectangle(offscreenBuffer,
+  //               world.offsetX + centerX - (PLAYER_WIDTH / 2) * world.tileInPixels,
+  //               world.offsetY + centerY - PLAYER_HEIGHT * world.tileInPixels,
+  //               world.offsetX + centerX + (PLAYER_WIDTH / 2) * world.tileInPixels,
+  //               world.offsetY + centerY,
+  //               1.0f, 1.0f, 0.0f);
   DrawRectangle(offscreenBuffer,
-                centerX - (PLAYER_WIDTH / 2) * world.tileInPixels,
-                centerY - PLAYER_HEIGHT * world.tileInPixels,
-                centerX + (PLAYER_WIDTH / 2) * world.tileInPixels,
-                centerY,
+                world.offsetX + centerX,
+                world.offsetY + centerY - 10,
+                world.offsetX + centerX + 10,
+                world.offsetY + centerY,
                 1.0f, 1.0f, 0.0f);
+
 
 
 
