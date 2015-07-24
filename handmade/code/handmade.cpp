@@ -348,36 +348,45 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   int32_point playerTilePos = GetTileCoordinates(&world, coords);
 
   // TODO(Cristian): TILEMAP RENDERING!!!!
-  for(int32 row = -1;
-      row < TOTAL_Y + 1;
-      row++)
+  int32 minX = coords->tileX - (TOTAL_X / 2 + 1);
+  int32 maxX = coords->tileX + (TOTAL_X / 2 + 2);
+  int32 minY = coords->tileY - (TOTAL_Y / 2 + 1);
+  int32 maxY = coords->tileY + (TOTAL_Y / 2 + 2);
+  for(int32 tileY = minY;
+      tileY < maxY;
+      tileY++)
   {
-    for(int32 col = -1;
-        col < TOTAL_X + 1;
-        col++)
+    for(int32 tileX = minX;
+        tileX < maxX;
+        tileX++)
       {
 
 
         world_coordinates rectCoords = {};
-        rectCoords.tileX = coords->tileX - (TOTAL_X / 2) + col;
-        rectCoords.tileY = coords->tileY - (TOTAL_Y / 2) + row;
+        rectCoords.tileX = tileX;
+        rectCoords.tileY = tileY;
         uint32 tile = 0;
         uint32* tilePtr = GetTile(&world, &rectCoords);
         if(tilePtr) { tile = *tilePtr; }
         else { tile = 0.2; }
 
         int currentTile = 0;
-        if (rectCoords.tileX == coords->tileX &&
-            rectCoords.tileY == coords->tileY)
+        if (tileX == coords->tileX &&
+            tileY == coords->tileY)
         {
           currentTile = 1;
         }
 
+
+        // NOTE(Cristian): We substract one because we are also rendering one extra tile in
+        // every direction
+        int32 tileOffsetX = tileX - minX - 1;
+        int32 tileOffsetY = tileY - minY - 1;
         DrawRectangle(offscreenBuffer,
-                      world.offsetX + ((col - coords->pX) * world.tileInPixels),
-                      world.offsetY + (totalHeight - world.tileInPixels * (row + 1.5f - coords->pY)),
-                      world.offsetX + ((col - coords->pX) * world.tileInPixels) + world.tileInPixels - 1,
-                      world.offsetY + (totalHeight - world.tileInPixels * (row + 1.5f - coords->pY)) + world.tileInPixels - 1,
+                      world.offsetX + ((tileOffsetX - coords->pX) * world.tileInPixels),
+                      world.offsetY + (totalHeight - world.tileInPixels * (tileOffsetY + 1.5f - coords->pY)),
+                      world.offsetX + ((tileOffsetX - coords->pX) * world.tileInPixels) + world.tileInPixels - 1,
+                      world.offsetY + (totalHeight - world.tileInPixels * (tileOffsetY + 1.5f - coords->pY)) + world.tileInPixels - 1,
                       currentTile * 0.8f,
                       tile * 0.5f,
                       0.7f);
