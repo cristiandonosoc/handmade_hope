@@ -212,8 +212,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // We create the tiles arrays
   uint32 worldTiles[TILE_MAP_SIZE][TILE_MAP_SIZE] =
   {
-    {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
-    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
+    {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1,  0, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1},
+    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
     {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
     {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
     {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  1},
@@ -284,6 +284,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       // NOTE(Cristian): The speed is pixels/second
       real32 speed = gameInput->secondsToUpdate * 2.0f;
 
+      if(input->actionUp.endedDown)\
+      {
+        speed *= 2;
+      }
       if(input->moveLeft.endedDown)
       {
         dX -= speed;
@@ -365,10 +369,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         world_coordinates rectCoords = {};
         rectCoords.tileX = tileX;
         rectCoords.tileY = tileY;
-        uint32 tile = 0;
+        real32 tile = 0;
         uint32* tilePtr = GetTile(&world, &rectCoords);
         if(tilePtr) { tile = *tilePtr; }
-        else { tile = 0.2; }
+        else { tile = 0.5f; }
 
         int currentTile = 0;
         if (tileX == coords->tileX &&
@@ -413,9 +417,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //               world.offsetY + centerY,
   //               1.0f, 1.0f, 0.0f);
   DrawRectangle(offscreenBuffer,
-                world.offsetX + centerX,
-                world.offsetY + centerY - 10,
-                world.offsetX + centerX + 10,
+                world.offsetX + centerX - (PLAYER_WIDTH / 2) * world.tileInPixels,
+                world.offsetY + centerY - PLAYER_HEIGHT * world.tileInPixels,
+                world.offsetX + centerX + (PLAYER_WIDTH / 2) * world.tileInPixels,
                 world.offsetY + centerY,
                 1.0f, 1.0f, 0.0f);
 
