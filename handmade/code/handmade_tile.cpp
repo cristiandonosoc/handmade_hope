@@ -5,13 +5,15 @@
 inline tile_chunk*
 GetTileChunk(tile_map* tileMap, tile_coordinates* coords)
 {
-  int32 x = coords->tileX >> tileMap->tileShift;
-  int32 y = coords->tileY >> tileMap->tileShift;
+  int32_point tileChunkCoords = GetTileChunkCoordinates(tileMap, coords);
 
-  if((x >= 0 && x < tileMap->tileChunkCountX) &&
-     (y >= 0 || y < tileMap->tileChunkCountY))
+  // TODO(Cristian): Find a good way of finding if the tileChunk actually exists!
+  if((tileChunkCoords.x >= 0 && tileChunkCoords.x < tileMap->tileChunkCountX) &&
+     (tileChunkCoords.y >= 0 && tileChunkCoords.y < tileMap->tileChunkCountY))
   {
-    tile_chunk* result = tileMap->tileChunks + (y * tileMap->tileChunkCountY) + x;
+    tile_chunk* result = tileMap->tileChunks +
+                         (tileChunkCoords.y * tileMap->tileChunkCountY) +
+                         tileChunkCoords.x;
     return result;
   }
 
@@ -21,32 +23,35 @@ GetTileChunk(tile_map* tileMap, tile_coordinates* coords)
 inline uint32*
 GetTile(tile_map* tileMap, tile_coordinates* coords)
 {
-  // TODO(Cristian): REMOVE THIS FIX CODE!
-  if(coords->tileX < 0 || coords->tileY < 0) { return 0; }
+  int32_point tileCoords = GetTileCoordinates(tileMap, coords);
 
-  int32 tileChunkX = coords->tileX >> tileMap->tileShift;
-  int32 tileChunkY = coords->tileY >> tileMap->tileShift;
+  ASSERT(tileCoords.x >= 0 && tileCoords.x < tileMap->tileMax);
+  ASSERT(tileCoords.y >= 0 && tileCoords.y < tileMap->tileMax);
 
-  ASSERT(tileChunkX >= 0 || tileChunkX < tileMap->tileChunkCountX);
-  ASSERT(tileChunkY >= 0 || tileChunkY < tileMap->tileChunkCountY);
-
-  int32 tileX = coords->tileX & tileMap->tileMask;
-  int32 tileY = coords->tileY & tileMap->tileMask;
-
-  ASSERT(tileX >= 0 || tileX < tileMap->tileMax);
-  ASSERT(tileY >= 0 || tileY < tileMap->tileMax);
-
+  int32_point tileChunkCoords = GetTileChunkCoordinates(tileMap, coords);
   tile_chunk* tileChunk = GetTileChunk(tileMap, coords);
-  uint32* res = tileChunk->tiles + (tileY * tileMap->tileMax) + tileX;
-  uint32 a = *res;
-  return res;
+
+  uint32* result = nullptr;
+  if(tileChunk != nullptr)
+  {
+    result = tileChunk->tiles + (tileCoords.y * tileMap->tileMax) + tileCoords.x;
+  }
+  return result;
 }
 
-internal bool32
-PointValid(tile_map* tileMap, tile_coordinates* coords)
+#define TILE_INVALID 0xFFFFFFFF
+inline uint32
+GetTileValue(tile_map* tileMap, tile_coordinates* coords)
 {
-  uint32 tileValue = *GetTile(tileMap, coords);
-  return tileValue == 0;
+  uint32 result = TILE_INVALID;
+
+  uint32* tile = GetTile(tileMap, coords);
+  if(tile != nullptr)
+  {
+    result = *tile;
+  }
+
+  return result;
 }
 
 #define _HANDMADE_TILE_CPP

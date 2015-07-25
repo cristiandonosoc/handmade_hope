@@ -83,7 +83,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     tileMap->tileChunkCountX = 1;
     tileMap->tileChunkCountY = 1;
 
-    tileMap->tileShift = 8;
+    tileMap->tileShift = 4;
     tileMap->tileMask = (1 << tileMap->tileShift) - 1;
     tileMap->tileMax = (1 << tileMap->tileShift);
 
@@ -212,29 +212,29 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                                            -(PLAYER_WIDTH / 2), 0.0f);
 
       // We check left-lower corner
-      bool32 moveValid = PointValid(tileMap, &leftLowerCorner);
-      if(moveValid)
+      uint32 proposedTile = GetTileValue(tileMap, &leftLowerCorner);
+      if(proposedTile != TILE_INVALID)
       {
         tile_coordinates rightLowerCorner = ModifyCoordinates(tileMap,
                                                               proposedCoords,
                                                               (PLAYER_WIDTH / 2), 0.0f);
         // We check ther right-lower corner
-        moveValid = PointValid(tileMap, &rightLowerCorner);
+        proposedTile = GetTileValue(tileMap, &rightLowerCorner);
       }
 
       int32_point tileCoords = GetTileCoordinates(tileMap, &proposedCoords);
+      int32_point tileChunkCoords = GetTileChunkCoordinates(tileMap, &proposedCoords);
       char mbuffer[256];
       //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
       sprintf_s(mbuffer,
         "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d\n",
         proposedCoords.pX, proposedCoords.pY,
         tileCoords.x, tileCoords.y,
-        0, 0
-        // coords->tileChunkX, coords->tileChunkY
+        tileChunkCoords.x, tileChunkCoords.y
       );
       OutputDebugStringA(mbuffer);
 
-      if(moveValid)
+      if(proposedTile != TILE_INVALID)
       {
         *coords = proposedCoords;
       }
@@ -271,8 +271,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         rectCoords.tileX = tileX;
         rectCoords.tileY = tileY;
         real32 tile = 0;
-        uint32* tilePtr = GetTile(tileMap, &rectCoords);
-        if(tilePtr) { tile = *tilePtr; }
+
+        uint32 tileValue = GetTileValue(tileMap, &rectCoords);
+        if(tileValue != TILE_INVALID) { tile = tileValue; }
         else { tile = 0.5f; }
 
         int currentTile = 0;
