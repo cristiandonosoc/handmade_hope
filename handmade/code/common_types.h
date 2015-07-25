@@ -36,5 +36,19 @@ typedef int32 bool32;
 typedef float real32;
 typedef double real64;
 
+struct int32_point
+{
+  int32 x;
+  int32 y;
+};
+
+struct uint32_point
+{
+  uint32 x;
+  uint32 y;
+};
+
+
+
 #define PI32 3.14159265359f
 #endif

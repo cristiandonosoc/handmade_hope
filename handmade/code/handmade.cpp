@@ -9,173 +9,17 @@
 
 #ifndef _HANDMADE_CPP_INCLUDED
 #include "handmade.h"
+#include "handmade_coordinates.cpp"
+#include "handmade_tile.cpp"
 #include "game\utils.cpp"
 #include "game\render.cpp"
+#include "game\sound.cpp"
 
 // IMPORTANT(Cristian): OH GOD REMOVE THIS! THIS IS NOT PLATFORM INDEPENDENT!!!!
 #include <windows.h>
 #include <stdio.h>
 
 #include <math.h> // TODO(Cristián): Implement our own sine function
-
-struct int32_point
-{
-  int32 x;
-  int32 y;
-};
-
-struct uint32_point
-{
-  uint32 x;
-  uint32 y;
-};
-
-inline tile_chunk*
-GetTileMap(tile_map* tileMap, tile_coordinates* coords)
-{
-  int32 x = coords->tileX >> tileMap->tileShift;
-  int32 y = coords->tileY >> tileMap->tileShift;
-
-  if((x >= 0 && x < tileMap->tileChunkCountX) &&
-     (y >= 0 || y < tileMap->tileChunkCountY))
-  {
-    tile_chunk* result = tileMap->tileChunks + (y * tileMap->tileChunkCountY) + x;
-    return result;
-  }
-
-  return nullptr;
-}
-
-inline uint32*
-GetTile(tile_map* tileMap, tile_coordinates* coords)
-{
-  // TODO(Cristian): REMOVE THIS FIX CODE!
-  if(coords->tileX < 0 || coords->tileY < 0) { return 0; }
-
-  int32 tileChunkX = coords->tileX >> tileMap->tileShift;
-  int32 tileChunkY = coords->tileY >> tileMap->tileShift;
-
-  ASSERT(tileChunkX >= 0 || tileChunkX < tileMap->tileChunkCountX);
-  ASSERT(tileChunkY >= 0 || tileChunkY < tileMap->tileChunkCountY);
-
-  int32 tileX = coords->tileX & tileMap->tileMask;
-  int32 tileY = coords->tileY & tileMap->tileMask;
-
-  ASSERT(tileX >= 0 || tileX < tileMap->tileMax);
-  ASSERT(tileY >= 0 || tileY < tileMap->tileMax);
-
-  tile_chunk* tileChunk = GetTileMap(tileMap, coords);
-  uint32* res = tileChunk->tiles + (tileY * tileMap->tileMax) + tileX;
-  uint32 a = *res;
-  return res;
-}
-
-/**
- * Modifies the coordinates so that pX and pY, which represent the offset from the tile,
- * are within the tile bounds. If they're not, we must move the tile into the correct offset.
- */
-internal void
-NormalizeCoordinates(tile_map* tileMap, tile_coordinates* coords)
-{
-  // We normalize the real coordinates of the point within the tile
-  real32 divX = UTILS::FloorReal32ToInt32(coords->pX / tileMap->tileInMeters);
-  real32 divY = UTILS::FloorReal32ToInt32(coords->pY / tileMap->tileInMeters);
-  // We move the tile offset
-  coords->tileX += divX;
-  coords->tileY += divY;
-
-  // We correct the correct offset
-  coords->pX -= divX * tileMap->tileInMeters;
-  coords->pY -= divY * tileMap->tileInMeters;
-}
-
-internal int32_point
-GetTileCoordinates(tile_map* tileMap, tile_coordinates* coords)
-{
-  int32_point point = {};
-  point.x = coords->tileX & tileMap->tileMask;
-  point.y = coords->tileY & tileMap->tileMask;
-
-  return point;
-}
-
-internal int32_point
-GetTileMapCoordinates(tile_map* tileMap, tile_coordinates* coords)
-{
-  int32_point point = {};
-  point.x = coords->tileX >> tileMap->tileShift;
-  point.y = coords->tileY >> tileMap->tileShift;
-
-  return point;
-}
-
-internal tile_coordinates
-ModifyCoordinates(tile_map* tileMap, tile_coordinates coords, real32 dX, real32 dY)
-{
-  coords.pX += dX;
-  coords.pY += dY;
-
-  NormalizeCoordinates(tileMap, &coords);
-
-  return coords;
-}
-
-
-internal bool32
-PointValid(tile_map* tileMap, tile_coordinates* coords)
-{
-  uint32 tileValue = *GetTile(tileMap, coords);
-
-  return tileValue == 0;
-}
-
-internal void
-OutputGameSound(game_sound_output_buffer *soundOutput,
-                game_state *gameState)
-{
-  if(!soundOutput->valid) { return; }
-
-  /**
-   * We write into the buffer by writing and advancing the output pointer
-   * We make two writes because we created 2 channels, which makes the buffer to look like this:
-   * [int16 int16] [int16 int16] ...
-   * [LEFT  RIGHT] [LEFT  RIGHT] ...
-   * [  SAMPLE   ] [  SAMPLE   ] ...
-   *
-   */
-
-  int32 wavePeriod = soundOutput->samplesPerSecond /
-                     gameState->toneHz;
-
-  // We cast the region pointer into int16 pointers (it is a DWORD) so we can
-  // write into each channel of the sound buffer
-  int16 *sampleOut = (int16 *)soundOutput->bufferMemory;
-  //int32 region1SampleCount = region1Size / soundOutput->bytesPerBlock;
-  // TODO(Cristián): Assert that region sizes are valid (sample multiple)
-  for(int32 sampleIndex = 0;
-      sampleIndex < soundOutput->sampleCount;
-      sampleIndex++)
-  {
-#if 0
-    // This is the logic required to output a sine wave
-    real32 sineValue = sinf(gameState->tSine);
-    int16 sampleValue = (int16)(sineValue * gameState->toneVolume);
-
-    gameState->tSine += 2 * PI32 / (real32)wavePeriod;
-    while(gameState->tSine > 2 * PI32)
-    {
-      gameState->tSine -= 2 * PI32;
-    }
-
-#else
-    int16 sampleValue = 0; // Silence for now...
-#endif
-
-    *sampleOut++ = sampleValue;
-    *sampleOut++ = sampleValue;
-
-  }
-}
 
 internal void
 InitializeMemoryManager(memory_manager* memoryManager, size_t size, uint8* base)
@@ -249,7 +93,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     tileMap->offsetX = -30;
     tileMap->offsetY = 0;
 
-
     // We append the tile_chunks
     tileMap->tileChunks = PushArray(&gameState->memoryManager,
                                     tileMap->tileChunkCountX * tileMap->tileChunkCountY,
@@ -316,7 +159,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   tile_map* tileMap = world->tileMap;
 
   // We get the current tileChunk
-  tile_chunk* currentTileMap = GetTileMap(tileMap, coords);
+  tile_chunk* currentTileMap = GetTileChunk(tileMap, coords);
 
   for(int controllerIndex = 0;
       controllerIndex < ARRAY_COUNT(gameInput->controllers);
