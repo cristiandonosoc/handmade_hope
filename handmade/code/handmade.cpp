@@ -207,7 +207,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       // NOTE(Cristian): The speed is pixels/second
       real32 speed = gameInput->secondsToUpdate * 2.0f;
 
-      if(input->actionUp.endedDown)\
+      if(input->actionUp.endedDown)
       {
         speed *= 5;
       }
@@ -276,6 +276,12 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   real32 centerX = offscreenBuffer->width / 2;
   real32 centerY = offscreenBuffer->height / 2;
 
+  real32 renderOffsetX = tileMap->offsetX + centerX;
+  real32 renderOffsetY = tileMap->offsetY + centerY;
+
+  int32 tileChunkX = 0xFFFFFFFF;
+  int32 tileChunkY = 0xFFFFFFFF;
+
   // TODO(Cristian): TILEMAP RENDERING!!!!
   int32 renderSize = 30;
   int32 minX = coords->tileX - (TILES_PER_WIDTH / 2 + 1 + renderSize);
@@ -289,39 +295,79 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     for(int32 tileX = minX;
         tileX < maxX;
         tileX++)
+    {
+
+
+      tile_coordinates rectCoords = {};
+      rectCoords.tileX = tileX;
+      rectCoords.tileY = tileY;
+      real32 tile = 0;
+
+      uint32 tileValue = GetTileValue(tileMap, &rectCoords);
+      if(tileValue != TILE_INVALID) { tile = tileValue; }
+      else { tile = 0.5f; }
+
+      int currentTile = 0;
+      if (tileX == coords->tileX &&
+          tileY == coords->tileY)
       {
-
-
-        tile_coordinates rectCoords = {};
-        rectCoords.tileX = tileX;
-        rectCoords.tileY = tileY;
-        real32 tile = 0;
-
-        uint32 tileValue = GetTileValue(tileMap, &rectCoords);
-        if(tileValue != TILE_INVALID) { tile = tileValue; }
-        else { tile = 0.5f; }
-
-        int currentTile = 0;
-        if (tileX == coords->tileX &&
-            tileY == coords->tileY)
-        {
-          currentTile = 1;
-        }
-
-
-        // NOTE(Cristian): We substract one because we are also rendering one extra tile in
-        // every direction
-        int32 tileOffsetX = tileX - coords->tileX;
-        int32 tileOffsetY = -(tileY - coords->tileY);
-        DrawRectangle(offscreenBuffer,
-                      tileMap->offsetX + centerX + ((tileOffsetX - coords->pX) * tileMap->tileInPixels),
-                      tileMap->offsetY + centerY + ((tileOffsetY + coords->pY) * tileMap->tileInPixels) - tileMap->tileInPixels,
-                      tileMap->offsetX + centerX + ((tileOffsetX - coords->pX) * tileMap->tileInPixels) + tileMap->tileInPixels - 1,
-                      tileMap->offsetY + centerY + (((tileOffsetY + coords->pY) * tileMap->tileInPixels) - 1),
-                      currentTile * 0.8f,
-                      tile * 0.5f,
-                      0.7f);
+        currentTile = 1;
       }
+
+
+
+      // NOTE(Cristian): We substract one because we are also rendering one extra tile in
+      // every direction
+      int32 tileOffsetX = tileX - coords->tileX;
+      int32 tileOffsetY = -(tileY - coords->tileY);
+      DrawRectangle(offscreenBuffer,
+          tileMap->offsetX + centerX + ((tileOffsetX - coords->pX) * tileMap->tileInPixels),
+          tileMap->offsetY + centerY + ((tileOffsetY + coords->pY) * tileMap->tileInPixels) - tileMap->tileInPixels,
+          tileMap->offsetX + centerX + ((tileOffsetX - coords->pX) * tileMap->tileInPixels) + tileMap->tileInPixels - 1,
+          tileMap->offsetY + centerY + (((tileOffsetY + coords->pY) * tileMap->tileInPixels) - 1),
+          currentTile * 0.8f,
+          tile * 0.5f,
+          0.7f);
+
+    }
+  }
+
+  // We want to draw the tile chunks
+  // NOTE(Cristian): This code (dependending on how the passes are made) can
+  // render many times the same tile chunk
+  for(int32 tileY = minY;
+      tileY < maxY;
+      tileY++)
+  {
+    for(int32 tileX = minX;
+        tileX < maxX;
+        tileX++)
+    {
+      tile_coordinates rectCoords = {};
+      rectCoords.tileX = tileX;
+      rectCoords.tileY = tileY;
+
+      if(GetTileChunk(tileMap, &rectCoords) != nullptr)
+      {
+        int32_point tileChunkCoords = GetTileChunkCoordinates(tileMap, &rectCoords);
+        if(tileChunkCoords.x != tileChunkX || tileChunkCoords.y != tileChunkY)
+        {
+          tileChunkX = tileChunkCoords.x;
+          tileChunkY = tileChunkCoords.y;
+          int32 currentTileChunkX = tileChunkX << tileMap->tileShift;
+          int32 currentTileChunkY = tileChunkY << tileMap->tileShift;
+
+
+          DrawHollowRectangle(
+            offscreenBuffer,
+            renderOffsetX - (coords->tileX + coords->pX - currentTileChunkX) * tileMap->tileInPixels,
+            renderOffsetY + (coords->tileY + coords->pY - currentTileChunkY) * tileMap->tileInPixels - tileMap->tileMax * tileMap->tileInPixels,
+            renderOffsetX - (coords->tileX + coords->pX - (currentTileChunkX + tileMap->tileMax)) * tileMap ->tileInPixels,
+            renderOffsetY + (coords->tileY + coords->pY - currentTileChunkY) * tileMap->tileInPixels,
+            1.0f, 1.0f, 1.0f);
+        }
+      }
+    }
   }
 
   // Draw Player

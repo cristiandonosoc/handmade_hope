@@ -117,6 +117,62 @@ DrawRectangle(game_offscreen_buffer* buffer, real32 realMinX, real32 realMinY,
   }
 }
 
+internal void
+DrawHollowRectangle(game_offscreen_buffer* buffer,
+                    real32 realMinX, real32 realMinY,
+                    real32 realMaxX, real32 realMaxY,
+                    real32 R, real32 G, real32 B)
+{
+  int32 minX = UTILS::RoundReal32ToUInt32(realMinX);
+  int32 maxX = UTILS::RoundReal32ToUInt32(realMaxX);
+  int32 minY = UTILS::RoundReal32ToUInt32(realMinY);
+  int32 maxY = UTILS::RoundReal32ToUInt32(realMaxY);
+
+
+  // We make the boundaries safe
+  if(minX < 0) { minX = 0; }
+  if(minY < 0) { minY = 0; }
+  if(maxX > buffer->width) { maxX = buffer->width; }
+  if(maxY > buffer->height) { maxY = buffer->height; }
+
+
+  uint32 color = UTILS::RealRGBToUInt32(R, G, B);
+
+  for(int y = minY;
+      y < maxY;
+      y++)
+  {
+    uint8 *pixel = (uint8 *)buffer->memory +
+                   y * buffer->pitch +
+                   buffer->bytesPerPixel * minX;
+
+    for (int x = minX;
+         x < maxX;
+         x++)
+    {
+      bool32 draw = false;
+      if(y == minY || y == maxY - 1)
+      {
+        draw = true;
+      }
+      else
+      {
+        if(x == minX || x == maxX - 1)
+        {
+          draw = true;
+        }
+      }
+      if(draw)
+      {
+        *(uint32 *)pixel = color;
+      }
+      pixel += buffer->bytesPerPixel;
+    }
+  }
+
+
+
+}
 
 #define _GAME_RENDER_CPP
 #endif
