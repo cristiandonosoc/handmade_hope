@@ -2,7 +2,7 @@
 
 #include "handmade_coordinates.cpp"
 
-inline tile_chunk*
+internal tile_chunk*
 GetTileChunk(tile_map* tileMap, tile_coordinates* coords)
 {
   int32_point tileChunkCoords = GetTileChunkCoordinates(tileMap, coords);
@@ -12,7 +12,7 @@ GetTileChunk(tile_map* tileMap, tile_coordinates* coords)
      (tileChunkCoords.y >= 0 && tileChunkCoords.y < tileMap->tileChunkCountY))
   {
     tile_chunk* result = tileMap->tileChunks +
-                         (tileChunkCoords.y * tileMap->tileChunkCountY) +
+                         (tileChunkCoords.y * tileMap->tileChunkCountX) +
                          tileChunkCoords.x;
     return result;
   }
@@ -20,7 +20,7 @@ GetTileChunk(tile_map* tileMap, tile_coordinates* coords)
   return nullptr;
 }
 
-inline uint32*
+internal uint32*
 GetTile(tile_map* tileMap, tile_coordinates* coords)
 {
   int32_point tileCoords = GetTileCoordinates(tileMap, coords);
@@ -40,7 +40,7 @@ GetTile(tile_map* tileMap, tile_coordinates* coords)
 }
 
 #define TILE_INVALID 0xFFFFFFFF
-inline uint32
+internal uint32
 GetTileValue(tile_map* tileMap, tile_coordinates* coords)
 {
   uint32 result = TILE_INVALID;
@@ -52,6 +52,31 @@ GetTileValue(tile_map* tileMap, tile_coordinates* coords)
   }
 
   return result;
+}
+
+internal void
+SetTileValue(tile_map* tileMap, tile_chunk* tileChunk, int32 tileX, int32 tileY, uint32 value)
+{
+  ASSERT(tileMap);
+  ASSERT(tileChunk);
+  ASSERT(tileX >= 0 && tileX < tileMap->tileMax);
+  ASSERT(tileX >= 0 && tileY < tileMap->tileMax);
+
+  tileChunk->tiles[(tileY * tileMap->tileMax) + tileX] = value;
+}
+
+
+
+internal void
+SetTileValue(tile_map* tileMap, tile_coordinates* coords, uint32 value)
+{
+  tile_chunk* tileChunk = GetTileChunk(tileMap, coords);
+
+  // TODO(Cristian): On-demand tile_chunk creation
+  ASSERT(tileChunk != nullptr);
+
+  int32_point tileCoords = GetTileCoordinates(tileMap, coords);
+  SetTileValue(tileMap, tileChunk, tileCoords.x, tileCoords.y, value);
 }
 
 #define _HANDMADE_TILE_CPP
