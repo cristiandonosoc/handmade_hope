@@ -242,7 +242,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   world.tileMax = (1 << world.tileShift);
 
   world.tileInMeters = 1.0f;
-  world.tileInPixels = 60;
+  world.tileInPixels = 6;
 
   world.offsetX = -30;
   world.offsetY = 0;
@@ -351,11 +351,16 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   int totalHeight = TOTAL_Y * world.tileInPixels;
   int32_point playerTilePos = GetTileCoordinates(&world, coords);
 
+
+  real32 centerX = offscreenBuffer->width / 2;
+  real32 centerY = offscreenBuffer->height / 2;
+
   // TODO(Cristian): TILEMAP RENDERING!!!!
-  int32 minX = coords->tileX - (TOTAL_X / 2 + 1);
-  int32 maxX = coords->tileX + (TOTAL_X / 2 + 2);
-  int32 minY = coords->tileY - (TOTAL_Y / 2 + 1);
-  int32 maxY = coords->tileY + (TOTAL_Y / 2 + 2);
+  int32 renderSize = 30;
+  int32 minX = coords->tileX - (TOTAL_X / 2 + 1 + renderSize);
+  int32 maxX = coords->tileX + (TOTAL_X / 2 + 2 + renderSize);
+  int32 minY = coords->tileY - (TOTAL_Y / 2 + 1 + renderSize);
+  int32 maxY = coords->tileY + (TOTAL_Y / 2 + 2 + renderSize);
   for(int32 tileY = minY;
       tileY < maxY;
       tileY++)
@@ -384,47 +389,26 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         // NOTE(Cristian): We substract one because we are also rendering one extra tile in
         // every direction
-        int32 tileOffsetX = tileX - minX - 1;
-        int32 tileOffsetY = tileY - minY - 1;
+        int32 tileOffsetX = tileX - coords->tileX;
+        int32 tileOffsetY = -(tileY - coords->tileY);
         DrawRectangle(offscreenBuffer,
-                      world.offsetX + ((tileOffsetX - coords->pX) * world.tileInPixels),
-                      world.offsetY + (totalHeight - world.tileInPixels * (tileOffsetY + 1.5f - coords->pY)),
-                      world.offsetX + ((tileOffsetX - coords->pX) * world.tileInPixels) + world.tileInPixels - 1,
-                      world.offsetY + (totalHeight - world.tileInPixels * (tileOffsetY + 1.5f - coords->pY)) + world.tileInPixels - 1,
+                      world.offsetX + centerX + ((tileOffsetX - coords->pX) * world.tileInPixels),
+                      world.offsetY + centerY + ((tileOffsetY + coords->pY) * world.tileInPixels) - world.tileInPixels,
+                      world.offsetX + centerX + ((tileOffsetX - coords->pX) * world.tileInPixels) + world.tileInPixels - 1,
+                      world.offsetY + centerY + (((tileOffsetY + coords->pY) * world.tileInPixels) - 1),
                       currentTile * 0.8f,
                       tile * 0.5f,
                       0.7f);
       }
   }
 
-  real32 playerPixelX = (coords->tileX * world.tileInMeters) + coords->pX;
-  real32 playerPixelY = (coords->tileY * world.tileInMeters) + coords->pY;
-
   // Draw Player
-  // // This is movement player
-  // DrawRectangle(offscreenBuffer,
-  //               world.offsetX + (playerPixelX - (PLAYER_WIDTH / 2)) * world.tileInPixels,
-  //               world.offsetY + (totalHeight - ((playerPixelY + PLAYER_HEIGHT) * world.tileInPixels)),
-  //               world.offsetX + (playerPixelX + (PLAYER_WIDTH / 2)) * world.tileInPixels,
-  //               world.offsetY + (totalHeight - ((playerPixelY) * world.tileInPixels)),
-  //               1.0f, 1.0f, 0.0f);
-  real32 centerX = offscreenBuffer->width / 2;
-  real32 centerY = offscreenBuffer->height / 2;
-  // DrawRectangle(offscreenBuffer,
-  //               world.offsetX + centerX - (PLAYER_WIDTH / 2) * world.tileInPixels,
-  //               world.offsetY + centerY - PLAYER_HEIGHT * world.tileInPixels,
-  //               world.offsetX + centerX + (PLAYER_WIDTH / 2) * world.tileInPixels,
-  //               world.offsetY + centerY,
-  //               1.0f, 1.0f, 0.0f);
   DrawRectangle(offscreenBuffer,
                 world.offsetX + centerX - (PLAYER_WIDTH / 2) * world.tileInPixels,
                 world.offsetY + centerY - PLAYER_HEIGHT * world.tileInPixels,
                 world.offsetX + centerX + (PLAYER_WIDTH / 2) * world.tileInPixels,
                 world.offsetY + centerY,
                 1.0f, 1.0f, 0.0f);
-
-
-
 
   // Draw Mouse
   DrawRectangle(offscreenBuffer,

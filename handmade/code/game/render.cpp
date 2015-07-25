@@ -117,5 +117,6 @@ DrawRectangle(game_offscreen_buffer* buffer, real32 realMinX, real32 realMinY,
   }
 }
 
+
 #define _GAME_RENDER_CPP
 #endif
