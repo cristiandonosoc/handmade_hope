@@ -15,6 +15,7 @@
 #include "game\render.cpp"
 #include "game\sound.cpp"
 #include "game\memory.cpp"
+#include "game\random.cpp"
 
 // IMPORTANT(Cristian): OH GOD REMOVE THIS! THIS IS NOT PLATFORM INDEPENDENT!!!!
 #include <windows.h>
@@ -51,8 +52,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // We create the tileMap
     world->tileMap = PushStruct(&gameState->memoryManager, tile_map);
     tile_map* tileMap = world->tileMap;
-    tileMap->tileChunkCountX = 6;
-    tileMap->tileChunkCountY = 3;
+    tileMap->tileChunkCountX = 128;
+    tileMap->tileChunkCountY = 128;
 
     tileMap->tileShift = 4;
     tileMap->tileMask = (1 << tileMap->tileShift) - 1;
@@ -91,11 +92,11 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     uint32 screens = 5;
     for(uint32 screenY = 0;
         screenY < screens;
-        screenY++)
+        )
     {
       for(uint32 screenX = 0;
           screenX < screens;
-          screenX++)
+          )
       {
         for(uint32 tileY = 0;
             tileY < tilesPerHeight;
@@ -105,6 +106,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
               tileX < tilesPerWidth;
               tileX++)
           {
+
             uint32 value = 0;
             if(tileX == 0 || tileX == TILES_PER_WIDTH - 1)
             {
@@ -129,6 +131,15 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
             SetTileValue(tileMap, &coord, value);
           }
+        }
+
+        if(RANDOM::GetRandomUint32() % 2)
+        {
+          screenY++;
+        }
+        else
+        {
+          screenX++;
         }
       }
     }
