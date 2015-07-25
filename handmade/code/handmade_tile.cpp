@@ -1,7 +1,14 @@
 #ifndef _HANDMADE_TILE_CPP
 
 #include "handmade_coordinates.cpp"
+#include "game/memory.cpp"
 
+inline uint32
+GetTileChunkDim(tile_map* tileMap)
+{
+  uint32 result = tileMap->tileSide * tileMap->tileSide;
+  return result;
+}
 internal tile_chunk*
 GetTileChunk(tile_map* tileMap, tile_coordinates* coords)
 {
@@ -25,16 +32,16 @@ GetTile(tile_map* tileMap, tile_coordinates* coords)
 {
   int32_point tileCoords = GetTileCoordinates(tileMap, coords);
 
-  ASSERT(tileCoords.x >= 0 && tileCoords.x < tileMap->tileMax);
-  ASSERT(tileCoords.y >= 0 && tileCoords.y < tileMap->tileMax);
+  ASSERT(tileCoords.x >= 0 && tileCoords.x < tileMap->tileSide);
+  ASSERT(tileCoords.y >= 0 && tileCoords.y < tileMap->tileSide);
 
   int32_point tileChunkCoords = GetTileChunkCoordinates(tileMap, coords);
   tile_chunk* tileChunk = GetTileChunk(tileMap, coords);
 
   uint32* result = nullptr;
-  if(tileChunk != nullptr)
+  if(tileChunk != nullptr && tileChunk->initialized)
   {
-    result = tileChunk->tiles + (tileCoords.y * tileMap->tileMax) + tileCoords.x;
+    result = tileChunk->tiles + (tileCoords.y * tileMap->tileSide) + tileCoords.x;
   }
   return result;
 }
@@ -59,21 +66,30 @@ SetTileValue(tile_map* tileMap, tile_chunk* tileChunk, int32 tileX, int32 tileY,
 {
   ASSERT(tileMap);
   ASSERT(tileChunk);
-  ASSERT(tileX >= 0 && tileX < tileMap->tileMax);
-  ASSERT(tileX >= 0 && tileY < tileMap->tileMax);
+  ASSERT(tileX >= 0 && tileX < tileMap->tileSide);
+  ASSERT(tileX >= 0 && tileY < tileMap->tileSide);
 
-  tileChunk->tiles[(tileY * tileMap->tileMax) + tileX] = value;
+  tileChunk->tiles[(tileY * tileMap->tileSide) + tileX] = value;
 }
 
 
 
 internal void
-SetTileValue(tile_map* tileMap, tile_coordinates* coords, uint32 value)
+SetTileValue(memory_manager* memoryManager, tile_map* tileMap, tile_coordinates* coords, uint32 value)
 {
   tile_chunk* tileChunk = GetTileChunk(tileMap, coords);
 
   // TODO(Cristian): On-demand tile_chunk creation
   ASSERT(tileChunk != nullptr);
+
+  // If the tile_chunk is not initialized, we require the memory for it
+  if(!tileChunk->initialized)
+  {
+    tileChunk->tiles = PushArray(memoryManager,
+                                 GetTileChunkDim(tileMap),
+                                 uint32);
+    tileChunk->initialized = true;
+  }
 
   int32_point tileCoords = GetTileCoordinates(tileMap, coords);
   SetTileValue(tileMap, tileChunk, tileCoords.x, tileCoords.y, value);

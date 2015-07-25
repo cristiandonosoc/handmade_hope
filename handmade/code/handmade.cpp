@@ -11,11 +11,11 @@
 #include "handmade.h"
 #include "handmade_coordinates.cpp"
 #include "handmade_tile.cpp"
-#include "game\utils.cpp"
-#include "game\render.cpp"
-#include "game\sound.cpp"
-#include "game\memory.cpp"
-#include "game\random.cpp"
+#include "game/utils.cpp"
+#include "game/render.cpp"
+#include "game/sound.cpp"
+#include "game/memory.cpp"
+#include "game/random.cpp"
 
 // IMPORTANT(Cristian): OH GOD REMOVE THIS! THIS IS NOT PLATFORM INDEPENDENT!!!!
 #include <windows.h>
@@ -57,10 +57,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     tileMap->tileShift = 4;
     tileMap->tileMask = (1 << tileMap->tileShift) - 1;
-    tileMap->tileMax = (1 << tileMap->tileShift);
+    tileMap->tileSide = (1 << tileMap->tileShift);
 
-    tileMap->tileInMeters = 1.0f;
-    tileMap->tileInPixels = 6;
 
     tileMap->offsetX = -30;
     tileMap->offsetY = 0;
@@ -69,21 +67,21 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     tileMap->tileChunks = PushArray(&gameState->memoryManager,
                                     tileMap->tileChunkCountX * tileMap->tileChunkCountY,
                                     tile_chunk);
-    // We append the actual tiles
-    for(int tileChunkY = 0;
-        tileChunkY < tileMap->tileChunkCountY;
-        tileChunkY++)
-    {
-      for(int tileChunkX = 0;
-          tileChunkX < tileMap->tileChunkCountX;
-          tileChunkX++)
-      {
-        tileMap->tileChunks[tileChunkY * tileMap->tileChunkCountX + tileChunkX].tiles =
-          PushArray(&gameState->memoryManager,
-                    tileMap->tileMax * tileMap->tileMax,
-                    uint32);
-      }
-    }
+    // // We append the actual tiles
+    // for(int tileChunkY = 0;
+    //     tileChunkY < tileMap->tileChunkCountY;
+    //     tileChunkY++)
+    // {
+    //   for(int tileChunkX = 0;
+    //       tileChunkX < tileMap->tileChunkCountX;
+    //       tileChunkX++)
+    //   {
+    //     tileMap->tileChunks[tileChunkY * tileMap->tileChunkCountX + tileChunkX].tiles =
+    //       PushArray(&gameState->memoryManager,
+    //                 GetTileChunkDim(tileMap),
+    //                 uint32);
+    //   }
+    // }
 
 #define TILES_PER_WIDTH 17
 #define TILES_PER_HEIGHT 9
@@ -129,7 +127,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             coord.tileX = (screenX * tilesPerWidth) + tileX;
             coord.tileY = (screenY * tilesPerHeight) + tileY;
 
-            SetTileValue(tileMap, &coord, value);
+            SetTileValue(&gameState->memoryManager, tileMap, &coord, value);
           }
         }
 
@@ -164,6 +162,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // We obtain the world data from the gameState
   world_definition* world = gameState->world;
   tile_map* tileMap = world->tileMap;
+  // Outside initialization so we can live-change it
+  tileMap->tileInMeters = 1.0f;
+  tileMap->tileInPixels = 6;
 
   // We get the current tileChunk
   tile_chunk* currentTileMap = GetTileChunk(tileMap, coords);
@@ -329,7 +330,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       rectCoords.tileX = tileX;
       rectCoords.tileY = tileY;
 
-      if(GetTileChunk(tileMap, &rectCoords) != nullptr)
+      tile_chunk* tileChunk = GetTileChunk(tileMap, &rectCoords);
+      if(tileChunk != nullptr)
       {
         int32_point tileChunkCoords = GetTileChunkCoordinates(tileMap, &rectCoords);
         if(tileChunkCoords.x != tileChunkX || tileChunkCoords.y != tileChunkY)
@@ -339,14 +341,19 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           int32 currentTileChunkX = tileChunkX << tileMap->tileShift;
           int32 currentTileChunkY = tileChunkY << tileMap->tileShift;
 
+          real32 gray = 0.0f;
+          if(tileChunk->initialized)
+          {
+            gray = 1.0f;
+          }
 
           DrawHollowRectangle(
             offscreenBuffer,
             renderOffsetX - (coords->tileX + coords->pX - currentTileChunkX) * tileMap->tileInPixels,
-            renderOffsetY + (coords->tileY + coords->pY - currentTileChunkY) * tileMap->tileInPixels - tileMap->tileMax * tileMap->tileInPixels,
-            renderOffsetX - (coords->tileX + coords->pX - (currentTileChunkX + tileMap->tileMax)) * tileMap ->tileInPixels,
+            renderOffsetY + (coords->tileY + coords->pY - currentTileChunkY) * tileMap->tileInPixels - tileMap->tileSide * tileMap->tileInPixels,
+            renderOffsetX - (coords->tileX + coords->pX - (currentTileChunkX + tileMap->tileSide)) * tileMap ->tileInPixels,
             renderOffsetY + (coords->tileY + coords->pY - currentTileChunkY) * tileMap->tileInPixels,
-            1.0f, 1.0f, 1.0f);
+            gray, gray, gray);
         }
       }
     }

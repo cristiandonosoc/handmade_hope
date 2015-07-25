@@ -75,6 +75,7 @@ struct tile_coordinates
 
 struct tile_chunk
 {
+  bool32 initialized;
   uint32* tiles;
 };
 
@@ -85,7 +86,7 @@ struct tile_map
 
   int tileShift;
   int tileMask;
-  int tileMax;
+  int tileSide;
 
   real32 tileInMeters;
   real32 tileInPixels;
