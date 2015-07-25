@@ -58,7 +58,7 @@ GAME_GET_SOUND(GameGetSoundStub)
 
 struct world_map; // Forward-declare
 
-struct world_coordinates
+struct tile_coordinates
 {
   // NOTE(Cristian): Represent the global (obsolute) position of the tile
   // in the world
@@ -73,13 +73,12 @@ struct world_coordinates
 };
 
 
-struct tile_map
+struct tile_chunk
 {
-
   uint32* tiles;
 };
 
-struct world_map
+struct tile_map
 {
   int offsetX;
   int offsetY;
@@ -92,19 +91,33 @@ struct world_map
   real32 tileInPixels;
 
   // TODO(Cristian): Sparseness
-  int32 tileMapCountX;
-  int32 tileMapCountY;
+  int32 tileChunkCountX;
+  int32 tileChunkCountY;
 
-  tile_map* tileMaps;
+  tile_chunk* tileChunks;
+};
+
+struct world_definition
+{
+  tile_map* tileMap;
+};
+
+struct memory_manager
+{
+  size_t size;
+  size_t used;
+
+  uint8* base;
 };
 
 struct game_state
 {
   int32 toneHz;
   int32 toneVolume;
-  real32 tSine;
 
-  world_coordinates coords;
+  memory_manager memoryManager;
+  world_definition* world;
+  tile_coordinates coords;
 };
 
 
