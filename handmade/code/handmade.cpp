@@ -80,8 +80,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // We create the tileMap
     world->tileMap = PushStruct(&gameState->memoryManager, tile_map);
     tile_map* tileMap = world->tileMap;
-    tileMap->tileChunkCountX = 1;
-    tileMap->tileChunkCountY = 1;
+    tileMap->tileChunkCountX = 6;
+    tileMap->tileChunkCountY = 3;
 
     tileMap->tileShift = 4;
     tileMap->tileMask = (1 << tileMap->tileShift) - 1;
@@ -115,23 +115,48 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
 #define TILES_PER_WIDTH 17
 #define TILES_PER_HEIGHT 9
+    uint32 tilesPerWidth = TILES_PER_WIDTH;
+    uint32 tilesPerHeight = TILES_PER_HEIGHT;
+    uint32 screens = 5;
     for(uint32 screenY = 0;
-        screenY < 32;
+        screenY < screens;
         screenY++)
     {
       for(uint32 screenX = 0;
-          screenX < 32;
+          screenX < screens;
           screenX++)
       {
         for(uint32 tileY = 0;
-            tileY < TILES_PER_WIDTH;
+            tileY < tilesPerHeight;
             tileY++)
         {
           for(uint32 tileX = 0;
-              tileX < TILES_PER_HEIGHT;
+              tileX < tilesPerWidth;
               tileX++)
           {
+            uint32 value = 0;
+            if(tileX == 0 || tileX == TILES_PER_WIDTH - 1)
+            {
+              value = 1;
+              if(tileY == TILES_PER_HEIGHT / 2)
+              {
+                value = 0;
+              }
+            }
+            if(tileY == 0 || tileY == TILES_PER_HEIGHT - 1)
+            {
+              value = 1;
+              if(tileX == TILES_PER_WIDTH / 2)
+              {
+                value = 0;
+              }
+            }
 
+            tile_coordinates coord = {};
+            coord.tileX = (screenX * tilesPerWidth) + tileX;
+            coord.tileY = (screenY * tilesPerHeight) + tileY;
+
+            SetTileValue(tileMap, &coord, value);
           }
         }
       }
@@ -213,7 +238,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       // We check left-lower corner
       uint32 proposedTile = GetTileValue(tileMap, &leftLowerCorner);
-      if(proposedTile != TILE_INVALID)
+      if(proposedTile == 0)
       {
         tile_coordinates rightLowerCorner = ModifyCoordinates(tileMap,
                                                               proposedCoords,
@@ -234,7 +259,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       );
       OutputDebugStringA(mbuffer);
 
-      if(proposedTile != TILE_INVALID)
+      if(proposedTile == 0)
       {
         *coords = proposedCoords;
       }
