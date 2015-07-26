@@ -256,7 +256,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   int totalHeight = TILES_PER_HEIGHT * tileInPixels;
   point2D<int32> playerTilePos = GetTileCoordinates(tileMap, coords);
 
-
   real32 centerX = offscreenBuffer->width / 2;
   real32 centerY = offscreenBuffer->height / 2;
 
