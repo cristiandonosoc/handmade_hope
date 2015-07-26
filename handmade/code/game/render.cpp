@@ -169,9 +169,23 @@ DrawHollowRectangle(game_offscreen_buffer* buffer,
       pixel += buffer->bytesPerPixel;
     }
   }
-
-
-
+}
+inline void
+DrawTileRelativeToCenter(game_offscreen_buffer* buffer,
+                         real32 screenOffsetX, real32 screenOffsetY,
+                         int32 tileOffsetX, int32 tileOffsetY,
+                         real32 realOffsetX, real32 realOffsetY,
+                         real32 tileSizeX, real32 tileSizeY,
+                         int32 pixelPaddingX, int32 pixelPaddingY,
+                         real32 tileInMeters, real32 metersToPixels,
+                         real32 R, real32 G, real32 B)
+{
+  DrawRectangle(buffer,
+    screenOffsetX + (tileOffsetX * tileInMeters - realOffsetX) * metersToPixels,
+    screenOffsetY - ((tileOffsetY * tileInMeters + tileSizeY - realOffsetY) * metersToPixels + pixelPaddingY),
+    screenOffsetX + (tileOffsetX * tileInMeters + tileSizeX - realOffsetX) * metersToPixels + pixelPaddingX,
+    screenOffsetY - (tileOffsetY * tileInMeters - realOffsetY) * metersToPixels,
+    R, G, B);
 }
 
 #define _GAME_RENDER_CPP
