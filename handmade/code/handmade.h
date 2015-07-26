@@ -89,7 +89,6 @@ struct tile_map
   int tileSide;
 
   real32 tileInMeters;
-  real32 tileInPixels;
 
   // TODO(Cristian): Sparseness
   int32 tileChunkCountX;
