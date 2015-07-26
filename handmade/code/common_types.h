@@ -37,7 +37,7 @@ typedef float real32;
 typedef double real64;
 
 template<typename T>
-struct point
+struct point2D
 {
   T x;
   T y;
