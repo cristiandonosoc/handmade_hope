@@ -114,6 +114,8 @@ struct game_state
   int32 toneHz;
   int32 toneVolume;
 
+  bool32 zChangePress;
+
   memory_manager memoryManager;
   world_definition* world;
   tile_coordinates coords;

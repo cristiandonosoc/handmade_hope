@@ -184,7 +184,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       // NOTE(Cristian): The speed is pixels/second
       real32 speed = gameInput->secondsToUpdate * 2.0f;
 
-      if(input->actionUp.endedDown)
+      // TODO(Cristian): Check W+S+RIGHT broken combination
+      // Is it the platform layer o a keyboard failure????
+      if(input->actionRight.endedDown)
       {
         speed *= 20;
       }
@@ -203,6 +205,22 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       if(input->moveUp.endedDown)
       {
         dY += speed;
+      }
+
+      if(!gameState->zChangePress)
+      {
+        if(input->actionUp.endedDown)
+        {
+          gameState->zChangePress = true;
+        }
+      }
+      else
+      {
+        if(!input->actionUp.endedDown)
+        {
+          gameState->zChangePress = false;
+          gameState->coords.tileZ ^= 1;
+        }
       }
 
       tile_coordinates proposedCoords = ModifyCoordinates(tileMap, *coords, dX, dY);
@@ -260,6 +278,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   int32 tileChunkX = 0xFFFFFFFF;
   int32 tileChunkY = 0xFFFFFFFF;
+  int32 tileChunkZ = 0xFFFFFFFF;
 
   // TODO(Cristian): TILEMAP RENDERING!!!!
   int32 renderSize = 100;
@@ -275,11 +294,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         tileX < maxX;
         tileX++)
     {
-
-
       tile_coordinates rectCoords = {};
       rectCoords.tileX = tileX;
       rectCoords.tileY = tileY;
+      rectCoords.tileZ = coords->tileZ;
       real32 tile = 0;
 
       uint32 tileValue = GetTileValue(tileMap, &rectCoords);
@@ -324,17 +342,22 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       tile_coordinates rectCoords = {};
       rectCoords.tileX = tileX;
       rectCoords.tileY = tileY;
+      rectCoords.tileZ = coords->tileZ;
 
       tile_chunk* tileChunk = GetTileChunk(tileMap, &rectCoords);
       if(tileChunk != nullptr)
       {
         point3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &rectCoords);
-        if(tileChunkCoords.x != tileChunkX || tileChunkCoords.y != tileChunkY)
+        if(tileChunkCoords.x != tileChunkX ||
+           tileChunkCoords.y != tileChunkY ||
+           tileChunkCoords.z != tileChunkZ)
         {
           tileChunkX = tileChunkCoords.x;
           tileChunkY = tileChunkCoords.y;
-          int32 currentTileChunkX = tileChunkX << tileMap->tileShift;
-          int32 currentTileChunkY = tileChunkY << tileMap->tileShift;
+          tileChunkZ = tileChunkCoords.z;
+          int32 currentTileChunkX = tileChunkCoords.x << tileMap->tileShift;
+          int32 currentTileChunkY = tileChunkCoords.y << tileMap->tileShift;
+          int32 currentTileChunkZ = tileChunkCoords.z;
 
           real32 gray = 0.0f;
           if(tileChunk->initialized)
