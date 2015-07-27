@@ -43,5 +43,13 @@ struct point2D
   T y;
 };
 
+template<typename T>
+struct point3D
+{
+  T x;
+  T y;
+  T z;
+};
+
 #define PI32 3.14159265359f
 #endif

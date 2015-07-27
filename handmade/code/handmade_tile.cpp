@@ -9,18 +9,23 @@ GetTileChunkDim(tile_map* tileMap)
   uint32 result = tileMap->tileSide * tileMap->tileSide;
   return result;
 }
+
 internal tile_chunk*
 GetTileChunk(tile_map* tileMap, tile_coordinates* coords)
 {
-  point2D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, coords);
+  point3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, coords);
 
   // TODO(Cristian): Find a good way of finding if the tileChunk actually exists!
   if((tileChunkCoords.x >= 0 && tileChunkCoords.x < tileMap->tileChunkCountX) &&
-     (tileChunkCoords.y >= 0 && tileChunkCoords.y < tileMap->tileChunkCountY))
+     (tileChunkCoords.y >= 0 && tileChunkCoords.y < tileMap->tileChunkCountY) &&
+     (tileChunkCoords.z >= 0 && tileChunkCoords.z < tileMap->tileChunkCountZ))
+
   {
-    tile_chunk* result = tileMap->tileChunks +
-                         (tileChunkCoords.y * tileMap->tileChunkCountX) +
-                         tileChunkCoords.x;
+    tile_chunk* result =
+      tileMap->tileChunks +
+      (tileChunkCoords.z * tileMap->tileChunkCountY * tileMap->tileChunkCountX) +
+      (tileChunkCoords.y * tileMap->tileChunkCountX) +
+      tileChunkCoords.x;
     return result;
   }
 
@@ -35,10 +40,9 @@ GetTile(tile_map* tileMap, tile_coordinates* coords)
   ASSERT(tileCoords.x >= 0 && tileCoords.x < tileMap->tileSide);
   ASSERT(tileCoords.y >= 0 && tileCoords.y < tileMap->tileSide);
 
-  point2D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, coords);
-  tile_chunk* tileChunk = GetTileChunk(tileMap, coords);
-
   uint32* result = nullptr;
+
+  tile_chunk* tileChunk = GetTileChunk(tileMap, coords);
   if(tileChunk != nullptr && tileChunk->initialized)
   {
     result = tileChunk->tiles + (tileCoords.y * tileMap->tileSide) + tileCoords.x;

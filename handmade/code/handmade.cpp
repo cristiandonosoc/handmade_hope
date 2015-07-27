@@ -54,6 +54,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     tile_map* tileMap = world->tileMap;
     tileMap->tileChunkCountX = 128;
     tileMap->tileChunkCountY = 128;
+    tileMap->tileChunkCountZ = 2;
 
     tileMap->tileShift = 4;
     tileMap->tileMask = (1 << tileMap->tileShift) - 1;
@@ -61,82 +62,78 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // We append the tile_chunks
     tileMap->tileChunks = PushArray(&gameState->memoryManager,
-                                    tileMap->tileChunkCountX * tileMap->tileChunkCountY,
-                                    tile_chunk);
-    // // We append the actual tiles
-    // for(int tileChunkY = 0;
-    //     tileChunkY < tileMap->tileChunkCountY;
-    //     tileChunkY++)
-    // {
-    //   for(int tileChunkX = 0;
-    //       tileChunkX < tileMap->tileChunkCountX;
-    //       tileChunkX++)
-    //   {
-    //     tileMap->tileChunks[tileChunkY * tileMap->tileChunkCountX + tileChunkX].tiles =
-    //       PushArray(&gameState->memoryManager,
-    //                 GetTileChunkDim(tileMap),
-    //                 uint32);
-    //   }
-    // }
+        tileMap->tileChunkCountZ * tileMap->tileChunkCountX * tileMap->tileChunkCountY,
+        tile_chunk);
 
 #define TILES_PER_WIDTH 17
 #define TILES_PER_HEIGHT 9
+
+    /**
+     * We set the tile_chunk data for SOME tile_chunk
+     */
     uint32 tilesPerWidth = TILES_PER_WIDTH;
     uint32 tilesPerHeight = TILES_PER_HEIGHT;
     uint32 screens = 32;
-    for(uint32 screenY = 0;
-        screenY < screens;
-        )
+    for(int32 screenZ = 0;
+        screenZ < tileMap->tileChunkCountZ;
+        screenZ++)
     {
-      for(uint32 screenX = 0;
-          screenX < screens;
-          )
+      for(uint32 screenY = 0;
+          screenY < screens;
+         )
       {
-        for(uint32 tileY = 0;
-            tileY < tilesPerHeight;
-            tileY++)
+        for(uint32 screenX = 0;
+            screenX < screens;
+           )
         {
-          for(uint32 tileX = 0;
-              tileX < tilesPerWidth;
-              tileX++)
+          for(uint32 tileY = 0;
+              tileY < tilesPerHeight;
+              tileY++)
           {
-
-            uint32 value = 0;
-            if(tileX == 0 || tileX == TILES_PER_WIDTH - 1)
+            for(uint32 tileX = 0;
+                tileX < tilesPerWidth;
+                tileX++)
             {
-              value = 1;
-              if(tileY == TILES_PER_HEIGHT / 2)
-              {
-                value = 0;
-              }
-            }
-            if(tileY == 0 || tileY == TILES_PER_HEIGHT - 1)
-            {
-              value = 1;
-              if(tileX == TILES_PER_WIDTH / 2)
-              {
-                value = 0;
-              }
-            }
 
-            tile_coordinates coord = {};
-            coord.tileX = (screenX * tilesPerWidth) + tileX;
-            coord.tileY = (screenY * tilesPerHeight) + tileY;
+              uint32 value = 0;
+              if(tileX == 0 || tileX == TILES_PER_WIDTH - 1)
+              {
+                value = 1;
+                if(tileY == TILES_PER_HEIGHT / 2)
+                {
+                  value = 0;
+                }
+              }
+              if(tileY == 0 || tileY == TILES_PER_HEIGHT - 1)
+              {
+                value = 1;
+                if(tileX == TILES_PER_WIDTH / 2)
+                {
+                  value = 0;
+                }
+              }
 
-            SetTileValue(&gameState->memoryManager, tileMap, &coord, value);
+              tile_coordinates coord = {};
+              coord.tileX = (screenX * tilesPerWidth) + tileX;
+              coord.tileY = (screenY * tilesPerHeight) + tileY;
+              coord.tileZ = screenZ;
+
+              SetTileValue(&gameState->memoryManager, tileMap, &coord, value);
+            }
           }
-        }
 
-        if(RANDOM::GetRandomUint32() % 2)
-        {
-          screenY++;
-        }
-        else
-        {
-          screenX++;
+          if(RANDOM::GetRandomUint32() % 2)
+          {
+            screenY++;
+          }
+          else
+          {
+            screenX++;
+          }
         }
       }
     }
+
 
 #define PLAYER_WIDTH 0.6f
 #define PLAYER_HEIGHT 1.0f
@@ -228,14 +225,14 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
 
       point2D<int32> tileCoords = GetTileCoordinates(tileMap, &proposedCoords);
-      point2D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &proposedCoords);
+      point3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &proposedCoords);
       char mbuffer[256];
       //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
       sprintf_s(mbuffer,
-        "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d\n",
+        "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d, WZ: %d\n",
         proposedCoords.pX, proposedCoords.pY,
         tileCoords.x, tileCoords.y,
-        tileChunkCoords.x, tileChunkCoords.y
+        tileChunkCoords.x, tileChunkCoords.y, tileChunkCoords.z
       );
       OutputDebugStringA(mbuffer);
 
@@ -331,7 +328,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       tile_chunk* tileChunk = GetTileChunk(tileMap, &rectCoords);
       if(tileChunk != nullptr)
       {
-        point2D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &rectCoords);
+        point3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &rectCoords);
         if(tileChunkCoords.x != tileChunkX || tileChunkCoords.y != tileChunkY)
         {
           tileChunkX = tileChunkCoords.x;

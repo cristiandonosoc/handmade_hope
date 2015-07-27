@@ -64,6 +64,7 @@ struct tile_coordinates
   // in the world
   int32 tileX;
   int32 tileY;
+  int32 tileZ;
 
   // Movement (in world) meters from the referenced tile ny (tileX, tileY)
   // If the coordinates are normalized, both pX and pY should be
@@ -90,6 +91,7 @@ struct tile_map
   // TODO(Cristian): Sparseness
   int32 tileChunkCountX;
   int32 tileChunkCountY;
+  int32 tileChunkCountZ;
 
   tile_chunk* tileChunks;
 };

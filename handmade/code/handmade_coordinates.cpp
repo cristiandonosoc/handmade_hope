@@ -21,6 +21,9 @@ NormalizeCoordinates(tile_map* tileMap, tile_coordinates* coords)
   coords->pY -= divY * tileMap->tileInMeters;
 }
 
+/**
+ * Gets the coordinates of a tile relative to it's a tile_chunk
+ */
 internal point2D<int32>
 GetTileCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
@@ -31,12 +34,13 @@ GetTileCoordinates(tile_map* tileMap, tile_coordinates* coords)
   return point;
 }
 
-internal point2D<int32>
+internal point3D<int32>
 GetTileChunkCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
-  point2D<int32> point = {};
+  point3D<int32> point = {};
   point.x = coords->tileX >> tileMap->tileShift;
   point.y = coords->tileY >> tileMap->tileShift;
+  point.z = coords->tileZ;
 
   return point;
 }
