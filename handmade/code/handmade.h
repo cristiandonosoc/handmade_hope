@@ -81,9 +81,6 @@ struct tile_chunk
 
 struct tile_map
 {
-  int offsetX;
-  int offsetY;
-
   int tileShift;
   int tileMask;
   int tileSide;

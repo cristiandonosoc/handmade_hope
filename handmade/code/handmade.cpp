@@ -59,10 +59,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     tileMap->tileMask = (1 << tileMap->tileShift) - 1;
     tileMap->tileSide = (1 << tileMap->tileShift);
 
-
-    tileMap->offsetX = -30;
-    tileMap->offsetY = 0;
-
     // We append the tile_chunks
     tileMap->tileChunks = PushArray(&gameState->memoryManager,
                                     tileMap->tileChunkCountX * tileMap->tileChunkCountY,
@@ -256,11 +252,14 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   int totalHeight = TILES_PER_HEIGHT * tileInPixels;
   point2D<int32> playerTilePos = GetTileCoordinates(tileMap, coords);
 
+  real32 offsetX = -30.0f;
+  real32 offsetY = 0;
+
   real32 centerX = offscreenBuffer->width / 2;
   real32 centerY = offscreenBuffer->height / 2;
 
-  real32 renderOffsetX = tileMap->offsetX + centerX;
-  real32 renderOffsetY = tileMap->offsetY + centerY;
+  real32 renderOffsetX = offsetX + centerX;
+  real32 renderOffsetY = offsetY + centerY;
 
   int32 tileChunkX = 0xFFFFFFFF;
   int32 tileChunkY = 0xFFFFFFFF;
@@ -304,23 +303,13 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       int32 tileOffsetX = tileX - coords->tileX;
       int32 tileOffsetY = -(tileY - coords->tileY);
       DrawTileRelativeToCenter(offscreenBuffer,
-        tileMap->offsetX + centerX, tileMap->offsetY + centerY,       // screen offset
-        tileX - coords->tileX, tileY - coords->tileY,                 // tile offset
-        coords->pX, coords->pY,                                       // real offset
-        tileMap->tileInMeters, tileMap->tileInMeters,                 // tile size
-        -1, -1,                                                       // pixel padding
-        tileMap->tileInMeters, metersToPixels,                        // tile-to-pixel transforms
-        currentTile * 0.8f, tile * 0.5f, 0.7f);                       // color data
-
-      // DrawRectangle(offscreenBuffer,
-      //     tileMap->offsetX + centerX + ((tileOffsetX - coords->pX) * metersToPixels),
-      //     tileMap->offsetY + centerY + ((tileOffsetY + coords->pY) * metersToPixels) - metersToPixels,
-      //     tileMap->offsetX + centerX + ((tileOffsetX - coords->pX) * metersToPixels) + metersToPixels - 1,
-      //     tileMap->offsetY + centerY + (((tileOffsetY + coords->pY) * metersToPixels) - 1),
-      //     currentTile * 0.8f,
-      //     tile * 0.5f,
-      //     0.7f);
-
+          renderOffsetX, renderOffsetY,
+          tileX - coords->tileX, tileY - coords->tileY,                 // tile offset
+          coords->pX, coords->pY,                                       // real offset
+          tileMap->tileInMeters, tileMap->tileInMeters,                 // tile size
+          -1, -1,                                                       // pixel padding
+          tileMap->tileInMeters, metersToPixels,                        // tile-to-pixel transforms
+          currentTile * 0.8f, tile * 0.5f, 0.7f);                       // color data
     }
   }
 
@@ -371,10 +360,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   // Draw Player
   DrawRectangle(offscreenBuffer,
-                tileMap->offsetX + centerX - (PLAYER_WIDTH / 2) * metersToPixels,
-                tileMap->offsetY + centerY - PLAYER_HEIGHT * metersToPixels,
-                tileMap->offsetX + centerX + (PLAYER_WIDTH / 2) * metersToPixels,
-                tileMap->offsetY + centerY,
+                renderOffsetX - (PLAYER_WIDTH / 2) * metersToPixels,
+                renderOffsetY - PLAYER_HEIGHT * metersToPixels,
+                renderOffsetX + (PLAYER_WIDTH / 2) * metersToPixels,
+                renderOffsetY,
                 1.0f, 1.0f, 0.0f);
 
   // Draw Mouse
