@@ -21,20 +21,20 @@ NormalizeCoordinates(tile_map* tileMap, tile_coordinates* coords)
   coords->pY -= divY * tileMap->tileInMeters;
 }
 
-internal int32_point
+internal point<int32>
 GetTileCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
-  int32_point point = {};
+  point<int32> point = {};
   point.x = coords->tileX & tileMap->tileMask;
   point.y = coords->tileY & tileMap->tileMask;
 
   return point;
 }
 
-internal int32_point
+internal point<int32>
 GetTileChunkCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
-  int32_point point = {};
+  point<int32> point = {};
   point.x = coords->tileX >> tileMap->tileShift;
   point.y = coords->tileY >> tileMap->tileShift;
 
