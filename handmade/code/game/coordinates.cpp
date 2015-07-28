@@ -1,6 +1,7 @@
 #ifndef _HANDMADE_COORDINATES_CPP
 
-#include "game\utils.cpp"
+#include "tiles.h"
+#include "utils\float.cpp"
 
 /**
  * Modifies the coordinates so that pX and pY, which represent the offset from the tile,
@@ -10,8 +11,8 @@ internal void
 NormalizeCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
   // We normalize the real coordinates of the point within the tile
-  real32 divX = UTILS::FloorReal32ToInt32(coords->pX / tileMap->tileInMeters);
-  real32 divY = UTILS::FloorReal32ToInt32(coords->pY / tileMap->tileInMeters);
+  real32 divX = UTILS::FLOAT::FloorReal32ToInt32(coords->pX / tileMap->tileInMeters);
+  real32 divY = UTILS::FLOAT::FloorReal32ToInt32(coords->pY / tileMap->tileInMeters);
   // We move the tile offset
   coords->tileX += divX;
   coords->tileY += divY;

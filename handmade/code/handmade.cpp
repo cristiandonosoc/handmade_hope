@@ -9,13 +9,14 @@
 
 #ifndef _HANDMADE_CPP_INCLUDED
 #include "handmade.h"
-#include "handmade_coordinates.cpp"
-#include "handmade_tile.cpp"
-#include "game/utils.cpp"
+#include "game/coordinates.cpp"
+#include "game/tiles.cpp"
 #include "game/render.cpp"
 #include "game/sound.cpp"
 #include "game/memory.cpp"
 #include "game/random.cpp"
+
+#include "utils/float.cpp"
 
 // IMPORTANT(Cristian): OH GOD REMOVE THIS! THIS IS NOT PLATFORM INDEPENDENT!!!!
 #include <windows.h>

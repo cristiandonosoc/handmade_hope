@@ -22,6 +22,7 @@
 
 #include "common_types.h"
 #include "handmade_platform.h"
+#include "game\tiles.h"
 
 /**
  * GAME FUNCTIONS
@@ -71,29 +72,6 @@ struct tile_coordinates
   // 0 <= pX, pY < tileInMeters
   real32 pX;
   real32 pY;
-};
-
-
-struct tile_chunk
-{
-  bool32 initialized;
-  uint32* tiles;
-};
-
-struct tile_map
-{
-  int tileShift;
-  int tileMask;
-  int tileSide;
-
-  real32 tileInMeters;
-
-  // TODO(Cristian): Sparseness
-  int32 tileChunkCountX;
-  int32 tileChunkCountY;
-  int32 tileChunkCountZ;
-
-  tile_chunk* tileChunks;
 };
 
 struct world_definition

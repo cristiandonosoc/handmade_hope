@@ -12,7 +12,7 @@ ClearScreenBuffer(game_offscreen_buffer *buffer, real32 R,
   int pitch = buffer->pitch;
   void *memory = buffer->memory;
 
-  uint32 color = UTILS::RealRGBToUInt32(R, G, B);
+  uint32 color = UTILS::FLOAT::RealRGBToUInt32(R, G, B);
 
   uint8* row = (uint8 *)memory;
   for(int y = 0;
@@ -84,10 +84,10 @@ DrawRectangle(game_offscreen_buffer* buffer, real32 realMinX, real32 realMinY,
                                              real32 realMaxX, real32 realMaxY,
                                              real32 R, real32 G, real32 B)
 {
-  int32 minX = UTILS::RoundReal32ToUInt32(realMinX);
-  int32 maxX = UTILS::RoundReal32ToUInt32(realMaxX);
-  int32 minY = UTILS::RoundReal32ToUInt32(realMinY);
-  int32 maxY = UTILS::RoundReal32ToUInt32(realMaxY);
+  int32 minX = UTILS::FLOAT::RoundReal32ToUInt32(realMinX);
+  int32 maxX = UTILS::FLOAT::RoundReal32ToUInt32(realMaxX);
+  int32 minY = UTILS::FLOAT::RoundReal32ToUInt32(realMinY);
+  int32 maxY = UTILS::FLOAT::RoundReal32ToUInt32(realMaxY);
 
 
   // We make the boundaries safe
@@ -97,7 +97,7 @@ DrawRectangle(game_offscreen_buffer* buffer, real32 realMinX, real32 realMinY,
   if(maxY > buffer->height) { maxY = buffer->height; }
 
 
-  uint32 color = UTILS::RealRGBToUInt32(R, G, B);
+  uint32 color = UTILS::FLOAT::RealRGBToUInt32(R, G, B);
 
   for(int y = minY;
       y < maxY;
@@ -123,10 +123,10 @@ DrawHollowRectangle(game_offscreen_buffer* buffer,
                     real32 realMaxX, real32 realMaxY,
                     real32 R, real32 G, real32 B)
 {
-  int32 minX = UTILS::RoundReal32ToUInt32(realMinX);
-  int32 maxX = UTILS::RoundReal32ToUInt32(realMaxX);
-  int32 minY = UTILS::RoundReal32ToUInt32(realMinY);
-  int32 maxY = UTILS::RoundReal32ToUInt32(realMaxY);
+  int32 minX = UTILS::FLOAT::RoundReal32ToUInt32(realMinX);
+  int32 maxX = UTILS::FLOAT::RoundReal32ToUInt32(realMaxX);
+  int32 minY = UTILS::FLOAT::RoundReal32ToUInt32(realMinY);
+  int32 maxY = UTILS::FLOAT::RoundReal32ToUInt32(realMaxY);
 
 
   // We make the boundaries safe
@@ -136,7 +136,7 @@ DrawHollowRectangle(game_offscreen_buffer* buffer,
   if(maxY > buffer->height) { maxY = buffer->height; }
 
 
-  uint32 color = UTILS::RealRGBToUInt32(R, G, B);
+  uint32 color = UTILS::FLOAT::RealRGBToUInt32(R, G, B);
 
   for(int y = minY;
       y < maxY;

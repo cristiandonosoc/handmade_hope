@@ -7,9 +7,13 @@
     $Notice: (c) Copyright 2015 Cristián Donoso $
     ===================================================================== */
 
-#ifndef _GAME_UTILS_CPP
+#ifndef _UTILS_FLOAT_CPP
+
+#include "common_types.h"
 
 namespace UTILS
+{
+namespace FLOAT
 {
 
 inline uint32
@@ -48,9 +52,9 @@ RealRGBToUInt32(real32 R, real32 G, real32 B)
 }
 
 
-}
+} // namespace FLOAT
+} // namespace UTILS
 
-
-#define _GAME_UTILS_CPP
+#define _UTILS_FLOAT_CPP
 #endif
 

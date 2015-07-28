@@ -14,20 +14,6 @@
 extern "C" {
 #endif
 
-// TODO(Cristián): Should this always use uint64?
-#define KILOBYTES(amount) ((amount) * 1024LL)
-#define MEGABYTES(amount) (KILOBYTES(amount) * 1024LL)
-#define GIGABYTES(amount) (MEGABYTES(amount) * 1024LL)
-#define TERABYTES(amount) (GIGABYTES(amount) * 1024LL)
-
-#if HANDMADE_SLOW
-#define ASSERT(expression) if(!(expression)) { *(int *)0 = 0; }
-#else
-#define ASSERT(expression) if((expression)) { *(int *)0 = 0; }
-#endif
-
-#define ARRAY_COUNT(Array) (sizeof(Array) / sizeof((Array)[0]))
-
 inline uint32
 SafeTruncateUInt64(uint64 value)
 {

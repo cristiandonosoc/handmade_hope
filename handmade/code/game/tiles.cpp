@@ -1,6 +1,7 @@
-#ifndef _HANDMADE_TILE_CPP
+#ifndef _GAME_TILES_CPP
 
-#include "handmade_coordinates.cpp"
+#include "tiles.h"
+#include "coordinates.cpp"
 #include "game/memory.cpp"
 
 inline uint32
@@ -99,5 +100,5 @@ SetTileValue(memory_manager* memoryManager, tile_map* tileMap, tile_coordinates*
   SetTileValue(tileMap, tileChunk, tileCoords.x, tileCoords.y, value);
 }
 
-#define _HANDMADE_TILE_CPP
+#define _GAME_TILES_CPP
 #endif
