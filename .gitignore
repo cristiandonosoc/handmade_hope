@@ -1,5 +1,6 @@
 build/*
 extras/*
+handmade/data/*
 *.swp
 *.suo
 *.test
