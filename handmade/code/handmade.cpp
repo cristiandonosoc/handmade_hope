@@ -24,6 +24,69 @@
 
 #include <math.h> // TODO(Cristián): Implement our own sine function
 
+
+// pragma pack(push, 1) indicates that we push the packing mode 1 into a pragma stack...
+// This means that from that moment on, the compiler packs the structs without padding.
+// When we want to go back to the mode before, we simple do pack(pop)
+#pragma pack(push, 1)
+struct bitmap_header
+{
+  // FILE HEADER
+  uint16 fileType;
+  uint32 fileSize;
+  uint16 reserved1;
+  uint16 reserved2;
+  uint32 bitmapStart;       // Where the actual bitmap data is relative to the first byte
+  // INFO HEADER
+  uint32 headerSize;
+  int32 width;
+  int32 height;
+  uint16 planes;            // Number of color planes
+  uint16 bitsPerPixel;
+  uint32 compressionType;
+  uint32 imageSize;         // Size of the bitmap data
+  int32 resolutionX;
+  int32 resolutionY;
+  uint32 colorCount;
+  uint32 importantColors;
+};
+#pragma pack(pop)
+
+
+internal uint32*
+DEBUGLoadBMP(thread_context* thread,
+             debug_platform_read_entire_file* readEntireFileFunction,
+             char* fileName)
+{
+  uint32* result = nullptr;
+
+  game_file readResult = readEntireFileFunction(thread, fileName);
+  if(readResult.contentSize != 0)
+  {
+    bitmap_header* header = (bitmap_header*)readResult.content;
+    // We extract the result
+    // They come in format 0xRR GG BB AA
+    // We need them in 0xAA RR GG BB
+    result = (uint32*)((uint8*)readResult.content + header->bitmapStart);
+
+    uint32* head = result;
+    uint32* tail = (uint32*)((uint8*)result + header->imageSize);
+    for(int y = 0;
+        y < header->height;
+        y++)
+    {
+      for(int x = 0;
+          x < header->width;
+          x++)
+      {
+        *head++ = (*head >> 8) | (*head << 24);
+      }
+    }
+  }
+
+  return result;
+}
+
 // void
 // GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
 //                     game_memory *gameMemory,
@@ -38,6 +101,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   game_state *gameState = (game_state *)gameMemory->permanentStorage;
   if(!gameMemory->graphicsInitialized)
   {
+
+    DEBUGLoadBMP(nullptr,
+                 gameMemory->DEBUGPlatformReadEntireFileFunction,
+                 "test/structured.bmp");
     // We initialize the memory manager right after the gamestate struct
     // in the permament storage
     // NOTE(Cristian): For now, the memory manager has all the permament storage
