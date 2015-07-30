@@ -9,7 +9,11 @@ namespace BIT
   inline bit_scan_result
   FindLeastSignificantSetBit(uint32 mask)
   {
+
     bit_scan_result result = {};
+#if COMPILER_MSVC
+    result.found = _BitScanForward((unsigned long*)&result.index, mask);
+#else
 
     for(uint32 shiftTest = 0;
         shiftTest < 32;
@@ -22,6 +26,7 @@ namespace BIT
         break;
       }
     }
+#endif
 
     return result;
   }
