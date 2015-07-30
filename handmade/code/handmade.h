@@ -113,6 +113,13 @@ struct bitmap_header
   int32 resolutionY;
   uint32 colorCount;
   uint32 importantColors;
+
+  // NOTE(Cristian): This masks are used to indicate where in the int32
+  // the R, G, B values actually are. This is used when the compression
+  // value in the header is set to BI_BITFIELS (3 in the last check).
+  uint32 redMask;
+  uint32 greenMask;
+  uint32 blueMask;
 };
 #pragma pack(pop)
 

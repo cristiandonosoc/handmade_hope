@@ -24,7 +24,31 @@
 
 #include <math.h> // TODO(Cristián): Implement our own sine function
 
+struct bit_scan_result
+{
+  bool32 found;
+  uint32 index;
+};
 
+inline bit_scan_result
+FindLeastSignificantSetBit(uint32 mask)
+{
+  bit_scan_result result = {};
+
+  for(uint32 shiftTest = 0;
+      shiftTest < 32;
+      shiftTest++)
+  {
+    if(mask & (1 << shiftTest))
+    {
+      result.found = true;
+      result.index = shiftTest;
+      break;
+    }
+  }
+
+  return result;
+}
 
 internal bitmap_definition
 DEBUGLoadBMP(thread_context* thread,
@@ -38,12 +62,22 @@ DEBUGLoadBMP(thread_context* thread,
   {
     bitmap_header* header = (bitmap_header*)readResult.content;
     result.header = *header;
-    // We extract the result
-    // They come in format 0xRR GG BB AA
-    // We need them in 0xAA RR GG BB
     result.pixels = (uint32*)((uint8*)readResult.content + header->bitmapStart);
 
-    // We transform the pixels to the correct format
+    // We transform the pixels to the correct format because they come offset by the
+    // "color masks", which tell where in the int32 the channels actually are.
+    uint32 alphaMask = ~(header->redMask | header->greenMask | header->blueMask);
+    bit_scan_result redScan = FindLeastSignificantSetBit(header->redMask);
+    bit_scan_result greenScan = FindLeastSignificantSetBit(header->greenMask);
+    bit_scan_result blueScan = FindLeastSignificantSetBit(header->blueMask);
+    bit_scan_result alphaScan = FindLeastSignificantSetBit(alphaMask);
+    ASSERT(redScan.found);
+    ASSERT(greenScan.found);
+    ASSERT(blueScan.found);
+    ASSERT(alphaScan.found);
+
+    // Now we have by how much each channel was shifted to the right.
+    // So now we have to swivel them up
     uint32* head = result.pixels;
     uint32* tail = (uint32*)((uint8*)result.pixels + header->imageSize);
     for(int y = 0;
@@ -54,7 +88,12 @@ DEBUGLoadBMP(thread_context* thread,
           x < header->width;
           x++)
       {
-        *head++ = (*head >> 8) | (*head << 24);
+        // We shift down the colors by the shift calculated amount
+        // and then place them in the correct value
+        *head++ = ((((*head >> alphaScan.index) & 0xFF) << 24) |
+                   (((*head >> redScan.index) & 0xFF) << 16) |
+                   (((*head >> greenScan.index) & 0xFF) << 8) |
+                   (((*head >> blueScan.index) & 0xFF) << 0));
       }
     }
   }
@@ -79,7 +118,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     gameState->background = DEBUGLoadBMP(nullptr,
                                          gameMemory->DEBUGPlatformReadEntireFileFunction,
-                                         "test/test_background.bmp");
+                                         "test/test_hero_front_head.bmp");
 
     // We initialize the memory manager right after the gamestate struct
     // in the permament storage
