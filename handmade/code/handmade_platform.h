@@ -14,6 +14,37 @@
 extern "C" {
 #endif
 
+/************************************************
+ * COMPILERS
+ ************************************************/
+
+// We set the compilers (unsetted) variables
+#ifndef COMPILER_MSVC
+  #define COMPILER_MSVC 0
+#endif
+#ifndef COMPILER_LLVM
+  #define COMPILER_LLVM 0
+#endif
+
+// We do the compiler detection (if it is not detected yet)
+#if !COMPILER_MSVC && !COMPILER_LLVM
+  // We do compiler detection
+  #if _MSC_VER
+    #undef COMPILER_MSVC
+    #define COMPILER_MSVC 1
+  #else
+    // TODO(Cristian): Actually add more compilers to support
+    #undef COMPILER_LLVM
+    #define COMPILER_LLVM 1
+  #endif
+#endif
+
+// We do compiler specific setup
+#if COMPILER_MSVC
+  #include <intrin.h>
+  #pragma intrinsic(_BitScanForward)
+#endif
+
 inline uint32
 SafeTruncateUInt64(uint64 value)
 {
