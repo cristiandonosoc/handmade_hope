@@ -25,52 +25,27 @@
 #include <math.h> // TODO(Cristián): Implement our own sine function
 
 
-// pragma pack(push, 1) indicates that we push the packing mode 1 into a pragma stack...
-// This means that from that moment on, the compiler packs the structs without padding.
-// When we want to go back to the mode before, we simple do pack(pop)
-#pragma pack(push, 1)
-struct bitmap_header
-{
-  // FILE HEADER
-  uint16 fileType;
-  uint32 fileSize;
-  uint16 reserved1;
-  uint16 reserved2;
-  uint32 bitmapStart;       // Where the actual bitmap data is relative to the first byte
-  // INFO HEADER
-  uint32 headerSize;
-  int32 width;
-  int32 height;
-  uint16 planes;            // Number of color planes
-  uint16 bitsPerPixel;
-  uint32 compressionType;
-  uint32 imageSize;         // Size of the bitmap data
-  int32 resolutionX;
-  int32 resolutionY;
-  uint32 colorCount;
-  uint32 importantColors;
-};
-#pragma pack(pop)
 
-
-internal uint32*
+internal bitmap_definition
 DEBUGLoadBMP(thread_context* thread,
              debug_platform_read_entire_file* readEntireFileFunction,
              char* fileName)
 {
-  uint32* result = nullptr;
+  bitmap_definition result = {};
 
   game_file readResult = readEntireFileFunction(thread, fileName);
   if(readResult.contentSize != 0)
   {
     bitmap_header* header = (bitmap_header*)readResult.content;
+    result.header = *header;
     // We extract the result
     // They come in format 0xRR GG BB AA
     // We need them in 0xAA RR GG BB
-    result = (uint32*)((uint8*)readResult.content + header->bitmapStart);
+    result.pixels = (uint32*)((uint8*)readResult.content + header->bitmapStart);
 
-    uint32* head = result;
-    uint32* tail = (uint32*)((uint8*)result + header->imageSize);
+    // We transform the pixels to the correct format
+    uint32* head = result.pixels;
+    uint32* tail = (uint32*)((uint8*)result.pixels + header->imageSize);
     for(int y = 0;
         y < header->height;
         y++)
@@ -102,9 +77,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   if(!gameMemory->graphicsInitialized)
   {
 
-    DEBUGLoadBMP(nullptr,
-                 gameMemory->DEBUGPlatformReadEntireFileFunction,
-                 "test/structured.bmp");
+    gameState->background = DEBUGLoadBMP(nullptr,
+                                         gameMemory->DEBUGPlatformReadEntireFileFunction,
+                                         "test/test_background.bmp");
+
     // We initialize the memory manager right after the gamestate struct
     // in the permament storage
     // NOTE(Cristian): For now, the memory manager has all the permament storage
@@ -330,7 +306,11 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   /*** RENDERING ***/
+
   ClearScreenBuffer(offscreenBuffer, 1.0f, 0.0f, 1.0f);
+
+  DrawBitmap(offscreenBuffer, gameState->background, true);
+
 
   int totalHeight = TILES_PER_HEIGHT * tileInPixels;
   point2D<int32> playerTilePos = GetTileCoordinates(tileMap, coords);
@@ -370,7 +350,11 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       uint32 tileValue = GetTileValue(tileMap, &rectCoords);
       if(tileValue != TILE_INVALID) { tile = tileValue; }
-      else { tile = 0.5f; }
+      else
+      {
+        // tile = 0.5f;
+        continue;
+      }
 
       int currentTile = 0;
       if (tileX == coords->tileX &&

@@ -188,5 +188,48 @@ DrawTileRelativeToCenter(game_offscreen_buffer* buffer,
     R, G, B);
 }
 
+internal void
+DrawBitmap(game_offscreen_buffer* buffer, bitmap_definition bitmap, bool32 inverted)
+{
+
+  // We draw the bitmap
+  int32 bitmapWidth = bitmap.header.width;
+  if(bitmapWidth > buffer->width)
+  {
+    bitmapWidth = buffer->width;
+  }
+  int32 bitmapHeight = bitmap.header.height;
+  if(bitmapHeight > buffer->height)
+  {
+    bitmapHeight = buffer->height;
+  }
+
+  uint32* bufferPixel = (uint32*)buffer->memory;
+  uint32* firstPixelOfBufferRow = bufferPixel;
+  uint32* bitmapPixel = bitmap.pixels;
+  uint32* firstPixelOfBitmapRow = bitmapPixel;
+  int32 bitmapDiff = bitmap.header.width;
+  if(inverted)
+  {
+    firstPixelOfBitmapRow = bitmapPixel + (bitmap.header.height - 1) * bitmap.header.width;
+    bitmapDiff = -bitmapDiff;
+  }
+  for(int32 y = 0;
+      y < bitmapHeight;
+      y++)
+  {
+    bufferPixel = firstPixelOfBufferRow;
+    bitmapPixel = firstPixelOfBitmapRow;
+    for(int32 x = 0;
+        x < bitmapWidth;
+        x++)
+    {
+      *bufferPixel++ = *bitmapPixel++;
+    }
+    firstPixelOfBufferRow += buffer->width;
+    firstPixelOfBitmapRow += bitmapDiff;
+  }
+}
+
 #define _GAME_RENDER_CPP
 #endif

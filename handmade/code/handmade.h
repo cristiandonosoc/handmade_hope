@@ -87,6 +87,41 @@ struct memory_manager
   uint8* base;
 };
 
+
+
+// pragma pack(push, 1) indicates that we push the packing mode 1 into a pragma stack...
+// This means that from that moment on, the compiler packs the structs without padding.
+// When we want to go back to the mode before, we simple do pack(pop)
+#pragma pack(push, 1)
+struct bitmap_header
+{
+  // FILE HEADER
+  uint16 fileType;
+  uint32 fileSize;
+  uint16 reserved1;
+  uint16 reserved2;
+  uint32 bitmapStart;       // Where the actual bitmap data is relative to the first byte
+  // INFO HEADER
+  uint32 headerSize;
+  int32 width;
+  int32 height;
+  uint16 planes;            // Number of color planes
+  uint16 bitsPerPixel;
+  uint32 compressionType;
+  uint32 imageSize;         // Size of the bitmap data
+  int32 resolutionX;
+  int32 resolutionY;
+  uint32 colorCount;
+  uint32 importantColors;
+};
+#pragma pack(pop)
+
+struct bitmap_definition
+{
+  bitmap_header header;
+  uint32* pixels;
+};
+
 struct game_state
 {
   int32 toneHz;
@@ -97,7 +132,11 @@ struct game_state
   memory_manager memoryManager;
   world_definition* world;
   tile_coordinates coords;
+
+  bitmap_definition background;
 };
+
+
 
 
 
