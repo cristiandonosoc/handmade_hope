@@ -224,7 +224,12 @@ DrawBitmap(game_offscreen_buffer* buffer, bitmap_definition bitmap, bool32 inver
         x < bitmapWidth;
         x++)
     {
-      *bufferPixel++ = *bitmapPixel++;
+      if(*bitmapPixel & 0xFF000000) // Alpha testing
+      {
+        *bufferPixel = *bitmapPixel;
+      }
+      bufferPixel++;
+      bitmapPixel++;
     }
     firstPixelOfBufferRow += buffer->width;
     firstPixelOfBitmapRow += bitmapDiff;

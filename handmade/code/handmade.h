@@ -141,6 +141,9 @@ struct game_state
   tile_coordinates coords;
 
   bitmap_definition background;
+  bitmap_definition heroHead;
+  bitmap_definition heroTorso;
+  bitmap_definition heroCape;
 };
 
 

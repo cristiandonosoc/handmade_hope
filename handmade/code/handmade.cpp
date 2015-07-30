@@ -90,10 +90,19 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   game_state *gameState = (game_state *)gameMemory->permanentStorage;
   if(!gameMemory->graphicsInitialized)
   {
-
+    // Debug loading of bitmaps
     gameState->background = DEBUGLoadBMP(nullptr,
                                          gameMemory->DEBUGPlatformReadEntireFileFunction,
-                                         "test/test_hero_front_head.bmp");
+                                         "test/test_background.bmp");
+    gameState->heroHead = DEBUGLoadBMP(nullptr,
+                                       gameMemory->DEBUGPlatformReadEntireFileFunction,
+                                       "test/test_hero_front_head.bmp");
+    gameState->heroTorso = DEBUGLoadBMP(nullptr,
+                                       gameMemory->DEBUGPlatformReadEntireFileFunction,
+                                       "test/test_hero_front_torso.bmp");
+    gameState->heroCape = DEBUGLoadBMP(nullptr,
+                                       gameMemory->DEBUGPlatformReadEntireFileFunction,
+                                       "test/test_hero_front_cape.bmp");
 
     // We initialize the memory manager right after the gamestate struct
     // in the permament storage
@@ -324,6 +333,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   ClearScreenBuffer(offscreenBuffer, 1.0f, 0.0f, 1.0f);
 
   DrawBitmap(offscreenBuffer, gameState->background, true);
+  DrawBitmap(offscreenBuffer, gameState->heroHead, true);
 
 
   int totalHeight = TILES_PER_HEIGHT * tileInPixels;
