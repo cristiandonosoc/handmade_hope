@@ -17,38 +17,13 @@
 #include "game/random.cpp"
 
 #include "utils/float.cpp"
+#include "utils/bit.cpp"
 
 // IMPORTANT(Cristian): OH GOD REMOVE THIS! THIS IS NOT PLATFORM INDEPENDENT!!!!
 #include <windows.h>
 #include <stdio.h>
 
 #include <math.h> // TODO(Cristián): Implement our own sine function
-
-struct bit_scan_result
-{
-  bool32 found;
-  uint32 index;
-};
-
-inline bit_scan_result
-FindLeastSignificantSetBit(uint32 mask)
-{
-  bit_scan_result result = {};
-
-  for(uint32 shiftTest = 0;
-      shiftTest < 32;
-      shiftTest++)
-  {
-    if(mask & (1 << shiftTest))
-    {
-      result.found = true;
-      result.index = shiftTest;
-      break;
-    }
-  }
-
-  return result;
-}
 
 internal bitmap_definition
 DEBUGLoadBMP(thread_context* thread,
@@ -67,10 +42,10 @@ DEBUGLoadBMP(thread_context* thread,
     // We transform the pixels to the correct format because they come offset by the
     // "color masks", which tell where in the int32 the channels actually are.
     uint32 alphaMask = ~(header->redMask | header->greenMask | header->blueMask);
-    bit_scan_result redScan = FindLeastSignificantSetBit(header->redMask);
-    bit_scan_result greenScan = FindLeastSignificantSetBit(header->greenMask);
-    bit_scan_result blueScan = FindLeastSignificantSetBit(header->blueMask);
-    bit_scan_result alphaScan = FindLeastSignificantSetBit(alphaMask);
+    UTILS::BIT::bit_scan_result redScan = UTILS::BIT::FindLeastSignificantSetBit(header->redMask);
+    UTILS::BIT::bit_scan_result greenScan = UTILS::BIT::FindLeastSignificantSetBit(header->greenMask);
+    UTILS::BIT::bit_scan_result blueScan = UTILS::BIT::FindLeastSignificantSetBit(header->blueMask);
+    UTILS::BIT::bit_scan_result alphaScan = UTILS::BIT::FindLeastSignificantSetBit(alphaMask);
     ASSERT(redScan.found);
     ASSERT(greenScan.found);
     ASSERT(blueScan.found);
