@@ -224,10 +224,25 @@ DrawBitmap(game_offscreen_buffer* buffer, bitmap_definition bitmap, bool32 inver
         x < bitmapWidth;
         x++)
     {
-      if(*bitmapPixel & 0xFF000000) // Alpha testing
-      {
-        *bufferPixel = *bitmapPixel;
-      }
+      real32 t = (*bitmapPixel >> 24) / 255.0f;
+
+      real32 sourceRed = (real32)((*bufferPixel >> 16) & 0xFF);
+      real32 sourceGreen = (real32)((*bufferPixel >> 8) & 0xFF);
+      real32 sourceBlue = (real32)((*bufferPixel >> 0) & 0xFF);
+
+      real32 destRed = (real32)((*bitmapPixel >> 16) & 0xFF);
+      real32 destGreen = (real32)((*bitmapPixel >> 8) & 0xFF);
+      real32 destBlue = (real32)((*bitmapPixel >> 0) & 0xFF);
+
+      // We do the linear blending in floating space
+      int32 calcRed = (UTILS::FLOAT::RoundReal32ToUInt32((1 - t) * sourceRed + t * destRed) & 0xFF);
+      int32 calcGreen = (UTILS::FLOAT::RoundReal32ToUInt32((1 - t) * sourceGreen + t * destGreen) & 0xFF);
+      int32 calcBlue = (UTILS::FLOAT::RoundReal32ToUInt32((1 - t) * sourceBlue + t * destBlue) & 0xFF);
+
+      *bufferPixel = ((calcRed << 16) |
+                      (calcGreen << 8) |
+                      (calcBlue << 0));
+
       bufferPixel++;
       bitmapPixel++;
     }
