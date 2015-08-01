@@ -84,7 +84,7 @@ operator*=(vector2D<T>& b, T a)
 
 template<typename T>
 inline vector2D<T>
-operator/(vector2D<T> a, T b)
+operator/(vector2D<T> a, real32 b)
 {
   vector2D<T> result;
 
@@ -96,7 +96,7 @@ operator/(vector2D<T> a, T b)
 
 template<typename T>
 inline vector2D<T>
-operator/(T b, vector2D<T> a)
+operator/(real32 b, vector2D<T> a)
 {
   vector2D<T> result = a / b;
   return result;
@@ -104,7 +104,7 @@ operator/(T b, vector2D<T> a)
 
 template<typename T>
 inline vector2D<T>
-operator/=(vector2D<T>& b, T a)
+operator/=(vector2D<T>& b, real32 a)
 {
    b = a / b;
    return b;

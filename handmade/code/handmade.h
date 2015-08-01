@@ -147,6 +147,8 @@ struct game_state
   memory_manager memoryManager;
   world_definition* world;
   tile_coordinates coords;
+  // We store the derivatives of the player position
+  MATH::vector2D<real32> dPlayerPos;
 
   bitmap_definition background;
   int32 heroBitmapIndex;

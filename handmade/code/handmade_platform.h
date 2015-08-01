@@ -11,6 +11,7 @@
 
 
 #include "math/vector.h"
+#include "math/common.h"
 
 // NOTE(Cristian): We do this so the platform compiles under normal C
 #ifdef __cplusplus

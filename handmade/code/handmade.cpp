@@ -278,36 +278,35 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     else
     {
       // NOTE(Cristian): Use digital movement tuning
-      real32 dX = 0.0f;
-      real32 dY = 0.0f;
-      // NOTE(Cristian): The speed is pixels/second
-      real32 speed = gameInput->secondsToUpdate * 2.0f;
+      vector2D<real32> ddPlayerPos = {};
 
       // TODO(Cristian): Check W+S+RIGHT broken combination
       // Is it the platform layer o a keyboard failure????
-      if(input->actionRight.endedDown)
-      {
-        speed *= 20;
-      }
       if(input->moveLeft.endedDown)
       {
-        dX -= speed;
+        ddPlayerPos.x -= 1.0f;
         gameState->heroBitmapIndex = 0;
       }
       if(input->moveRight.endedDown)
       {
-        dX += speed;
+        ddPlayerPos.x += 1.0f;
         gameState->heroBitmapIndex = 2;
       }
       if(input->moveDown.endedDown)
       {
-        dY -= speed;
+        ddPlayerPos.y -= 1.0f;
         gameState->heroBitmapIndex = 3;
       }
       if(input->moveUp.endedDown)
       {
-        dY += speed;
+        ddPlayerPos.y += 1.0f;
         gameState->heroBitmapIndex = 1;
+      }
+
+      real32 moveAccel = 20.0f;
+      if(input->actionRight.endedDown)
+      {
+        moveAccel = 10.0f;
       }
 
       if(!gameState->zChangePress)
@@ -326,9 +325,24 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
       }
 
-      tile_coordinates proposedCoords = ModifyCoordinates(tileMap, *coords, dX, dY);
-      bool32 updateX = true;
-      bool32 updateY = true;
+      // TODO(Cristian): Normalize acceleration vector!
+
+      // We create a simple drag
+      // NOTE(Cristian): Learn and use ODE (Ordinary Differential Equations)
+      ddPlayerPos -= 0.25f * gameState->dPlayerPos;
+
+      ddPlayerPos *= moveAccel;
+      vector2D<real32> playerPos = {gameState->coords.pX, gameState->coords.pY};
+      vector2D<real32> newMove = (((ddPlayerPos * Square(gameInput->secondsToUpdate)) / 2) +
+                                 (gameState->dPlayerPos * gameInput->secondsToUpdate) +
+                                 (playerPos));
+      // We calculate the difference
+      vector2D<real32> diff = newMove - playerPos;
+
+      // We calculate the velocity
+      gameState->dPlayerPos += ddPlayerPos * gameInput->secondsToUpdate;
+
+      tile_coordinates proposedCoords = ModifyCoordinates(tileMap, *coords, diff.x, diff.y);
 
       tile_coordinates leftLowerCorner = ModifyCoordinates(tileMap,
                                                            proposedCoords,
@@ -350,10 +364,12 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       char mbuffer[256];
       //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
       sprintf_s(mbuffer,
-        "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d, WZ: %d\n",
+        "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d, WZ: %d\ndX:%f, dY:%f, ddX:%f, ddY:%f\n",
         proposedCoords.pX, proposedCoords.pY,
         tileCoords.x, tileCoords.y,
-        tileChunkCoords.x, tileChunkCoords.y, tileChunkCoords.z
+        tileChunkCoords.x, tileChunkCoords.y, tileChunkCoords.z,
+        gameState->dPlayerPos.x, gameState->dPlayerPos.y,
+        ddPlayerPos.x, ddPlayerPos.y
       );
       OutputDebugStringA(mbuffer);
 
@@ -500,6 +516,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                 vector2D<real32>{renderOffsetX + (PLAYER_WIDTH / 2) * metersToPixels,
                                  renderOffsetY},
                 1.0f, 1.0f, 0.0f);
+
   hero_bitmap heroBitmap = gameState->heroBitmaps[gameState->heroBitmapIndex];
   DrawBitmap(offscreenBuffer, heroBitmap.torso,
       renderOffsetX, renderOffsetY,
