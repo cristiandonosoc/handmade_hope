@@ -214,9 +214,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
               }
 
               tile_coordinates coord = {};
-              coord.tileX = (screenX * tilesPerWidth) + tileX;
-              coord.tileY = (screenY * tilesPerHeight) + tileY;
-              coord.tileZ = screenZ;
+              coord.tile.x = (screenX * tilesPerWidth) + tileX;
+              coord.tile.y = (screenY * tilesPerHeight) + tileY;
+              coord.tile.z = screenZ;
 
               SetTileValue(&gameState->memoryManager, tileMap, &coord, value);
             }
@@ -242,8 +242,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // Now is all mingled up and it WILL bring problems
     gameState->coords.pX = 0.0f;
     gameState->coords.pY = 0.0f;
-    gameState->coords.tileX = 2;
-    gameState->coords.tileY = 2;
+    gameState->coords = {2, 2};
 
     // TODO(Cristián): This may be more appropiate to do in the platform layer
     gameMemory->graphicsInitialized = true;
@@ -323,7 +322,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         if(!input->actionUp.endedDown)
         {
           gameState->zChangePress = false;
-          gameState->coords.tileZ ^= 1;
+          gameState->coords.tile.z ^= 1;
         }
       }
 
@@ -388,10 +387,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   int32 tileChunkZ = 0xFFFFFFFF;
 
   int32 renderSize = 1;
-  int32 minX = coords->tileX - (TILES_PER_WIDTH / 2 + 1 + renderSize);
-  int32 maxX = coords->tileX + (TILES_PER_WIDTH / 2 + 2 + renderSize);
-  int32 minY = coords->tileY - (TILES_PER_HEIGHT / 2 + 1 + renderSize);
-  int32 maxY = coords->tileY + (TILES_PER_HEIGHT / 2 + 2 + renderSize);
+  int32 minX = coords->tile.x - (TILES_PER_WIDTH / 2 + 1 + renderSize);
+  int32 maxX = coords->tile.x + (TILES_PER_WIDTH / 2 + 2 + renderSize);
+  int32 minY = coords->tile.y - (TILES_PER_HEIGHT / 2 + 1 + renderSize);
+  int32 maxY = coords->tile.y + (TILES_PER_HEIGHT / 2 + 2 + renderSize);
   for(int32 tileY = minY;
       tileY < maxY;
       tileY++)
@@ -401,9 +400,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         tileX++)
     {
       tile_coordinates rectCoords = {};
-      rectCoords.tileX = tileX;
-      rectCoords.tileY = tileY;
-      rectCoords.tileZ = coords->tileZ;
+      rectCoords.tile.x = tileX;
+      rectCoords.tile.y = tileY;
+      rectCoords.tile.z = coords->tile.z;
       real32 tile = 0;
 
       uint32 tileValue = GetTileValue(tileMap, &rectCoords);
@@ -419,19 +418,19 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
 
       int currentTile = 0;
-      if (tileX == coords->tileX &&
-          tileY == coords->tileY)
+      if (tileX == coords->tile.x &&
+          tileY == coords->tile.y)
       {
         currentTile = 1;
       }
 
       // NOTE(Cristian): We substract one because we are also rendering one extra tile in
       // every direction
-      int32 tileOffsetX = tileX - coords->tileX;
-      int32 tileOffsetY = -(tileY - coords->tileY);
+      int32 tileOffsetX = tileX - coords->tile.x;
+      int32 tileOffsetY = -(tileY - coords->tile.y);
       DrawTileRelativeToCenter(offscreenBuffer,
           renderOffsetX, renderOffsetY,
-          tileX - coords->tileX, tileY - coords->tileY,                 // tile offset
+          tileX - coords->tile.x, tileY - coords->tile.y,                 // tile offset
           coords->pX, coords->pY,                                       // real offset
           tileMap->tileInMeters, tileMap->tileInMeters,                 // tile size
           -1, -1,                                                       // pixel padding
@@ -452,9 +451,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         tileX++)
     {
       tile_coordinates rectCoords = {};
-      rectCoords.tileX = tileX;
-      rectCoords.tileY = tileY;
-      rectCoords.tileZ = coords->tileZ;
+      rectCoords.tile.x = tileX;
+      rectCoords.tile.y = tileY;
+      rectCoords.tile.z = coords->tile.z;
 
       tile_chunk* tileChunk = GetTileChunk(tileMap, &rectCoords);
       if(tileChunk != nullptr)
@@ -480,10 +479,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           // TODO(Cristian): Pass this draw call to a DrawTileRelativeToCenter call
           DrawHollowRectangle(
             offscreenBuffer,
-            renderOffsetX - ((coords->tileX - currentTileChunkX) * tileMap->tileInMeters + coords->pX ) * metersToPixels,
-            renderOffsetY + (coords->tileY + coords->pY - currentTileChunkY) * metersToPixels - tileMap->tileSide * tileMap->tileInMeters * metersToPixels,
-            renderOffsetX - ((coords->tileX - currentTileChunkX - tileMap->tileSide) + coords->pX) * metersToPixels,
-            renderOffsetY + (coords->tileY + coords->pY - currentTileChunkY) * metersToPixels,
+            renderOffsetX - ((coords->tile.x - currentTileChunkX) * tileMap->tileInMeters + coords->pX ) * metersToPixels,
+            renderOffsetY + (coords->tile.y + coords->pY - currentTileChunkY) * metersToPixels - tileMap->tileSide * tileMap->tileInMeters * metersToPixels,
+            renderOffsetX - ((coords->tile.x - currentTileChunkX - tileMap->tileSide) + coords->pX) * metersToPixels,
+            renderOffsetY + (coords->tile.y + coords->pY - currentTileChunkY) * metersToPixels,
             gray, gray, gray);
         }
       }

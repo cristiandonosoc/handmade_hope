@@ -22,7 +22,8 @@
 
 #include "common_types.h"
 #include "handmade_platform.h"
-#include "game\tiles.h"
+#include "game/tiles.h"
+#include "math/vector.h"
 
 /**
  * GAME FUNCTIONS
@@ -63,9 +64,7 @@ struct tile_coordinates
 {
   // NOTE(Cristian): Represent the global (obsolute) position of the tile
   // in the world
-  int32 tileX;
-  int32 tileY;
-  int32 tileZ;
+  MATH::vector3D<int32> tile;
 
   // Movement (in world) meters from the referenced tile ny (tileX, tileY)
   // If the coordinates are normalized, both pX and pY should be

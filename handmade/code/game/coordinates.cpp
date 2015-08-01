@@ -13,15 +13,14 @@ internal void
 NormalizeCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
   // We normalize the real coordinates of the point within the tile
-  real32 divX = UTILS::FLOAT::FloorReal32ToInt32(coords->pX / tileMap->tileInMeters);
-  real32 divY = UTILS::FLOAT::FloorReal32ToInt32(coords->pY / tileMap->tileInMeters);
+  vector3D<int32> div = {UTILS::FLOAT::FloorReal32ToInt32(coords->pX / tileMap->tileInMeters),
+                         UTILS::FLOAT::FloorReal32ToInt32(coords->pY / tileMap->tileInMeters)};
   // We move the tile offset
-  coords->tileX += divX;
-  coords->tileY += divY;
+  coords->tile += div;
 
   // We correct the correct offset
-  coords->pX -= divX * tileMap->tileInMeters;
-  coords->pY -= divY * tileMap->tileInMeters;
+  coords->pX -= div.x * tileMap->tileInMeters;
+  coords->pY -= div.y * tileMap->tileInMeters;
 }
 
 /**
@@ -31,8 +30,8 @@ internal vector2D<int32>
 GetTileCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
   vector2D<int32> point = {};
-  point.x = coords->tileX & tileMap->tileMask;
-  point.y = coords->tileY & tileMap->tileMask;
+  point.x = coords->tile.x & tileMap->tileMask;
+  point.y = coords->tile.y & tileMap->tileMask;
 
   return point;
 }
@@ -41,9 +40,9 @@ internal vector3D<int32>
 GetTileChunkCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
   vector3D<int32> point = {};
-  point.x = coords->tileX >> tileMap->tileShift;
-  point.y = coords->tileY >> tileMap->tileShift;
-  point.z = coords->tileZ;
+  point.x = coords->tile.x >> tileMap->tileShift;
+  point.y = coords->tile.y >> tileMap->tileShift;
+  point.z = coords->tile.z;
 
   return point;
 }
