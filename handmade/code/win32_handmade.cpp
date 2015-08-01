@@ -35,11 +35,49 @@
 global_variable bool32 gMainLoopIsRunning;
 global_variable uint64 gPerformanceCounterFrequency;
 global_variable bool32 gPauseApp;
+global_variable WINDOWPLACEMENT gWindowPlacement = {sizeof(gWindowPlacement)};
 
 #include "utils/string.cpp"
 
 #include "handmade.h"
 #include "win32_handmade.h"
+
+
+internal void
+ToggleFullscreen(HWND windowHandle)
+{
+  // We get the window style
+  DWORD dwStyle = GetWindowLong(windowHandle, GWL_STYLE);
+  if (dwStyle & WS_OVERLAPPEDWINDOW) {
+    // This means we are in windowed-mode
+    MONITORINFO monitorInfo = { sizeof(monitorInfo) };
+    // We get the window placement and the monitor
+    if (GetWindowPlacement(windowHandle, &gWindowPlacement) &&
+        GetMonitorInfo(MonitorFromWindow(windowHandle,
+                       MONITOR_DEFAULTTOPRIMARY), &monitorInfo)) {
+      // We remove the windowed-styles
+      // NOTE(Cristian): WS_OVERLAPPEDWINDOW is a composite of many style flags
+      SetWindowLong(windowHandle, GWL_STYLE, dwStyle & ~WS_OVERLAPPEDWINDOW);
+
+      // We set the window to "fullscreen"
+      SetWindowPos(windowHandle, HWND_TOP,
+                   monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top,
+                   monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
+                   monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top,
+                   SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+    }
+  }
+  else
+  {
+    // We restore the window mode
+    SetWindowLong(windowHandle, GWL_STYLE, dwStyle | WS_OVERLAPPEDWINDOW);
+    SetWindowPlacement(windowHandle, &gWindowPlacement);
+    SetWindowPos(windowHandle, NULL, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+  }
+}
+
 
 // Platform specific code
 #include "platform_layer/win32/input_recording.cpp"
@@ -51,7 +89,6 @@ global_variable bool32 gPauseApp;
 #if HANDMADE_INTERNAL
 #include "platform_layer/win32/debug.cpp"
 #endif
-
 
 /**
  * Main entrance for the program from the C-Runtime Library

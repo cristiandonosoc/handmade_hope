@@ -291,6 +291,7 @@ Win32ProcessKeyboardMessages(MSG message,
       // and we would enter anyway
       bool keyWasDown = ((message.lParam & (1 << 30)) != 0);
       bool keyIsDown = (((message.lParam & (1 << 31)) == 0));
+
       // We ignore the key that keeps pressed
       if(keyWasDown != keyIsDown)
       {
@@ -372,6 +373,15 @@ Win32ProcessKeyboardMessages(MSG message,
           {
             Win32EndPlaybackInput(win32State);
           }
+        }
+        else if(vKeyCode == VK_RETURN)
+        {
+          if(!keyIsDown) {break;}
+          bool32 altIsDown = (message.lParam & (1 << 29));
+          if(!altIsDown) {break;}
+          if(!message.hwnd) {break;}
+
+          ToggleFullscreen(message.hwnd);
         }
         else // All other keys are treated by default
         {
