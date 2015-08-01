@@ -120,5 +120,19 @@ operator/=(vector4D<T>& b, T a)
    return b;
 }
 
+
+inline vector4D<real32>
+NormalizeVector(vector4D<real32> v)
+{
+  real32 norm = sqrt(Square(v.x) +
+                     Square(v.y) +
+                     Square(v.z) +
+                     Square(v.w));
+  if(norm == 0.0f) { return v; }
+  vector4D<real32> result = norm / v;
+  return result;
+}
+
+
 #define _MATH_VECTOR4D_H
 #endif

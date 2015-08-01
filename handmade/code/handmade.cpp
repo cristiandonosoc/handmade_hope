@@ -326,6 +326,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
 
       // TODO(Cristian): Normalize acceleration vector!
+      ddPlayerPos = NormalizeVector(ddPlayerPos);
 
       // We create a simple drag
       // NOTE(Cristian): Learn and use ODE (Ordinary Differential Equations)

@@ -110,6 +110,15 @@ operator/=(vector2D<T>& b, real32 a)
    return b;
 }
 
+inline vector2D<real32>
+NormalizeVector(vector2D<real32> v)
+{
+  real32 norm = sqrt(Square(v.x) + Square(v.y));
+  if(norm == 0.0f) { return v; }
+  vector2D<real32> result = norm / v;
+  return result;
+}
+
 
 
 #define _MATH_VECTOR2D_H

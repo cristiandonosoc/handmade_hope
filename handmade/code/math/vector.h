@@ -1,5 +1,8 @@
 #ifndef _MATH_VECTOR_H
 
+#include <cmath>
+#include "math/common.h"
+
 namespace MATH
 {
 #include "vector2D.h"
