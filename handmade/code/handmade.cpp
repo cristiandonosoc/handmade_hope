@@ -387,8 +387,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   int32 tileChunkY = 0xFFFFFFFF;
   int32 tileChunkZ = 0xFFFFFFFF;
 
-  // TODO(Cristian): TILEMAP RENDERING!!!!
-  int32 renderSize = 100;
+  int32 renderSize = 1;
   int32 minX = coords->tileX - (TILES_PER_WIDTH / 2 + 1 + renderSize);
   int32 maxX = coords->tileX + (TILES_PER_WIDTH / 2 + 2 + renderSize);
   int32 minY = coords->tileY - (TILES_PER_HEIGHT / 2 + 1 + renderSize);
@@ -408,7 +407,11 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       real32 tile = 0;
 
       uint32 tileValue = GetTileValue(tileMap, &rectCoords);
-      if(tileValue != TILE_INVALID) { tile = tileValue; }
+      if(tileValue != TILE_INVALID)
+      {
+        if(tileValue == 0) { continue; }
+        tile = tileValue;
+      }
       else
       {
         // tile = 0.5f;
@@ -421,8 +424,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         currentTile = 1;
       }
-
-
 
       // NOTE(Cristian): We substract one because we are also rendering one extra tile in
       // every direction
