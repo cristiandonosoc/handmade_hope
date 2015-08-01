@@ -128,7 +128,6 @@ DrawHollowRectangle(game_offscreen_buffer* buffer,
   int32 minY = UTILS::FLOAT::RoundReal32ToUInt32(realMinY);
   int32 maxY = UTILS::FLOAT::RoundReal32ToUInt32(realMaxY);
 
-
   // We make the boundaries safe
   if(minX < 0) { minX = 0; }
   if(minY < 0) { minY = 0; }
@@ -189,8 +188,30 @@ DrawTileRelativeToCenter(game_offscreen_buffer* buffer,
 }
 
 internal void
-DrawBitmap(game_offscreen_buffer* buffer, bitmap_definition bitmap, bool32 inverted)
+DrawBitmap(game_offscreen_buffer* buffer, bitmap_definition bitmap,
+           real32 screenX, real32 screenY,
+           bool32 inverted)
 {
+  int32 minX = UTILS::FLOAT::RoundReal32ToUInt32(screenX);
+  int32 maxX = UTILS::FLOAT::RoundReal32ToUInt32(screenX + bitmap.header.width);
+  int32 minY = UTILS::FLOAT::RoundReal32ToUInt32(screenY);
+  int32 maxY = UTILS::FLOAT::RoundReal32ToUInt32(screenY + bitmap.header.height);
+
+  // We make the boundaries safe
+  int32 offsetX = 0;
+  if(minX < 0)
+  {
+    offsetX = -minX;
+    minX = 0;
+  }
+  int32 offsetY = 0;
+  if(minY < 0)
+  {
+    offsetY = -minY;
+    minY = 0;
+  }
+  if(maxX > buffer->width) { maxX = buffer->width; }
+  if(maxY > buffer->height) { maxY = buffer->height; }
 
   // We draw the bitmap
   int32 bitmapWidth = bitmap.header.width;
@@ -205,27 +226,27 @@ DrawBitmap(game_offscreen_buffer* buffer, bitmap_definition bitmap, bool32 inver
   }
 
   uint32* bufferPixel = (uint32*)buffer->memory;
-  uint32* firstPixelOfBufferRow = bufferPixel;
+  uint32* firstPixelOfBufferRow = bufferPixel + minY * buffer->width;
   uint32* bitmapPixel = bitmap.pixels;
-  uint32* firstPixelOfBitmapRow = bitmapPixel;
+  uint32* firstPixelOfBitmapRow = bitmapPixel + offsetY * bitmap.header.width;
   int32 bitmapDiff = bitmap.header.width;
   if(inverted)
   {
-    firstPixelOfBitmapRow = bitmapPixel + (bitmap.header.height - 1) * bitmap.header.width;
+    firstPixelOfBitmapRow = bitmapPixel + (bitmap.header.height - offsetY - 1) * bitmap.header.width;
     bitmapDiff = -bitmapDiff;
   }
-  for(int32 y = 0;
-      y < bitmapHeight;
+  for(int32 y = minY;
+      y < maxY;
       y++)
   {
-    bufferPixel = firstPixelOfBufferRow;
-    bitmapPixel = firstPixelOfBitmapRow;
-    for(int32 x = 0;
-        x < bitmapWidth;
+    bufferPixel = firstPixelOfBufferRow + minX;
+    bitmapPixel = firstPixelOfBitmapRow + offsetX;
+    for(int32 x = minX;
+        x < maxX;
         x++)
     {
+      // We calculate the pixel position
       real32 t = (*bitmapPixel >> 24) / 255.0f;
-
       real32 sourceRed = (real32)((*bufferPixel >> 16) & 0xFF);
       real32 sourceGreen = (real32)((*bufferPixel >> 8) & 0xFF);
       real32 sourceBlue = (real32)((*bufferPixel >> 0) & 0xFF);

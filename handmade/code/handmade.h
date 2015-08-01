@@ -129,6 +129,15 @@ struct bitmap_definition
   uint32* pixels;
 };
 
+struct hero_bitmap
+{
+  bitmap_definition torso;
+  bitmap_definition cape;
+  bitmap_definition head;
+  int32 offsetX;
+  int32 offsetY;
+};
+
 struct game_state
 {
   int32 toneHz;
@@ -141,13 +150,12 @@ struct game_state
   tile_coordinates coords;
 
   bitmap_definition background;
-  bitmap_definition heroHead;
-  bitmap_definition heroTorso;
-  bitmap_definition heroCape;
+  int32 heroBitmapIndex;
+  hero_bitmap heroBitmaps[4];
+
+  real32 x;
+  real32 y;
 };
-
-
-
 
 
 #define _HANDMADE_H_INCLUDED

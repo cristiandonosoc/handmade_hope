@@ -94,15 +94,40 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     gameState->background = DEBUGLoadBMP(nullptr,
                                          gameMemory->DEBUGPlatformReadEntireFileFunction,
                                          "test/test_background.bmp");
-    gameState->heroHead = DEBUGLoadBMP(nullptr,
-                                       gameMemory->DEBUGPlatformReadEntireFileFunction,
-                                       "test/test_hero_front_head.bmp");
-    gameState->heroTorso = DEBUGLoadBMP(nullptr,
-                                       gameMemory->DEBUGPlatformReadEntireFileFunction,
-                                       "test/test_hero_front_torso.bmp");
-    gameState->heroCape = DEBUGLoadBMP(nullptr,
-                                       gameMemory->DEBUGPlatformReadEntireFileFunction,
-                                       "test/test_hero_front_cape.bmp");
+
+    hero_bitmap* heroBitmap = gameState->heroBitmaps;
+
+    heroBitmap->torso = DEBUGLoadBMP(
+        nullptr, gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_left_torso.bmp");
+    heroBitmap->cape = DEBUGLoadBMP(nullptr,
+        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_left_cape.bmp");
+    heroBitmap->head = DEBUGLoadBMP(nullptr,
+        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_left_head.bmp");
+    heroBitmap++;
+
+    heroBitmap->torso = DEBUGLoadBMP(
+        nullptr, gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_back_torso.bmp");
+    heroBitmap->cape = DEBUGLoadBMP(nullptr,
+        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_back_cape.bmp");
+    heroBitmap->head = DEBUGLoadBMP(nullptr,
+        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_back_head.bmp");
+    heroBitmap++;
+
+    heroBitmap->torso = DEBUGLoadBMP(
+        nullptr, gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_right_torso.bmp");
+    heroBitmap->cape = DEBUGLoadBMP(nullptr,
+        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_right_cape.bmp");
+    heroBitmap->head = DEBUGLoadBMP(nullptr,
+        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_right_head.bmp");
+    heroBitmap++;
+
+    heroBitmap->torso = DEBUGLoadBMP(
+        nullptr, gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_front_torso.bmp");
+    heroBitmap->cape = DEBUGLoadBMP(nullptr,
+        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_front_cape.bmp");
+    heroBitmap->head = DEBUGLoadBMP(nullptr,
+        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_front_head.bmp");
+
 
     // We initialize the memory manager right after the gamestate struct
     // in the permament storage
@@ -260,18 +285,22 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       if(input->moveLeft.endedDown)
       {
         dX -= speed;
+        gameState->x -= 10 * speed;
       }
       if(input->moveRight.endedDown)
       {
         dX += speed;
+        gameState->x += 10 * speed;
       }
       if(input->moveDown.endedDown)
       {
         dY -= speed;
+        gameState->y += 10 * speed;
       }
       if(input->moveUp.endedDown)
       {
         dY += speed;
+        gameState->y -= 10 * speed;
       }
 
       if(!gameState->zChangePress)
@@ -332,9 +361,13 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   ClearScreenBuffer(offscreenBuffer, 1.0f, 0.0f, 1.0f);
 
-  DrawBitmap(offscreenBuffer, gameState->background, true);
-  DrawBitmap(offscreenBuffer, gameState->heroHead, true);
+  DrawBitmap(offscreenBuffer, gameState->background, 0, 0, true);
 
+  hero_bitmap heroBitmap = gameState->heroBitmaps[gameState->heroBitmapIndex];
+
+  DrawBitmap(offscreenBuffer, heroBitmap.torso, gameState->x, gameState->y, true);
+  DrawBitmap(offscreenBuffer, heroBitmap.cape, gameState->x, gameState->y, true);
+  DrawBitmap(offscreenBuffer, heroBitmap.head, gameState->x, gameState->y, true);
 
   int totalHeight = TILES_PER_HEIGHT * tileInPixels;
   point2D<int32> playerTilePos = GetTileCoordinates(tileMap, coords);
