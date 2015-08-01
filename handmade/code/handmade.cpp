@@ -346,8 +346,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         proposedTile = GetTileValue(tileMap, &rightLowerCorner);
       }
 
-      point2D<int32> tileCoords = GetTileCoordinates(tileMap, &proposedCoords);
-      point3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &proposedCoords);
+      vector2D<int32> tileCoords = GetTileCoordinates(tileMap, &proposedCoords);
+      vector3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &proposedCoords);
       char mbuffer[256];
       //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
       sprintf_s(mbuffer,
@@ -372,7 +372,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   DrawBitmap(offscreenBuffer, gameState->background, 0, 0, 0, 0, true);
 
   int totalHeight = TILES_PER_HEIGHT * tileInPixels;
-  point2D<int32> playerTilePos = GetTileCoordinates(tileMap, coords);
+  vector2D<int32> playerTilePos = GetTileCoordinates(tileMap, coords);
 
   real32 offsetX = -30.0f;
   real32 offsetY = 0;
@@ -459,7 +459,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       tile_chunk* tileChunk = GetTileChunk(tileMap, &rectCoords);
       if(tileChunk != nullptr)
       {
-        point3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &rectCoords);
+        vector3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &rectCoords);
         if(tileChunkCoords.x != tileChunkX ||
            tileChunkCoords.y != tileChunkY ||
            tileChunkCoords.z != tileChunkZ)

@@ -3,6 +3,9 @@
 #include "tiles.h"
 #include "coordinates.cpp"
 #include "game/memory.cpp"
+#include "math/vector.h"
+
+using namespace MATH;
 
 inline uint32
 GetTileChunkDim(tile_map* tileMap)
@@ -14,7 +17,7 @@ GetTileChunkDim(tile_map* tileMap)
 internal tile_chunk*
 GetTileChunk(tile_map* tileMap, tile_coordinates* coords)
 {
-  point3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, coords);
+  vector3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, coords);
 
   // TODO(Cristian): Find a good way of finding if the tileChunk actually exists!
   if((tileChunkCoords.x >= 0 && tileChunkCoords.x < tileMap->tileChunkCountX) &&
@@ -36,7 +39,7 @@ GetTileChunk(tile_map* tileMap, tile_coordinates* coords)
 internal uint32*
 GetTile(tile_map* tileMap, tile_coordinates* coords)
 {
-  point2D<int32> tileCoords = GetTileCoordinates(tileMap, coords);
+  vector2D<int32> tileCoords = GetTileCoordinates(tileMap, coords);
 
   ASSERT(tileCoords.x >= 0 && tileCoords.x < tileMap->tileSide);
   ASSERT(tileCoords.y >= 0 && tileCoords.y < tileMap->tileSide);
@@ -96,7 +99,7 @@ SetTileValue(memory_manager* memoryManager, tile_map* tileMap, tile_coordinates*
     tileChunk->initialized = true;
   }
 
-  point2D<int32> tileCoords = GetTileCoordinates(tileMap, coords);
+  vector2D<int32> tileCoords = GetTileCoordinates(tileMap, coords);
   SetTileValue(tileMap, tileChunk, tileCoords.x, tileCoords.y, value);
 }
 

@@ -1,8 +1,10 @@
 #ifndef _HANDMADE_COORDINATES_CPP
 
 #include "tiles.h"
-#include "utils\float.cpp"
+#include "utils/float.cpp"
+#include "math/vector.h"
 
+using namespace MATH;
 /**
  * Modifies the coordinates so that pX and pY, which represent the offset from the tile,
  * are within the tile bounds. If they're not, we must move the tile into the correct offset.
@@ -25,20 +27,20 @@ NormalizeCoordinates(tile_map* tileMap, tile_coordinates* coords)
 /**
  * Gets the coordinates of a tile relative to it's a tile_chunk
  */
-internal point2D<int32>
+internal vector2D<int32>
 GetTileCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
-  point2D<int32> point = {};
+  vector2D<int32> point = {};
   point.x = coords->tileX & tileMap->tileMask;
   point.y = coords->tileY & tileMap->tileMask;
 
   return point;
 }
 
-internal point3D<int32>
+internal vector3D<int32>
 GetTileChunkCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
-  point3D<int32> point = {};
+  vector3D<int32> point = {};
   point.x = coords->tileX >> tileMap->tileShift;
   point.y = coords->tileY >> tileMap->tileShift;
   point.z = coords->tileZ;

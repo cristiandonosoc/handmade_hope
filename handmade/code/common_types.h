@@ -51,20 +51,5 @@ typedef int32 bool32;
 typedef float real32;
 typedef double real64;
 
-template<typename T>
-struct point2D
-{
-  T x;
-  T y;
-};
-
-template<typename T>
-struct point3D
-{
-  T x;
-  T y;
-  T z;
-};
-
 #define PI32 3.14159265359f
 #endif
