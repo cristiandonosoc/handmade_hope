@@ -9,6 +9,9 @@
 
 #ifndef _HANDMADE_PLATFORM_H
 
+
+#include "math/vector.h"
+
 // NOTE(Cristian): We do this so the platform compiles under normal C
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +41,7 @@ extern "C" {
     #define COMPILER_LLVM 1
   #endif
 #endif
+
 
 // We do compiler specific setup
 #if COMPILER_MSVC
