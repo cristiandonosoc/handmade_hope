@@ -26,13 +26,17 @@ Win32GetLastWriteTime(char *filename)
 }
 
 internal win32_game_code
-Win32LoadGameCode(char *sourceDllPath, char* targetDllPath)
+Win32LoadGameCode(char *sourceDllPath, char* targetDllPath, char* lockFilename)
 {
   win32_game_code gameCode = {};
 
-  BOOL result = CopyFileA(sourceDllPath,
-            targetDllPath,
-            false);
+  // We check if the lock file exists
+  WIN32_FILE_ATTRIBUTE_DATA ignored;
+  if(GetFileAttributesEx(lockFilename, GetFileExInfoStandard, &ignored))
+  {
+    return gameCode;
+  }
+  BOOL result = CopyFileA(sourceDllPath, targetDllPath, false);
   if(!result)
   {
     DWORD r = GetLastError();

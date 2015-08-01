@@ -21,6 +21,8 @@ SET pdb_path=-PDB:handmade_%random%pdb
 
 REM 64-Bit build
 del *.pdb > NUL 2> NUL
+echo "WAITING FOR PDB" > lock.tmp
 cl %envconf% %warnings% %buildconf% -FC -Z7 -Fmhandmade.map ..\handmade\code\handmade.cpp /LD /link %linkerconf% %exports% %pdb_path%
+del lock.tmp
 cl %envconf% %warnings% %buildconf% -FC -Z7 -Fmwin32_handmade.map ..\handmade\code\win32_handmade.cpp /link %linkerconf% %dependencies%
 popd

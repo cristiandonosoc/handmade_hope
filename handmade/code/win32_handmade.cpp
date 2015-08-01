@@ -119,9 +119,12 @@ WinMain(HINSTANCE hInstance,
 
   char* sourceDllName = "handmade.dll";
   char* targetDllName = "handmade_temp.dll";
+  char* dllLockName = "lock.tmp";
+
   // TODO(Cristián): use smart-pointers, so we free when we exit of scope
   char* sourceDllPath = Utils::String::CatStrings(win32State.exeDirPath, sourceDllName);
   char* targetDllPath = Utils::String::CatStrings(win32State.exeDirPath, targetDllName);
+  char* dllLockPath = Utils::String::CatStrings(win32State.exeDirPath, dllLockName);
 
   // We initialize the XInput functions pointers
   Win32LoadXInput();
@@ -372,7 +375,8 @@ WinMain(HINSTANCE hInstance,
        * GAME CODE INITIALIZATION
        */
       win32_game_code currentGameCode = Win32LoadGameCode(sourceDllPath,
-                                                          targetDllPath);
+                                                          targetDllPath,
+                                                          dllLockPath);
       int frameDelay = 20;
       int delayFrames = 0;
 #define gameCodeLoadCounterLimit 120
@@ -415,7 +419,7 @@ WinMain(HINSTANCE hInstance,
           if(delayFrames++ == frameDelay)
           {
              Win32UnloadGameCode(&currentGameCode);
-             currentGameCode = Win32LoadGameCode(sourceDllPath, targetDllPath);
+             currentGameCode = Win32LoadGameCode(sourceDllPath, targetDllPath, dllLockName);
              delayFrames = 0;
           }
         }
