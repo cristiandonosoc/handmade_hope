@@ -80,14 +80,15 @@ RenderWeirdGradient(game_offscreen_buffer *buffer, int blueOffset, int greenOffs
 }
 
 internal void
-DrawRectangle(game_offscreen_buffer* buffer, real32 realMinX, real32 realMinY,
-                                             real32 realMaxX, real32 realMaxY,
-                                             real32 R, real32 G, real32 B)
+DrawRectangle(game_offscreen_buffer* buffer,
+              vector2D<real32> min,
+              vector2D<real32> max,
+              real32 R, real32 G, real32 B)
 {
-  int32 minX = UTILS::FLOAT::RoundReal32ToUInt32(realMinX);
-  int32 maxX = UTILS::FLOAT::RoundReal32ToUInt32(realMaxX);
-  int32 minY = UTILS::FLOAT::RoundReal32ToUInt32(realMinY);
-  int32 maxY = UTILS::FLOAT::RoundReal32ToUInt32(realMaxY);
+  int32 minX = UTILS::FLOAT::RoundReal32ToUInt32(min.x);
+  int32 maxX = UTILS::FLOAT::RoundReal32ToUInt32(max.x);
+  int32 minY = UTILS::FLOAT::RoundReal32ToUInt32(min.y);
+  int32 maxY = UTILS::FLOAT::RoundReal32ToUInt32(max.y);
 
 
   // We make the boundaries safe
@@ -119,14 +120,14 @@ DrawRectangle(game_offscreen_buffer* buffer, real32 realMinX, real32 realMinY,
 
 internal void
 DrawHollowRectangle(game_offscreen_buffer* buffer,
-                    real32 realMinX, real32 realMinY,
-                    real32 realMaxX, real32 realMaxY,
+                    vector2D<real32> min,
+                    vector2D<real32> max,
                     real32 R, real32 G, real32 B)
 {
-  int32 minX = UTILS::FLOAT::RoundReal32ToUInt32(realMinX);
-  int32 maxX = UTILS::FLOAT::RoundReal32ToUInt32(realMaxX);
-  int32 minY = UTILS::FLOAT::RoundReal32ToUInt32(realMinY);
-  int32 maxY = UTILS::FLOAT::RoundReal32ToUInt32(realMaxY);
+  int32 minX = UTILS::FLOAT::RoundReal32ToUInt32(min.x);
+  int32 maxX = UTILS::FLOAT::RoundReal32ToUInt32(max.x);
+  int32 minY = UTILS::FLOAT::RoundReal32ToUInt32(min.y);
+  int32 maxY = UTILS::FLOAT::RoundReal32ToUInt32(max.y);
 
   // We make the boundaries safe
   if(minX < 0) { minX = 0; }
@@ -179,12 +180,15 @@ DrawTileRelativeToCenter(game_offscreen_buffer* buffer,
                          real32 tileInMeters, real32 metersToPixels,
                          real32 R, real32 G, real32 B)
 {
-  DrawRectangle(buffer,
+  vector2D<real32> min = {
     screenOffsetX + (tileOffsetX * tileInMeters - realOffsetX) * metersToPixels,
     screenOffsetY - ((tileOffsetY * tileInMeters + tileSizeY - realOffsetY) * metersToPixels + pixelPaddingY),
+  };
+  vector2D<real32> max = {
     screenOffsetX + (tileOffsetX * tileInMeters + tileSizeX - realOffsetX) * metersToPixels + pixelPaddingX,
     screenOffsetY - (tileOffsetY * tileInMeters - realOffsetY) * metersToPixels,
-    R, G, B);
+  };
+  DrawRectangle(buffer, min, max, R, G, B);
 }
 
 internal void

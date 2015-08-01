@@ -476,14 +476,18 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             gray = 1.0f;
           }
 
-          // TODO(Cristian): Pass this draw call to a DrawTileRelativeToCenter call
-          DrawHollowRectangle(
-            offscreenBuffer,
+          vector2D<real32> tileChunkMin = {
             renderOffsetX - ((coords->tile.x - currentTileChunkX) * tileMap->tileInMeters + coords->pX ) * metersToPixels,
             renderOffsetY + (coords->tile.y + coords->pY - currentTileChunkY) * metersToPixels - tileMap->tileSide * tileMap->tileInMeters * metersToPixels,
+          };
+
+          vector2D<real32> tileChunkMax = {
             renderOffsetX - ((coords->tile.x - currentTileChunkX - tileMap->tileSide) + coords->pX) * metersToPixels,
             renderOffsetY + (coords->tile.y + coords->pY - currentTileChunkY) * metersToPixels,
-            gray, gray, gray);
+          };
+
+          // TODO(Cristian): Pass this draw call to a DrawTileRelativeToCenter call
+          DrawHollowRectangle(offscreenBuffer, tileChunkMin, tileChunkMax, gray, gray, gray);
         }
       }
     }
@@ -491,10 +495,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   // Draw Player
   DrawRectangle(offscreenBuffer,
-                renderOffsetX - (PLAYER_WIDTH / 2) * metersToPixels,
-                renderOffsetY - PLAYER_HEIGHT * metersToPixels,
-                renderOffsetX + (PLAYER_WIDTH / 2) * metersToPixels,
-                renderOffsetY,
+                vector2D<real32>{renderOffsetX - (PLAYER_WIDTH / 2) * metersToPixels,
+                                 renderOffsetY - PLAYER_HEIGHT * metersToPixels},
+                vector2D<real32>{renderOffsetX + (PLAYER_WIDTH / 2) * metersToPixels,
+                                 renderOffsetY},
                 1.0f, 1.0f, 0.0f);
   hero_bitmap heroBitmap = gameState->heroBitmaps[gameState->heroBitmapIndex];
   DrawBitmap(offscreenBuffer, heroBitmap.torso,
@@ -511,8 +515,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   // Draw Mouse
   DrawRectangle(offscreenBuffer,
-               gameInput->mouseX, gameInput->mouseY,
-               gameInput->mouseX + 10, gameInput->mouseY + 10,
+               vector2D<real32>{(real32)gameInput->mouseX, (real32)gameInput->mouseY},
+               vector2D<real32>{(real32)(gameInput->mouseX + 10), (real32)(gameInput->mouseY + 10)},
                1.0f, 1.0f, 1.0f);
 }
 
