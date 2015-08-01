@@ -103,6 +103,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_left_cape.bmp");
     heroBitmap->head = DEBUGLoadBMP(nullptr,
         gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_left_head.bmp");
+    heroBitmap->offsetX = 72;
+    heroBitmap->offsetY = 184;
     heroBitmap++;
 
     heroBitmap->torso = DEBUGLoadBMP(
@@ -111,6 +113,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_back_cape.bmp");
     heroBitmap->head = DEBUGLoadBMP(nullptr,
         gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_back_head.bmp");
+    heroBitmap->offsetX = 72;
+    heroBitmap->offsetY = 184;
     heroBitmap++;
 
     heroBitmap->torso = DEBUGLoadBMP(
@@ -119,6 +123,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_right_cape.bmp");
     heroBitmap->head = DEBUGLoadBMP(nullptr,
         gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_right_head.bmp");
+    heroBitmap->offsetX = 72;
+    heroBitmap->offsetY = 184;
     heroBitmap++;
 
     heroBitmap->torso = DEBUGLoadBMP(
@@ -127,6 +133,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_front_cape.bmp");
     heroBitmap->head = DEBUGLoadBMP(nullptr,
         gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_front_head.bmp");
+    heroBitmap->offsetX = 72;
+    heroBitmap->offsetY = 184;
 
 
     // We initialize the memory manager right after the gamestate struct
@@ -249,7 +257,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   tile_map* tileMap = world->tileMap;
   // Outside initialization so we can live-change it
   tileMap->tileInMeters = 1.0f;
-  real32 tileInPixels = 6;
+  real32 tileInPixels = 60;
   real32 metersToPixels = tileInPixels / tileMap->tileInMeters;
 
   // We get the current tileChunk
@@ -361,13 +369,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   ClearScreenBuffer(offscreenBuffer, 1.0f, 0.0f, 1.0f);
 
-  DrawBitmap(offscreenBuffer, gameState->background, 0, 0, true);
-
-  hero_bitmap heroBitmap = gameState->heroBitmaps[gameState->heroBitmapIndex];
-
-  DrawBitmap(offscreenBuffer, heroBitmap.torso, gameState->x, gameState->y, true);
-  DrawBitmap(offscreenBuffer, heroBitmap.cape, gameState->x, gameState->y, true);
-  DrawBitmap(offscreenBuffer, heroBitmap.head, gameState->x, gameState->y, true);
+  DrawBitmap(offscreenBuffer, gameState->background, 0, 0, 0, 0, true);
 
   int totalHeight = TILES_PER_HEIGHT * tileInPixels;
   point2D<int32> playerTilePos = GetTileCoordinates(tileMap, coords);
@@ -494,6 +496,18 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                 renderOffsetX + (PLAYER_WIDTH / 2) * metersToPixels,
                 renderOffsetY,
                 1.0f, 1.0f, 0.0f);
+  hero_bitmap heroBitmap = gameState->heroBitmaps[gameState->heroBitmapIndex];
+  DrawBitmap(offscreenBuffer, heroBitmap.torso,
+      renderOffsetX, renderOffsetY,
+      heroBitmap.offsetX, heroBitmap.offsetY, true);
+  DrawBitmap(offscreenBuffer, heroBitmap.cape,
+      renderOffsetX, renderOffsetY,
+      heroBitmap.offsetX, heroBitmap.offsetY, true);
+  DrawBitmap(offscreenBuffer, heroBitmap.head,
+      renderOffsetX, renderOffsetY,
+      heroBitmap.offsetX, heroBitmap.offsetY, true);
+
+
 
   // Draw Mouse
   DrawRectangle(offscreenBuffer,

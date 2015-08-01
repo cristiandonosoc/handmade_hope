@@ -190,12 +190,13 @@ DrawTileRelativeToCenter(game_offscreen_buffer* buffer,
 internal void
 DrawBitmap(game_offscreen_buffer* buffer, bitmap_definition bitmap,
            real32 screenX, real32 screenY,
+           int32 pixelOffsetX, int32 pixelOffsetY,
            bool32 inverted)
 {
-  int32 minX = UTILS::FLOAT::RoundReal32ToUInt32(screenX);
-  int32 maxX = UTILS::FLOAT::RoundReal32ToUInt32(screenX + bitmap.header.width);
-  int32 minY = UTILS::FLOAT::RoundReal32ToUInt32(screenY);
-  int32 maxY = UTILS::FLOAT::RoundReal32ToUInt32(screenY + bitmap.header.height);
+  int32 minX = UTILS::FLOAT::RoundReal32ToUInt32(screenX - pixelOffsetX);
+  int32 maxX = UTILS::FLOAT::RoundReal32ToUInt32(screenX - pixelOffsetX + bitmap.header.width);
+  int32 minY = UTILS::FLOAT::RoundReal32ToUInt32(screenY - pixelOffsetY);
+  int32 maxY = UTILS::FLOAT::RoundReal32ToUInt32(screenY - pixelOffsetY + bitmap.header.height);
 
   // We make the boundaries safe
   int32 offsetX = 0;
