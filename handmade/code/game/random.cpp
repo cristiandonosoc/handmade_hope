@@ -5,7 +5,7 @@
 namespace RANDOM
 {
 #define RANDOM_TABLE_SIZE 4096
-  uint32 gRandomTable[RANDOM_TABLE_SIZE] =
+  global_variable uint32 gRandomTable[RANDOM_TABLE_SIZE] =
   {
     0x25eb92b7,	0x2a43d365,	0x0f044a68,	0x33289939,	0x274e9282,	0x1fc31a23,	0x312c9445,	0x1ef9bd45,
     0x14780df7,	0x1b216469,	0x3a12884c,	0x39404be3,	0x2270ae07,	0x1ebb480a,	0x1efd88c6,	0x036a43d4,
