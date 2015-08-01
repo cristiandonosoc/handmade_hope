@@ -152,9 +152,6 @@ struct game_state
   bitmap_definition background;
   int32 heroBitmapIndex;
   hero_bitmap heroBitmaps[4];
-
-  real32 x;
-  real32 y;
 };
 
 

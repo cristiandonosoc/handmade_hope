@@ -293,22 +293,22 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       if(input->moveLeft.endedDown)
       {
         dX -= speed;
-        gameState->x -= 10 * speed;
+        gameState->heroBitmapIndex = 0;
       }
       if(input->moveRight.endedDown)
       {
         dX += speed;
-        gameState->x += 10 * speed;
+        gameState->heroBitmapIndex = 2;
       }
       if(input->moveDown.endedDown)
       {
         dY -= speed;
-        gameState->y += 10 * speed;
+        gameState->heroBitmapIndex = 3;
       }
       if(input->moveUp.endedDown)
       {
         dY += speed;
-        gameState->y -= 10 * speed;
+        gameState->heroBitmapIndex = 1;
       }
 
       if(!gameState->zChangePress)
