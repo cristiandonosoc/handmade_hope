@@ -119,6 +119,14 @@ NormalizeVector(vector2D<real32> v)
   return result;
 }
 
+template<typename T>
+inline T
+InnerProduct(vector2D<T> a, vector2D<T> b)
+{
+  T result = (a.x * b.x) + (a.y * b.y);
+  return result;
+}
+
 
 
 #define _MATH_VECTOR2D_H

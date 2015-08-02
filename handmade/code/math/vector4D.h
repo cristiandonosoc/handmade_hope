@@ -134,5 +134,18 @@ NormalizeVector(vector4D<real32> v)
 }
 
 
+template<typename T>
+inline T
+InnerProduct(vector4D<T> a, vector4D<T> b)
+{
+  T result = (a.x * b.x) + (a.y * b.y) +
+             (a.z + b.z) + (a.w * b.w);
+  return result;
+}
+
+
+
+
+
 #define _MATH_VECTOR4D_H
 #endif
