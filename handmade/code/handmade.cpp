@@ -345,19 +345,28 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       tile_coordinates proposedCoords = ModifyCoordinates(tileMap, *coords, diff.x, diff.y);
 
+      tile_coordinates colCoords = {};
       tile_coordinates leftLowerCorner = ModifyCoordinates(tileMap,
                                                            proposedCoords,
                                                            -(PLAYER_WIDTH / 2), 0.0f);
 
       // We check left-lower corner
       uint32 proposedTile = GetTileValue(tileMap, &leftLowerCorner);
-      if(proposedTile == 0)
+      if(proposedTile != 0) // COLLISION
+      {
+        colCoords = leftLowerCorner;
+      }
+      else
       {
         tile_coordinates rightLowerCorner = ModifyCoordinates(tileMap,
                                                               proposedCoords,
                                                               (PLAYER_WIDTH / 2), 0.0f);
         // We check ther right-lower corner
         proposedTile = GetTileValue(tileMap, &rightLowerCorner);
+        if(proposedTile != 0) // COLLISION
+        {
+          colCoords = rightLowerCorner;
+        }
       }
 
       vector2D<int32> tileCoords = GetTileCoordinates(tileMap, &proposedCoords);
@@ -377,6 +386,30 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       if(proposedTile == 0)
       {
         *coords = proposedCoords;
+      }
+      else
+      {
+        // We had collision, so we go and do a bounce
+        // For this we need to know the movement direction
+        vector2D<real32> r = {};
+        if(colCoords.tile.x < coords->tile.x)
+        {
+          r = vector2D<real32>{1, 0};
+        }
+        if(colCoords.tile.x > coords->tile.x)
+        {
+          r = vector2D<real32>{-1, 0};
+        }
+        if(colCoords.tile.y < coords->tile.y)
+        {
+          r = vector2D<real32>{0, 1};
+        }
+        if(colCoords.tile.y > coords->tile.y)
+        {
+          r = vector2D<real32>{0, -1};
+        }
+
+        gameState->dPlayerPos = gameState->dPlayerPos - 2 * InnerProduct(gameState->dPlayerPos, r) * r;
       }
     }
   }
