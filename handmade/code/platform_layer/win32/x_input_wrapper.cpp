@@ -297,49 +297,44 @@ Win32ProcessKeyboardMessages(MSG message,
       {
         if(vKeyCode == 'W')
         {
-          Win32ProcessKeyboardMessage(&newKeyboardController->moveUp,
-                                      keyIsDown);
+          Win32ProcessKeyboardMessage(&newKeyboardController->moveUp, keyIsDown);
         }
         else if(vKeyCode == 'S')
         {
-          Win32ProcessKeyboardMessage(&newKeyboardController->moveDown,
-                                      keyIsDown);
+          Win32ProcessKeyboardMessage(&newKeyboardController->moveDown, keyIsDown);
         }
         else if(vKeyCode == 'A')
         {
-          Win32ProcessKeyboardMessage(&newKeyboardController->moveLeft,
-                                      keyIsDown);
+          Win32ProcessKeyboardMessage(&newKeyboardController->moveLeft, keyIsDown);
         }
         else if(vKeyCode == 'D')
         {
-          Win32ProcessKeyboardMessage(&newKeyboardController->moveRight,
-                                      keyIsDown);
+          Win32ProcessKeyboardMessage(&newKeyboardController->moveRight, keyIsDown);
         }
         else if(vKeyCode == VK_UP)
         {
-          Win32ProcessKeyboardMessage(&newKeyboardController->actionUp,
-                                      keyIsDown);
+          Win32ProcessKeyboardMessage(&newKeyboardController->actionUp, keyIsDown);
         }
         else if(vKeyCode == VK_DOWN)
         {
-          Win32ProcessKeyboardMessage(&newKeyboardController->actionDown,
-                                      keyIsDown);
+          Win32ProcessKeyboardMessage(&newKeyboardController->actionDown, keyIsDown);
         }
         else if(vKeyCode == VK_LEFT)
         {
-          Win32ProcessKeyboardMessage(&newKeyboardController->actionLeft,
-                                      keyIsDown);
+          Win32ProcessKeyboardMessage(&newKeyboardController->actionLeft, keyIsDown);
         }
         else if(vKeyCode == VK_RIGHT)
         {
-          Win32ProcessKeyboardMessage(&newKeyboardController->actionRight,
-                                      keyIsDown);
+          Win32ProcessKeyboardMessage(&newKeyboardController->actionRight, keyIsDown);
         }
         else if(vKeyCode == VK_ESCAPE)
         {
           result.quit = true;
-          Win32ProcessKeyboardMessage(&newKeyboardController->back,
-                                      keyIsDown);
+          Win32ProcessKeyboardMessage(&newKeyboardController->back, keyIsDown);
+        }
+        else if(vKeyCode == VK_RETURN)
+        {
+          Win32ProcessKeyboardMessage(&newKeyboardController->start, keyIsDown);
         }
         else if(vKeyCode == VK_SPACE)
         {
