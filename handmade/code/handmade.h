@@ -150,9 +150,6 @@ struct entity_def
 
 struct game_state
 {
-  int32 toneHz;
-  int32 toneVolume;
-
   memory_manager memoryManager;
   world_definition* world;
 

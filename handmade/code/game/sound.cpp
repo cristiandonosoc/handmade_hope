@@ -15,9 +15,6 @@ OutputGameSound(game_sound_output_buffer *soundOutput,
    *
    */
 
-  int32 wavePeriod = soundOutput->samplesPerSecond /
-                     gameState->toneHz;
-
   // We cast the region pointer into int16 pointers (it is a DWORD) so we can
   // write into each channel of the sound buffer
   int16 *sampleOut = (int16 *)soundOutput->bufferMemory;
@@ -27,20 +24,7 @@ OutputGameSound(game_sound_output_buffer *soundOutput,
       sampleIndex < soundOutput->sampleCount;
       sampleIndex++)
   {
-#if 0
-    // This is the logic required to output a sine wave
-    real32 sineValue = sinf(gameState->tSine);
-    int16 sampleValue = (int16)(sineValue * gameState->toneVolume);
-
-    gameState->tSine += 2 * PI32 / (real32)wavePeriod;
-    while(gameState->tSine > 2 * PI32)
-    {
-      gameState->tSine -= 2 * PI32;
-    }
-
-#else
     int16 sampleValue = 0; // Silence for now...
-#endif
 
     *sampleOut++ = sampleValue;
     *sampleOut++ = sampleValue;

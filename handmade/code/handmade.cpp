@@ -606,14 +606,9 @@ extern "C" GAME_GET_SOUND(GameGetSound)
   game_state *gameState = (game_state *)gameMemory->permanentStorage;
   if(!gameMemory->soundInitialized)
   {
-    gameState->toneHz = 440;
-    gameState->toneVolume = 7000;
-
     // TODO(Cristián): This may be more appropiate to do in the platform layer
     gameMemory->soundInitialized = true;
   }
-
-  gameState->toneHz = 256;
 
   for(int controllerIndex = 0;
       controllerIndex < ARRAY_COUNT(gameInput->controllers);
@@ -628,10 +623,6 @@ extern "C" GAME_GET_SOUND(GameGetSound)
     }
     else
     {
-      if (input->moveRight.endedDown)
-      {
-        gameState->toneHz = 256 + (int32)(120.0f * input->moveRight.endedDown);
-      }
     }
   }
   OutputGameSound(soundBuffer, gameState);
