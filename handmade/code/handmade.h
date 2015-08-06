@@ -137,6 +137,13 @@ struct hero_bitmap
   int32 offsetY;
 };
 
+struct entity_def
+{
+  bool32 exists;
+  tile_coordinates pos;
+  MATH::vector2D<real32> dPos;
+};
+
 struct game_state
 {
   int32 toneHz;
@@ -146,9 +153,10 @@ struct game_state
 
   memory_manager memoryManager;
   world_definition* world;
-  tile_coordinates coords;
-  // We store the derivatives of the player position
-  MATH::vector2D<real32> dPlayerPos;
+
+  entity_def entities[256];
+  // Each index maps an controller to a particular entity index
+  entity_def* entityIndexForController[ARRAY_COUNT(((game_input*)0)->controllers)];
 
   bitmap_definition background;
   int32 heroBitmapIndex;

@@ -76,6 +76,17 @@ DEBUGLoadBMP(thread_context* thread,
   return result;
 }
 
+internal void
+InitializeEntity(entity_def* entity)
+{
+  *entity = {};
+
+  entity->exists = true;
+  entity->pos.tile.x = 1;
+  entity->pos.tile.y = 3;
+  entity->pos.tile.y = 3;
+}
+
 // void
 // GameUpdateAndRender(game_offscreen_buffer *offscreenBuffer,
 //                     game_memory *gameMemory,
@@ -238,18 +249,21 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 #define PLAYER_WIDTH 0.6f
 #define PLAYER_HEIGHT 1.0f
 
-    // TODO(Cristian): Recheck coordinates offset working (packing and unpacking)
-    // Now is all mingled up and it WILL bring problems
-    gameState->coords.pX = 0.0f;
-    gameState->coords.pY = 0.0f;
-    gameState->coords = {2, 2};
+    // We initialize the first entity
+    entity_def* entity = &gameState->entities[0];
+    gameState->entityIndexForController[0] = entity;
+    InitializeEntity(entity);
+
+    entity->pos = {2, 2};
+    entity->pos.pX = 0.0f;
+    entity->pos.pY = 0.0f;
 
     // TODO(Cristián): This may be more appropiate to do in the platform layer
     gameMemory->graphicsInitialized = true;
   }
 
   // We create the player coordinates
-  tile_coordinates* coords = &(gameState->coords);
+  entity_def* entity = gameState->entityIndexForController[0];
 
   // We obtain the world data from the gameState
   world_definition* world = gameState->world;
@@ -260,7 +274,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   real32 metersToPixels = tileInPixels / tileMap->tileInMeters;
 
   // We get the current tileChunk
-  tile_chunk* currentTileMap = GetTileChunk(tileMap, coords);
+  tile_chunk* currentTileMap = GetTileChunk(tileMap, &entity->pos);
 
   for(int controllerIndex = 0;
       controllerIndex < ARRAY_COUNT(gameInput->controllers);
@@ -321,7 +335,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         if(!input->actionUp.endedDown)
         {
           gameState->zChangePress = false;
-          gameState->coords.tile.z ^= 1;
+          entity->pos.tile.z ^= 1;
         }
       }
 
@@ -330,20 +344,20 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       // We create a simple drag
       // NOTE(Cristian): Learn and use ODE (Ordinary Differential Equations)
-      ddPlayerPos -= 0.25f * gameState->dPlayerPos;
+      ddPlayerPos -= 0.25f * entity->dPos;
 
       ddPlayerPos *= moveAccel;
-      vector2D<real32> playerPos = {gameState->coords.pX, gameState->coords.pY};
+      vector2D<real32> playerPos = {entity->pos.pX, entity->pos.pY};
       vector2D<real32> newMove = (((ddPlayerPos * Square(gameInput->secondsToUpdate)) / 2) +
-                                 (gameState->dPlayerPos * gameInput->secondsToUpdate) +
+                                 (entity->dPos * gameInput->secondsToUpdate) +
                                  (playerPos));
       // We calculate the difference
       vector2D<real32> diff = newMove - playerPos;
 
       // We calculate the velocity
-      gameState->dPlayerPos += ddPlayerPos * gameInput->secondsToUpdate;
+      entity->dPos += ddPlayerPos * gameInput->secondsToUpdate;
 
-      tile_coordinates proposedCoords = ModifyCoordinates(tileMap, *coords, diff.x, diff.y);
+      tile_coordinates proposedCoords = ModifyCoordinates(tileMap, entity->pos, diff.x, diff.y);
 
       tile_coordinates colCoords = {};
       tile_coordinates leftLowerCorner = ModifyCoordinates(tileMap,
@@ -378,38 +392,38 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         proposedCoords.pX, proposedCoords.pY,
         tileCoords.x, tileCoords.y,
         tileChunkCoords.x, tileChunkCoords.y, tileChunkCoords.z,
-        gameState->dPlayerPos.x, gameState->dPlayerPos.y,
+        entity->dPos.x, entity->dPos.y,
         ddPlayerPos.x, ddPlayerPos.y
       );
       OutputDebugStringA(mbuffer);
 
       if(proposedTile == 0)
       {
-        *coords = proposedCoords;
+        entity->pos = proposedCoords;
       }
       else
       {
         // We had collision, so we go and do a bounce
         // For this we need to know the movement direction
         vector2D<real32> r = {};
-        if(colCoords.tile.x < coords->tile.x)
+        if(colCoords.tile.x < entity->pos.tile.x)
         {
           r = vector2D<real32>{1, 0};
         }
-        if(colCoords.tile.x > coords->tile.x)
+        if(colCoords.tile.x > entity->pos.tile.x)
         {
           r = vector2D<real32>{-1, 0};
         }
-        if(colCoords.tile.y < coords->tile.y)
+        if(colCoords.tile.y < entity->pos.tile.y)
         {
           r = vector2D<real32>{0, 1};
         }
-        if(colCoords.tile.y > coords->tile.y)
+        if(colCoords.tile.y > entity->pos.tile.y)
         {
           r = vector2D<real32>{0, -1};
         }
 
-        gameState->dPlayerPos = gameState->dPlayerPos - 2 * InnerProduct(gameState->dPlayerPos, r) * r;
+        entity->dPos = entity->dPos - 2 * InnerProduct(entity->dPos, r) * r;
       }
     }
   }
@@ -421,7 +435,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   DrawBitmap(offscreenBuffer, gameState->background, 0, 0, 0, 0, true);
 
   int totalHeight = TILES_PER_HEIGHT * tileInPixels;
-  vector2D<int32> playerTilePos = GetTileCoordinates(tileMap, coords);
+  vector2D<int32> playerTilePos = GetTileCoordinates(tileMap, &entity->pos);
 
   real32 offsetX = -30.0f;
   real32 offsetY = 0;
@@ -437,10 +451,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   int32 tileChunkZ = 0xFFFFFFFF;
 
   int32 renderSize = 1;
-  int32 minX = coords->tile.x - (TILES_PER_WIDTH / 2 + 1 + renderSize);
-  int32 maxX = coords->tile.x + (TILES_PER_WIDTH / 2 + 2 + renderSize);
-  int32 minY = coords->tile.y - (TILES_PER_HEIGHT / 2 + 1 + renderSize);
-  int32 maxY = coords->tile.y + (TILES_PER_HEIGHT / 2 + 2 + renderSize);
+  int32 minX = entity->pos.tile.x - (TILES_PER_WIDTH / 2 + 1 + renderSize);
+  int32 maxX = entity->pos.tile.x + (TILES_PER_WIDTH / 2 + 2 + renderSize);
+  int32 minY = entity->pos.tile.y - (TILES_PER_HEIGHT / 2 + 1 + renderSize);
+  int32 maxY = entity->pos.tile.y + (TILES_PER_HEIGHT / 2 + 2 + renderSize);
   for(int32 tileY = minY;
       tileY < maxY;
       tileY++)
@@ -452,7 +466,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       tile_coordinates rectCoords = {};
       rectCoords.tile.x = tileX;
       rectCoords.tile.y = tileY;
-      rectCoords.tile.z = coords->tile.z;
+      rectCoords.tile.z = entity->pos.tile.z;
       real32 tile = 0;
 
       uint32 tileValue = GetTileValue(tileMap, &rectCoords);
@@ -468,20 +482,20 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
 
       int currentTile = 0;
-      if (tileX == coords->tile.x &&
-          tileY == coords->tile.y)
+      if (tileX == entity->pos.tile.x &&
+          tileY == entity->pos.tile.y)
       {
         currentTile = 1;
       }
 
       // NOTE(Cristian): We substract one because we are also rendering one extra tile in
       // every direction
-      int32 tileOffsetX = tileX - coords->tile.x;
-      int32 tileOffsetY = -(tileY - coords->tile.y);
+      int32 tileOffsetX = tileX - entity->pos.tile.x;
+      int32 tileOffsetY = -(tileY - entity->pos.tile.y);
       DrawTileRelativeToCenter(offscreenBuffer,
           renderOffsetX, renderOffsetY,
-          tileX - coords->tile.x, tileY - coords->tile.y,                 // tile offset
-          coords->pX, coords->pY,                                       // real offset
+          tileX - entity->pos.tile.x, tileY - entity->pos.tile.y,                 // tile offset
+          entity->pos.pX, entity->pos.pY,                                       // real offset
           tileMap->tileInMeters, tileMap->tileInMeters,                 // tile size
           -1, -1,                                                       // pixel padding
           tileMap->tileInMeters, metersToPixels,                        // tile-to-pixel transforms
@@ -503,7 +517,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       tile_coordinates rectCoords = {};
       rectCoords.tile.x = tileX;
       rectCoords.tile.y = tileY;
-      rectCoords.tile.z = coords->tile.z;
+      rectCoords.tile.z = entity->pos.tile.z;
 
       tile_chunk* tileChunk = GetTileChunk(tileMap, &rectCoords);
       if(tileChunk != nullptr)
@@ -527,13 +541,13 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           }
 
           vector2D<real32> tileChunkMin = {
-            renderOffsetX - ((coords->tile.x - currentTileChunkX) * tileMap->tileInMeters + coords->pX ) * metersToPixels,
-            renderOffsetY + (coords->tile.y + coords->pY - currentTileChunkY) * metersToPixels - tileMap->tileSide * tileMap->tileInMeters * metersToPixels,
+            renderOffsetX - ((entity->pos.tile.x - currentTileChunkX) * tileMap->tileInMeters + entity->pos.pX ) * metersToPixels,
+            renderOffsetY + (entity->pos.tile.y + entity->pos.pY - currentTileChunkY) * metersToPixels - tileMap->tileSide * tileMap->tileInMeters * metersToPixels,
           };
 
           vector2D<real32> tileChunkMax = {
-            renderOffsetX - ((coords->tile.x - currentTileChunkX - tileMap->tileSide) + coords->pX) * metersToPixels,
-            renderOffsetY + (coords->tile.y + coords->pY - currentTileChunkY) * metersToPixels,
+            renderOffsetX - ((entity->pos.tile.x - currentTileChunkX - tileMap->tileSide) + entity->pos.pX) * metersToPixels,
+            renderOffsetY + (entity->pos.tile.y + entity->pos.pY - currentTileChunkY) * metersToPixels,
           };
 
           // TODO(Cristian): Pass this draw call to a DrawTileRelativeToCenter call
