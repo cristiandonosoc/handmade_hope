@@ -91,6 +91,43 @@ InitializeEntity(entity_def* entity)
   entity->height = PLAYER_HEIGHT;
 }
 
+inline entity_def*
+GetEntity(game_state* gameState, int32 index)
+{
+
+  if(index < 0) { return nullptr; }
+  if(gameState->entityCount == 0) { return nullptr; }
+
+  ASSERT(index < gameState->entityCount);
+
+  entity_def* result = &gameState->entities[index];
+  return result;
+}
+
+// Returns the index of the entity in out entity array
+inline uint32
+CreateEntity(game_state* gameState)
+{
+  ASSERT(gameState->entityCount < ARRAY_COUNT(gameState->entities));
+
+  entity_def* entity = &gameState->entities[gameState->entityCount];
+  *entity = {}; // Safety clear
+
+  uint32 result = gameState->entityCount;
+  gameState->entityCount++;
+
+  return result;
+}
+
+inline bool32
+ValidEntity(entity_def* entity)
+{
+  if(!entity) { return false; }
+
+  bool32 result = entity->exists;
+  return result;
+}
+
 internal void
 UpdateControlledEntity(entity_def* entity, game_controller_input* input,
     tile_map* tileMap,
@@ -130,7 +167,24 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
     entity->pos.tile.z ^= 1;
   }
 
-  // TODO(Cristian): Normalize acceleration vector!
+  if(ddPlayerPos.x != 0.0f || ddPlayerPos.y != 0.0f)
+  {
+    // We update the facing direction
+    if(UTILS::FLOAT::AbsoluteReal32(ddPlayerPos.y) > UTILS::FLOAT::AbsoluteReal32(ddPlayerPos.x))
+    {
+      if(ddPlayerPos.y > 0) { entity->facingDirection = 1; }
+      else { entity->facingDirection = 3; }
+    }
+    else
+    {
+      if(ddPlayerPos.x > 0) { entity->facingDirection = 2; }
+      else { entity->facingDirection = 0; }
+    }
+  }
+
+
+
+
   ddPlayerPos = NormalizeVector(ddPlayerPos);
 
     // We create a simple drag
@@ -354,12 +408,13 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
     }
 
-
-
-    // We initialize the first entity
-    entity_def* entity = &gameState->entities[0];
-    gameState->entityIndexForController[0] = entity;
-    InitializeEntity(entity);
+    // We initialize the controllers as not having any entities
+    for(uint32 controllerIndex = 0;
+        controllerIndex < ARRAY_COUNT(gameState->entityIndexForController);
+        controllerIndex++)
+    {
+      gameState->entityIndexForController[controllerIndex] = -1;
+    }
 
     gameState->cameraPos = {2, 2};
     gameState->cameraPos.pX = 0.0f;
@@ -369,9 +424,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     gameMemory->graphicsInitialized = true;
   }
 
-  // We create the player coordinates
-  entity_def* entity = gameState->entityIndexForController[0];
-
   // We obtain the world data from the gameState
   world_definition* world = gameState->world;
   tile_map* tileMap = world->tileMap;
@@ -380,9 +432,12 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   real32 tileInPixels = 60;
   real32 metersToPixels = tileInPixels / tileMap->tileInMeters;
 
-  // We get the current tileChunk
-  tile_chunk* currentTileMap = GetTileChunk(tileMap, &entity->pos);
+  // Temporal entity variable to be used throughout the code
+  entity_def* entity = nullptr;
 
+  /**
+   * CONTROLLER UPDATE LOOP
+   */
   for(int controllerIndex = 0;
       controllerIndex < ARRAY_COUNT(gameInput->controllers);
       controllerIndex++)
@@ -392,13 +447,39 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     if(!input->isConnected) { continue; }
 
+    entity = GetEntity(gameState, gameState->entityIndexForController[controllerIndex]);
+    if(!input->start.endedDown && (input->start.halfTransitionCount > 0)) // release
+    {
+      if(ValidEntity(entity))
+      {
+        // We clear the entity
+        *entity = {};
+        entity = nullptr;
+        gameState->entityIndexForController[controllerIndex] = -1;
+      }
+      else
+      {
+        // We create the entity (player comes in to play)
+        gameState->entityIndexForController[controllerIndex] = CreateEntity(gameState);
+        entity = GetEntity(gameState, gameState->entityIndexForController[controllerIndex]);
+
+        InitializeEntity(entity);
+
+        // We attach the camera to the entity
+        gameState->cameraFollowingEntityIndex = gameState->entityIndexForController[controllerIndex];
+      }
+    }
+
     if(input->isAnalog)
     {
       // NOTE(Cristián): Use analog movement tuning
     }
     else
     {
-      UpdateControlledEntity(entity, input, tileMap, gameInput, gameState);
+      if(ValidEntity(entity))
+      {
+        UpdateControlledEntity(entity, input, tileMap, gameInput, gameState);
+      }
     }
   }
 
@@ -433,7 +514,15 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
 
   // We update the camera position to the plater Position
-  gameState->cameraPos = entity->pos;
+  entity_def* cameraFollowingEntity = GetEntity(gameState, gameState->cameraFollowingEntityIndex);
+  if(ValidEntity(cameraFollowingEntity))
+  {
+    gameState->cameraPos = cameraFollowingEntity->pos;
+  }
+
+
+  // We get the current tileChunk from the camera
+  tile_chunk* currentTileMap = GetTileChunk(tileMap, &gameState->cameraPos);
 
   /*** RENDERING ***/
 
@@ -564,28 +653,40 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-  // Draw Player
-  DrawRectangle(offscreenBuffer,
-                vector2D<real32>{renderOffsetX - (PLAYER_WIDTH / 2) * metersToPixels,
-                                 renderOffsetY - PLAYER_HEIGHT * metersToPixels},
-                vector2D<real32>{renderOffsetX + (PLAYER_WIDTH / 2) * metersToPixels,
-                                 renderOffsetY},
-                1.0f, 1.0f, 0.0f);
+  /**
+   * ENTITY DRAW
+   */
 
-  hero_bitmap heroBitmap = gameState->heroBitmaps[gameState->heroBitmapIndex];
-  DrawBitmap(offscreenBuffer, heroBitmap.torso,
-      renderOffsetX, renderOffsetY,
-      heroBitmap.offsetX, heroBitmap.offsetY, true);
-  DrawBitmap(offscreenBuffer, heroBitmap.cape,
-      renderOffsetX, renderOffsetY,
-      heroBitmap.offsetX, heroBitmap.offsetY, true);
-  DrawBitmap(offscreenBuffer, heroBitmap.head,
-      renderOffsetX, renderOffsetY,
-      heroBitmap.offsetX, heroBitmap.offsetY, true);
+  entity = gameState->entities;
+  for(int32 entityIndex = 0;
+      entityIndex < gameState->entityCount;
+      entityIndex++, entity++)
+  {
+    if(!ValidEntity(entity)) { continue; }
 
+    // TODO(Cristian): Do bitmap draw relative to the camera, in order
+    // to be able to render multiple bitmaps
+    DrawRectangle(offscreenBuffer,
+        vector2D<real32>{renderOffsetX - (PLAYER_WIDTH / 2) * metersToPixels,
+        renderOffsetY - PLAYER_HEIGHT * metersToPixels},
+        vector2D<real32>{renderOffsetX + (PLAYER_WIDTH / 2) * metersToPixels,
+        renderOffsetY},
+        1.0f, 1.0f, 0.0f);
 
+    hero_bitmap heroBitmap = gameState->heroBitmaps[entity->facingDirection];
+    DrawBitmap(offscreenBuffer, heroBitmap.torso,
+        renderOffsetX, renderOffsetY,
+        heroBitmap.offsetX, heroBitmap.offsetY, true);
+    DrawBitmap(offscreenBuffer, heroBitmap.cape,
+        renderOffsetX, renderOffsetY,
+        heroBitmap.offsetX, heroBitmap.offsetY, true);
+    DrawBitmap(offscreenBuffer, heroBitmap.head,
+        renderOffsetX, renderOffsetY,
+        heroBitmap.offsetX, heroBitmap.offsetY, true);
 
-  // Draw Mouse
+  }
+
+ // Draw Mouse
   DrawRectangle(offscreenBuffer,
                vector2D<real32>{(real32)gameInput->mouseX, (real32)gameInput->mouseY},
                vector2D<real32>{(real32)(gameInput->mouseX + 10), (real32)(gameInput->mouseY + 10)},

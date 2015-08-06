@@ -142,22 +142,26 @@ struct entity_def
   bool32 exists;
   tile_coordinates pos;
   MATH::vector2D<real32> dPos;
+  // LBRU
   uint32 facingDirection;
 
   real32 width;
   real32 height;
 };
 
+#define ENTITY_COUNT 256
 struct game_state
 {
   memory_manager memoryManager;
   world_definition* world;
 
-  tile_coordinates cameraPos;
-
-  entity_def entities[256];
+  int32 entityCount;
+  entity_def entities[ENTITY_COUNT];
   // Each index maps an controller to a particular entity index
-  entity_def* entityIndexForController[ARRAY_COUNT(((game_input*)0)->controllers)];
+  int32 entityIndexForController[ARRAY_COUNT(((game_input*)0)->controllers)];
+
+  tile_coordinates cameraPos;
+  uint32 cameraFollowingEntityIndex;
 
   bitmap_definition background;
   int32 heroBitmapIndex;
