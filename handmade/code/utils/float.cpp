@@ -16,6 +16,13 @@ namespace UTILS
 namespace FLOAT
 {
 
+inline real32
+AbsoluteReal32(real32 val)
+{
+  real32 result = fabs(val);
+  return result;
+}
+
 inline uint32
 RoundReal32ToUInt32(real32 val)
 {

@@ -104,28 +104,24 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
   if(input->moveLeft.endedDown)
   {
     ddPlayerPos.x -= 1.0f;
-    gameState->heroBitmapIndex = 0;
   }
   if(input->moveRight.endedDown)
   {
     ddPlayerPos.x += 1.0f;
-    gameState->heroBitmapIndex = 2;
   }
   if(input->moveDown.endedDown)
   {
     ddPlayerPos.y -= 1.0f;
-    gameState->heroBitmapIndex = 3;
   }
   if(input->moveUp.endedDown)
   {
     ddPlayerPos.y += 1.0f;
-    gameState->heroBitmapIndex = 1;
   }
 
   real32 moveAccel = 20.0f;
   if(input->actionRight.endedDown)
   {
-    moveAccel = 10.0f;
+    moveAccel = 70.0f;
   }
 
   // We want only key-release
@@ -137,15 +133,16 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
   // TODO(Cristian): Normalize acceleration vector!
   ddPlayerPos = NormalizeVector(ddPlayerPos);
 
-  // We create a simple drag
+    // We create a simple drag
   // NOTE(Cristian): Learn and use ODE (Ordinary Differential Equations)
-  ddPlayerPos -= 0.25f * entity->dPos;
-
   ddPlayerPos *= moveAccel;
+  ddPlayerPos -= 5.25f * entity->dPos;
+
   vector2D<real32> playerPos = {entity->pos.pX, entity->pos.pY};
   vector2D<real32> newMove = (((ddPlayerPos * Square(gameInput->secondsToUpdate)) / 2) +
       (entity->dPos * gameInput->secondsToUpdate) +
       (playerPos));
+
   // We calculate the difference
   vector2D<real32> diff = newMove - playerPos;
 
@@ -178,20 +175,6 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
     }
   }
 
-  vector2D<int32> tileCoords = GetTileCoordinates(tileMap, &proposedCoords);
-  vector3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &proposedCoords);
-  char mbuffer[256];
-  //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
-  sprintf_s(mbuffer,
-      "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d, WZ: %d\ndX:%f, dY:%f, ddX:%f, ddY:%f\n",
-      proposedCoords.pX, proposedCoords.pY,
-      tileCoords.x, tileCoords.y,
-      tileChunkCoords.x, tileChunkCoords.y, tileChunkCoords.z,
-      entity->dPos.x, entity->dPos.y,
-      ddPlayerPos.x, ddPlayerPos.y
-      );
-  OutputDebugStringA(mbuffer);
-
   if(proposedTile == 0)
   {
     entity->pos = proposedCoords;
@@ -221,7 +204,6 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
     entity->dPos = entity->dPos - 2 * InnerProduct(entity->dPos, r) * r;
   }
 
-
 }
 
 // void
@@ -245,42 +227,32 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     hero_bitmap* heroBitmap = gameState->heroBitmaps;
 
-    heroBitmap->torso = DEBUGLoadBMP(
-        nullptr, gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_left_torso.bmp");
-    heroBitmap->cape = DEBUGLoadBMP(nullptr,
-        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_left_cape.bmp");
-    heroBitmap->head = DEBUGLoadBMP(nullptr,
-        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_left_head.bmp");
+    debug_platform_read_entire_file* readFunction = gameMemory->DEBUGPlatformReadEntireFileFunction;
+
+    heroBitmap->torso = DEBUGLoadBMP(nullptr, readFunction, "test/test_hero_left_torso.bmp");
+    heroBitmap->cape = DEBUGLoadBMP(nullptr, readFunction, "test/test_hero_left_cape.bmp");
+    heroBitmap->head = DEBUGLoadBMP(nullptr, readFunction, "test/test_hero_left_head.bmp");
     heroBitmap->offsetX = 72;
     heroBitmap->offsetY = 184;
     heroBitmap++;
 
-    heroBitmap->torso = DEBUGLoadBMP(
-        nullptr, gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_back_torso.bmp");
-    heroBitmap->cape = DEBUGLoadBMP(nullptr,
-        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_back_cape.bmp");
-    heroBitmap->head = DEBUGLoadBMP(nullptr,
-        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_back_head.bmp");
+    heroBitmap->torso = DEBUGLoadBMP(nullptr, readFunction, "test/test_hero_back_torso.bmp");
+    heroBitmap->cape = DEBUGLoadBMP(nullptr, readFunction, "test/test_hero_back_cape.bmp");
+    heroBitmap->head = DEBUGLoadBMP(nullptr, readFunction, "test/test_hero_back_head.bmp");
     heroBitmap->offsetX = 72;
     heroBitmap->offsetY = 184;
     heroBitmap++;
 
-    heroBitmap->torso = DEBUGLoadBMP(
-        nullptr, gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_right_torso.bmp");
-    heroBitmap->cape = DEBUGLoadBMP(nullptr,
-        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_right_cape.bmp");
-    heroBitmap->head = DEBUGLoadBMP(nullptr,
-        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_right_head.bmp");
+    heroBitmap->torso = DEBUGLoadBMP(nullptr, readFunction, "test/test_hero_right_torso.bmp");
+    heroBitmap->cape = DEBUGLoadBMP(nullptr, readFunction, "test/test_hero_right_cape.bmp");
+    heroBitmap->head = DEBUGLoadBMP(nullptr, readFunction, "test/test_hero_right_head.bmp");
     heroBitmap->offsetX = 72;
     heroBitmap->offsetY = 184;
     heroBitmap++;
 
-    heroBitmap->torso = DEBUGLoadBMP(
-        nullptr, gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_front_torso.bmp");
-    heroBitmap->cape = DEBUGLoadBMP(nullptr,
-        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_front_cape.bmp");
-    heroBitmap->head = DEBUGLoadBMP(nullptr,
-        gameMemory->DEBUGPlatformReadEntireFileFunction, "test/test_hero_front_head.bmp");
+    heroBitmap->torso = DEBUGLoadBMP(nullptr, readFunction, "test/test_hero_front_torso.bmp");
+    heroBitmap->cape = DEBUGLoadBMP(nullptr, readFunction, "test/test_hero_front_cape.bmp");
+    heroBitmap->head = DEBUGLoadBMP(nullptr, readFunction, "test/test_hero_front_head.bmp");
     heroBitmap->offsetX = 72;
     heroBitmap->offsetY = 184;
 
@@ -429,6 +401,35 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       UpdateControlledEntity(entity, input, tileMap, gameInput, gameState);
     }
   }
+
+  /**
+   * ENTITY UPDATE LOOP
+   */
+  entity = gameState->entities;
+  for(int32 entityIndex = 0;
+      entityIndex < gameState->entityCount;
+      entityIndex++, entity++)
+  {
+    if(entity->exists)
+    {
+
+    }
+  }
+
+  // vector2D<int32> tileCoords = GetTileCoordinates(tileMap, &proposedCoords);
+  // vector3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &proposedCoords);
+  // char mbuffer[256];
+  // //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
+  // sprintf_s(mbuffer,
+  //     "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d, WZ: %d\ndX:%f, dY:%f, ddX:%f, ddY:%f\n",
+  //     proposedCoords.pX, proposedCoords.pY,
+  //     tileCoords.x, tileCoords.y,
+  //     tileChunkCoords.x, tileChunkCoords.y, tileChunkCoords.z,
+  //     currentEntity->dPos.x, currentEntity->dPos.y,
+  //     ddPlayerPos.x, ddPlayerPos.y
+  //     );
+  // OutputDebugStringA(mbuffer);
+
 
 
   // We update the camera position to the plater Position
