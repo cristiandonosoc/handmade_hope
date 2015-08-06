@@ -142,6 +142,10 @@ struct entity_def
   bool32 exists;
   tile_coordinates pos;
   MATH::vector2D<real32> dPos;
+  uint32 facingDirection;
+
+  real32 width;
+  real32 height;
 };
 
 struct game_state
@@ -149,10 +153,10 @@ struct game_state
   int32 toneHz;
   int32 toneVolume;
 
-  bool32 zChangePress;
-
   memory_manager memoryManager;
   world_definition* world;
+
+  tile_coordinates cameraPos;
 
   entity_def entities[256];
   // Each index maps an controller to a particular entity index

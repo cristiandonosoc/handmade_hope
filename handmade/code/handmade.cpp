@@ -76,15 +76,152 @@ DEBUGLoadBMP(thread_context* thread,
   return result;
 }
 
+#define PLAYER_WIDTH 0.6f
+#define PLAYER_HEIGHT 1.0f
+
 internal void
 InitializeEntity(entity_def* entity)
 {
   *entity = {};
 
   entity->exists = true;
-  entity->pos.tile.x = 1;
+  entity->pos.tile.x = 3;
   entity->pos.tile.y = 3;
-  entity->pos.tile.y = 3;
+  entity->width = PLAYER_WIDTH;
+  entity->height = PLAYER_HEIGHT;
+}
+
+internal void
+UpdateControlledEntity(entity_def* entity, game_controller_input* input,
+    tile_map* tileMap,
+    game_input* gameInput, game_state* gameState)
+{
+  // NOTE(Cristian): Use digital movement tuning
+  vector2D<real32> ddPlayerPos = {};
+
+  // TODO(Cristian): Check W+S+RIGHT broken combination
+  // Is it the platform layer o a keyboard failure????
+  if(input->moveLeft.endedDown)
+  {
+    ddPlayerPos.x -= 1.0f;
+    gameState->heroBitmapIndex = 0;
+  }
+  if(input->moveRight.endedDown)
+  {
+    ddPlayerPos.x += 1.0f;
+    gameState->heroBitmapIndex = 2;
+  }
+  if(input->moveDown.endedDown)
+  {
+    ddPlayerPos.y -= 1.0f;
+    gameState->heroBitmapIndex = 3;
+  }
+  if(input->moveUp.endedDown)
+  {
+    ddPlayerPos.y += 1.0f;
+    gameState->heroBitmapIndex = 1;
+  }
+
+  real32 moveAccel = 20.0f;
+  if(input->actionRight.endedDown)
+  {
+    moveAccel = 10.0f;
+  }
+
+  // We want only key-release
+  if(!input->actionUp.endedDown && (input->actionUp.halfTransitionCount > 0))
+  {
+    entity->pos.tile.z ^= 1;
+  }
+
+  // TODO(Cristian): Normalize acceleration vector!
+  ddPlayerPos = NormalizeVector(ddPlayerPos);
+
+  // We create a simple drag
+  // NOTE(Cristian): Learn and use ODE (Ordinary Differential Equations)
+  ddPlayerPos -= 0.25f * entity->dPos;
+
+  ddPlayerPos *= moveAccel;
+  vector2D<real32> playerPos = {entity->pos.pX, entity->pos.pY};
+  vector2D<real32> newMove = (((ddPlayerPos * Square(gameInput->secondsToUpdate)) / 2) +
+      (entity->dPos * gameInput->secondsToUpdate) +
+      (playerPos));
+  // We calculate the difference
+  vector2D<real32> diff = newMove - playerPos;
+
+  // We calculate the velocity
+  entity->dPos += ddPlayerPos * gameInput->secondsToUpdate;
+
+  tile_coordinates proposedCoords = ModifyCoordinates(tileMap, entity->pos, diff.x, diff.y);
+
+  tile_coordinates colCoords = {};
+  tile_coordinates leftLowerCorner = ModifyCoordinates(tileMap,
+      proposedCoords,
+      -(entity->width/ 2), 0.0f);
+
+  // We check left-lower corner
+  uint32 proposedTile = GetTileValue(tileMap, &leftLowerCorner);
+  if(proposedTile != 0) // COLLISION
+  {
+    colCoords = leftLowerCorner;
+  }
+  else
+  {
+    tile_coordinates rightLowerCorner = ModifyCoordinates(tileMap,
+        proposedCoords,
+        (entity->width/ 2), 0.0f);
+    // We check ther right-lower corner
+    proposedTile = GetTileValue(tileMap, &rightLowerCorner);
+    if(proposedTile != 0) // COLLISION
+    {
+      colCoords = rightLowerCorner;
+    }
+  }
+
+  vector2D<int32> tileCoords = GetTileCoordinates(tileMap, &proposedCoords);
+  vector3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &proposedCoords);
+  char mbuffer[256];
+  //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
+  sprintf_s(mbuffer,
+      "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d, WZ: %d\ndX:%f, dY:%f, ddX:%f, ddY:%f\n",
+      proposedCoords.pX, proposedCoords.pY,
+      tileCoords.x, tileCoords.y,
+      tileChunkCoords.x, tileChunkCoords.y, tileChunkCoords.z,
+      entity->dPos.x, entity->dPos.y,
+      ddPlayerPos.x, ddPlayerPos.y
+      );
+  OutputDebugStringA(mbuffer);
+
+  if(proposedTile == 0)
+  {
+    entity->pos = proposedCoords;
+  }
+  else
+  {
+    // We had collision, so we go and do a bounce
+    // For this we need to know the movement direction
+    vector2D<real32> r = {};
+    if(colCoords.tile.x < entity->pos.tile.x)
+    {
+      r = vector2D<real32>{1, 0};
+    }
+    if(colCoords.tile.x > entity->pos.tile.x)
+    {
+      r = vector2D<real32>{-1, 0};
+    }
+    if(colCoords.tile.y < entity->pos.tile.y)
+    {
+      r = vector2D<real32>{0, 1};
+    }
+    if(colCoords.tile.y > entity->pos.tile.y)
+    {
+      r = vector2D<real32>{0, -1};
+    }
+
+    entity->dPos = entity->dPos - 2 * InnerProduct(entity->dPos, r) * r;
+  }
+
+
 }
 
 // void
@@ -246,17 +383,15 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
 
 
-#define PLAYER_WIDTH 0.6f
-#define PLAYER_HEIGHT 1.0f
 
     // We initialize the first entity
     entity_def* entity = &gameState->entities[0];
     gameState->entityIndexForController[0] = entity;
     InitializeEntity(entity);
 
-    entity->pos = {2, 2};
-    entity->pos.pX = 0.0f;
-    entity->pos.pY = 0.0f;
+    gameState->cameraPos = {2, 2};
+    gameState->cameraPos.pX = 0.0f;
+    gameState->cameraPos.pY = 0.0f;
 
     // TODO(Cristián): This may be more appropiate to do in the platform layer
     gameMemory->graphicsInitialized = true;
@@ -291,142 +426,13 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
     else
     {
-      // NOTE(Cristian): Use digital movement tuning
-      vector2D<real32> ddPlayerPos = {};
-
-      // TODO(Cristian): Check W+S+RIGHT broken combination
-      // Is it the platform layer o a keyboard failure????
-      if(input->moveLeft.endedDown)
-      {
-        ddPlayerPos.x -= 1.0f;
-        gameState->heroBitmapIndex = 0;
-      }
-      if(input->moveRight.endedDown)
-      {
-        ddPlayerPos.x += 1.0f;
-        gameState->heroBitmapIndex = 2;
-      }
-      if(input->moveDown.endedDown)
-      {
-        ddPlayerPos.y -= 1.0f;
-        gameState->heroBitmapIndex = 3;
-      }
-      if(input->moveUp.endedDown)
-      {
-        ddPlayerPos.y += 1.0f;
-        gameState->heroBitmapIndex = 1;
-      }
-
-      real32 moveAccel = 20.0f;
-      if(input->actionRight.endedDown)
-      {
-        moveAccel = 10.0f;
-      }
-
-      if(!gameState->zChangePress)
-      {
-        if(input->actionUp.endedDown)
-        {
-          gameState->zChangePress = true;
-        }
-      }
-      else
-      {
-        if(!input->actionUp.endedDown)
-        {
-          gameState->zChangePress = false;
-          entity->pos.tile.z ^= 1;
-        }
-      }
-
-      // TODO(Cristian): Normalize acceleration vector!
-      ddPlayerPos = NormalizeVector(ddPlayerPos);
-
-      // We create a simple drag
-      // NOTE(Cristian): Learn and use ODE (Ordinary Differential Equations)
-      ddPlayerPos -= 0.25f * entity->dPos;
-
-      ddPlayerPos *= moveAccel;
-      vector2D<real32> playerPos = {entity->pos.pX, entity->pos.pY};
-      vector2D<real32> newMove = (((ddPlayerPos * Square(gameInput->secondsToUpdate)) / 2) +
-                                 (entity->dPos * gameInput->secondsToUpdate) +
-                                 (playerPos));
-      // We calculate the difference
-      vector2D<real32> diff = newMove - playerPos;
-
-      // We calculate the velocity
-      entity->dPos += ddPlayerPos * gameInput->secondsToUpdate;
-
-      tile_coordinates proposedCoords = ModifyCoordinates(tileMap, entity->pos, diff.x, diff.y);
-
-      tile_coordinates colCoords = {};
-      tile_coordinates leftLowerCorner = ModifyCoordinates(tileMap,
-                                                           proposedCoords,
-                                                           -(PLAYER_WIDTH / 2), 0.0f);
-
-      // We check left-lower corner
-      uint32 proposedTile = GetTileValue(tileMap, &leftLowerCorner);
-      if(proposedTile != 0) // COLLISION
-      {
-        colCoords = leftLowerCorner;
-      }
-      else
-      {
-        tile_coordinates rightLowerCorner = ModifyCoordinates(tileMap,
-                                                              proposedCoords,
-                                                              (PLAYER_WIDTH / 2), 0.0f);
-        // We check ther right-lower corner
-        proposedTile = GetTileValue(tileMap, &rightLowerCorner);
-        if(proposedTile != 0) // COLLISION
-        {
-          colCoords = rightLowerCorner;
-        }
-      }
-
-      vector2D<int32> tileCoords = GetTileCoordinates(tileMap, &proposedCoords);
-      vector3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &proposedCoords);
-      char mbuffer[256];
-      //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
-      sprintf_s(mbuffer,
-        "X: %f, Y: %f, TX: %d, TY: %d, WX: %d, WY: %d, WZ: %d\ndX:%f, dY:%f, ddX:%f, ddY:%f\n",
-        proposedCoords.pX, proposedCoords.pY,
-        tileCoords.x, tileCoords.y,
-        tileChunkCoords.x, tileChunkCoords.y, tileChunkCoords.z,
-        entity->dPos.x, entity->dPos.y,
-        ddPlayerPos.x, ddPlayerPos.y
-      );
-      OutputDebugStringA(mbuffer);
-
-      if(proposedTile == 0)
-      {
-        entity->pos = proposedCoords;
-      }
-      else
-      {
-        // We had collision, so we go and do a bounce
-        // For this we need to know the movement direction
-        vector2D<real32> r = {};
-        if(colCoords.tile.x < entity->pos.tile.x)
-        {
-          r = vector2D<real32>{1, 0};
-        }
-        if(colCoords.tile.x > entity->pos.tile.x)
-        {
-          r = vector2D<real32>{-1, 0};
-        }
-        if(colCoords.tile.y < entity->pos.tile.y)
-        {
-          r = vector2D<real32>{0, 1};
-        }
-        if(colCoords.tile.y > entity->pos.tile.y)
-        {
-          r = vector2D<real32>{0, -1};
-        }
-
-        entity->dPos = entity->dPos - 2 * InnerProduct(entity->dPos, r) * r;
-      }
+      UpdateControlledEntity(entity, input, tileMap, gameInput, gameState);
     }
   }
+
+
+  // We update the camera position to the plater Position
+  gameState->cameraPos = entity->pos;
 
   /*** RENDERING ***/
 
@@ -435,7 +441,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   DrawBitmap(offscreenBuffer, gameState->background, 0, 0, 0, 0, true);
 
   int totalHeight = TILES_PER_HEIGHT * tileInPixels;
-  vector2D<int32> playerTilePos = GetTileCoordinates(tileMap, &entity->pos);
+  vector2D<int32> playerTilePos = GetTileCoordinates(tileMap, &gameState->cameraPos);
 
   real32 offsetX = -30.0f;
   real32 offsetY = 0;
@@ -451,10 +457,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   int32 tileChunkZ = 0xFFFFFFFF;
 
   int32 renderSize = 1;
-  int32 minX = entity->pos.tile.x - (TILES_PER_WIDTH / 2 + 1 + renderSize);
-  int32 maxX = entity->pos.tile.x + (TILES_PER_WIDTH / 2 + 2 + renderSize);
-  int32 minY = entity->pos.tile.y - (TILES_PER_HEIGHT / 2 + 1 + renderSize);
-  int32 maxY = entity->pos.tile.y + (TILES_PER_HEIGHT / 2 + 2 + renderSize);
+  int32 minX = gameState->cameraPos.tile.x - (TILES_PER_WIDTH / 2 + 1 + renderSize);
+  int32 maxX = gameState->cameraPos.tile.x + (TILES_PER_WIDTH / 2 + 2 + renderSize);
+  int32 minY = gameState->cameraPos.tile.y - (TILES_PER_HEIGHT / 2 + 1 + renderSize);
+  int32 maxY = gameState->cameraPos.tile.y + (TILES_PER_HEIGHT / 2 + 2 + renderSize);
   for(int32 tileY = minY;
       tileY < maxY;
       tileY++)
@@ -466,7 +472,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       tile_coordinates rectCoords = {};
       rectCoords.tile.x = tileX;
       rectCoords.tile.y = tileY;
-      rectCoords.tile.z = entity->pos.tile.z;
+      rectCoords.tile.z = gameState->cameraPos.tile.z;
       real32 tile = 0;
 
       uint32 tileValue = GetTileValue(tileMap, &rectCoords);
@@ -482,20 +488,20 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
 
       int currentTile = 0;
-      if (tileX == entity->pos.tile.x &&
-          tileY == entity->pos.tile.y)
+      if (tileX == gameState->cameraPos.tile.x &&
+          tileY == gameState->cameraPos.tile.y)
       {
         currentTile = 1;
       }
 
       // NOTE(Cristian): We substract one because we are also rendering one extra tile in
       // every direction
-      int32 tileOffsetX = tileX - entity->pos.tile.x;
-      int32 tileOffsetY = -(tileY - entity->pos.tile.y);
+      int32 tileOffsetX = tileX - gameState->cameraPos.tile.x;
+      int32 tileOffsetY = -(tileY - gameState->cameraPos.tile.y);
       DrawTileRelativeToCenter(offscreenBuffer,
           renderOffsetX, renderOffsetY,
-          tileX - entity->pos.tile.x, tileY - entity->pos.tile.y,                 // tile offset
-          entity->pos.pX, entity->pos.pY,                                       // real offset
+          tileX - gameState->cameraPos.tile.x, tileY - gameState->cameraPos.tile.y,                 // tile offset
+          gameState->cameraPos.pX, gameState->cameraPos.pY,                                       // real offset
           tileMap->tileInMeters, tileMap->tileInMeters,                 // tile size
           -1, -1,                                                       // pixel padding
           tileMap->tileInMeters, metersToPixels,                        // tile-to-pixel transforms
@@ -517,7 +523,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       tile_coordinates rectCoords = {};
       rectCoords.tile.x = tileX;
       rectCoords.tile.y = tileY;
-      rectCoords.tile.z = entity->pos.tile.z;
+      rectCoords.tile.z = gameState->cameraPos.tile.z;
 
       tile_chunk* tileChunk = GetTileChunk(tileMap, &rectCoords);
       if(tileChunk != nullptr)
@@ -541,13 +547,13 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           }
 
           vector2D<real32> tileChunkMin = {
-            renderOffsetX - ((entity->pos.tile.x - currentTileChunkX) * tileMap->tileInMeters + entity->pos.pX ) * metersToPixels,
-            renderOffsetY + (entity->pos.tile.y + entity->pos.pY - currentTileChunkY) * metersToPixels - tileMap->tileSide * tileMap->tileInMeters * metersToPixels,
+            renderOffsetX - ((gameState->cameraPos.tile.x - currentTileChunkX) * tileMap->tileInMeters + gameState->cameraPos.pX ) * metersToPixels,
+            renderOffsetY + (gameState->cameraPos.tile.y + gameState->cameraPos.pY - currentTileChunkY) * metersToPixels - tileMap->tileSide * tileMap->tileInMeters * metersToPixels,
           };
 
           vector2D<real32> tileChunkMax = {
-            renderOffsetX - ((entity->pos.tile.x - currentTileChunkX - tileMap->tileSide) + entity->pos.pX) * metersToPixels,
-            renderOffsetY + (entity->pos.tile.y + entity->pos.pY - currentTileChunkY) * metersToPixels,
+            renderOffsetX - ((gameState->cameraPos.tile.x - currentTileChunkX - tileMap->tileSide) + gameState->cameraPos.pX) * metersToPixels,
+            renderOffsetY + (gameState->cameraPos.tile.y + gameState->cameraPos.pY - currentTileChunkY) * metersToPixels,
           };
 
           // TODO(Cristian): Pass this draw call to a DrawTileRelativeToCenter call

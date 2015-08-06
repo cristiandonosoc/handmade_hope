@@ -172,7 +172,7 @@ DrawHollowRectangle(game_offscreen_buffer* buffer,
 }
 inline void
 DrawTileRelativeToCenter(game_offscreen_buffer* buffer,
-                         real32 screenOffsetX, real32 screenOffsetY,
+                         real32 centerPositionX, real32 centerPositionY,
                          int32 tileOffsetX, int32 tileOffsetY,
                          real32 realOffsetX, real32 realOffsetY,
                          real32 tileSizeX, real32 tileSizeY,
@@ -181,12 +181,12 @@ DrawTileRelativeToCenter(game_offscreen_buffer* buffer,
                          real32 R, real32 G, real32 B)
 {
   vector2D<real32> min = {
-    screenOffsetX + (tileOffsetX * tileInMeters - realOffsetX) * metersToPixels,
-    screenOffsetY - ((tileOffsetY * tileInMeters + tileSizeY - realOffsetY) * metersToPixels + pixelPaddingY),
+    centerPositionX + (tileOffsetX * tileInMeters - realOffsetX) * metersToPixels,
+    centerPositionY - ((tileOffsetY * tileInMeters + tileSizeY - realOffsetY) * metersToPixels + pixelPaddingY),
   };
   vector2D<real32> max = {
-    screenOffsetX + (tileOffsetX * tileInMeters + tileSizeX - realOffsetX) * metersToPixels + pixelPaddingX,
-    screenOffsetY - (tileOffsetY * tileInMeters - realOffsetY) * metersToPixels,
+    centerPositionX + (tileOffsetX * tileInMeters + tileSizeX - realOffsetX) * metersToPixels + pixelPaddingX,
+    centerPositionY - (tileOffsetY * tileInMeters - realOffsetY) * metersToPixels,
   };
   DrawRectangle(buffer, min, max, R, G, B);
 }
