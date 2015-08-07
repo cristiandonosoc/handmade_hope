@@ -51,6 +51,11 @@ DEBUGLoadBMP(thread_context* thread,
     ASSERT(blueScan.found);
     ASSERT(alphaScan.found);
 
+    int32 redShift = 16 - (int32)redScan.index;
+    int32 greenShift = 8 - (int32)greenScan.index;
+    int32 blueShift = 0 - (int32)blueScan.index;
+    int32 alphaShift = 24 - (int32)alphaScan.index;
+
     // Now we have by how much each channel was shifted to the right.
     // So now we have to swivel them up
     uint32* head = result.pixels;
@@ -65,10 +70,18 @@ DEBUGLoadBMP(thread_context* thread,
       {
         // We shift down the colors by the shift calculated amount
         // and then place them in the correct value
+#if 0
         *head++ = ((((*head >> alphaScan.index) & 0xFF) << 24) |
                    (((*head >> redScan.index) & 0xFF) << 16) |
                    (((*head >> greenScan.index) & 0xFF) << 8) |
                    (((*head >> blueScan.index) & 0xFF) << 0));
+#else
+        uint32 c = *head;
+        *head++ = (UTILS::BIT::RotateLeft(c & header->redMask, redShift) |
+                   UTILS::BIT::RotateLeft(c & header->greenMask, greenShift) |
+                   UTILS::BIT::RotateLeft(c & header->blueMask, blueShift) |
+                   UTILS::BIT::RotateLeft(c & alphaMask, blueShift));
+#endif
       }
     }
   }

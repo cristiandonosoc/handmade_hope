@@ -31,6 +31,22 @@ namespace BIT
     return result;
   }
 
+  inline uint32
+  RotateLeft(uint32 value, int32 amount)
+  {
+    uint32 result = _rotl(value, amount);
+    return result;
+  }
+
+  inline uint32
+  RotateRight(uint32 value, int32 amount)
+  {
+    uint32 result = _rotr(value, amount);
+    return result;
+  }
+
+
+
 }
 }
 
