@@ -113,7 +113,7 @@ operator/=(vector2D<T>& b, real32 a)
 inline vector2D<real32>
 NormalizeVector(vector2D<real32> v)
 {
-  real32 norm = sqrt(Square(v.x) + Square(v.y));
+  real32 norm = SquareRoot(Square(v.x) + Square(v.y));
   if(norm == 0.0f) { return v; }
   vector2D<real32> result = norm / v;
   return result;
@@ -124,6 +124,14 @@ inline T
 InnerProduct(vector2D<T> a, vector2D<T> b)
 {
   T result = (a.x * b.x) + (a.y * b.y);
+  return result;
+}
+
+template<typename T>
+inline T
+LengthSq(vector2D<T> v)
+{
+  T result = InnerProduct(v, v);
   return result;
 }
 

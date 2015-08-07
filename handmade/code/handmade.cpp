@@ -19,11 +19,9 @@
 #include "utils/float.cpp"
 #include "utils/bit.cpp"
 
-// IMPORTANT(Cristian): OH GOD REMOVE THIS! THIS IS NOT PLATFORM INDEPENDENT!!!!
-#include <windows.h>
-#include <stdio.h>
-
-#include <math.h> // TODO(Cristián): Implement our own sine function
+// // IMPORTANT(Cristian): OH GOD REMOVE THIS! THIS IS NOT PLATFORM INDEPENDENT!!!!
+// #include <windows.h>
+// #include <stdio.h>
 
 internal bitmap_definition
 DEBUGLoadBMP(thread_context* thread,
@@ -196,9 +194,13 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
   }
 
 
+  // We only normalize for bigger vectors. This way we support
+  // lower vectors from gamepads
+  if(MATH::LengthSq(ddPlayerPos) > 1.0f)
+  {
+    ddPlayerPos = NormalizeVector(ddPlayerPos);
+  }
 
-
-  ddPlayerPos = NormalizeVector(ddPlayerPos);
 
     // We create a simple drag
   // NOTE(Cristian): Learn and use ODE (Ordinary Differential Equations)
