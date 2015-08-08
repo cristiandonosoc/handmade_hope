@@ -135,7 +135,12 @@ LengthSq(vector2D<T> v)
   return result;
 }
 
-
+inline real32
+Length(vector2D<real32> v)
+{
+  real32 result = SquareRoot(LengthSq(v));
+  return result;
+}
 
 #define _MATH_VECTOR2D_H
 #endif

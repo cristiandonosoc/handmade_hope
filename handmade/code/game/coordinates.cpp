@@ -3,6 +3,7 @@
 #include "tiles.h"
 #include "utils/float.cpp"
 #include "math/vector.h"
+#include "utils/float.cpp"
 
 using namespace MATH;
 /**
@@ -73,6 +74,28 @@ ModifyCoordinates(tile_map* tileMap, tile_coordinates coords, real32 dX, real32 
 
   return coords;
 }
+
+inline vector2D<real32>
+Distance(tile_map* tileMap, tile_coordinates a, tile_coordinates b)
+{
+  ASSERT(a.tile.z == b.tile.z);
+
+  vector2D<real32> tileV = {(b.tile.x - a.tile.x) * tileMap->tileInMeters,
+                            (b.tile.y - a.tile.y) * tileMap->tileInMeters};
+  vector2D<real32> tileR = {(b.pX - a.pX),
+                            (b.pY - a.pY)};
+  auto result = tileV + tileR;
+  return result;
+}
+
+inline tile_coordinates
+GenerateCoords(int32 x, int32 y, int32 z)
+{
+  tile_coordinates result = {x, y, z};
+  return result;
+}
+
+
 
 #define _HANDMADE_COORDINATES_CPP
 #endif
