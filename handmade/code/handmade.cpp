@@ -139,6 +139,39 @@ ValidEntity(entity_def* entity)
   return result;
 }
 
+
+/**
+ * Test when a collision would occur against an axis (the sub axis)
+ *
+ * The algorithm has an origin (rel) and a distance to advance in the whole step
+ * (t is [0, 1]). What we do is check what the value would be against the check axis (sub),
+ * and check if it falls inside a range we define.
+ *
+ * We also assign the time required to make that collision
+ */
+internal bool32
+TestWall(real32 testValue, real32 relMain, real32 relSub, real32 deltaMain, real32 deltaSub,
+         real32 testMin, real32 testMax, real32* tMin)
+{
+  bool32 hit = false;
+  if(deltaMain != 0.0f)
+  {
+    real32 t = (testValue - relMain) / deltaMain;
+    if((t >= 0.0f) && (t < *tMin))
+    {
+      real32 sub = relSub + t * deltaSub;  // This is the y of the point where we cross the wall line
+      if((sub >= testMin) && (sub <= testMax))
+      {
+        // We collided
+        *tMin = t;
+        hit = true;
+      }
+    }
+  }
+
+  return hit;
+}
+
 internal void
 UpdateControlledEntity(entity_def* entity, game_controller_input* input,
     tile_map* tileMap,
@@ -202,24 +235,20 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
   }
 
 
-    // We create a simple drag
+  // We create a simple drag
   // NOTE(Cristian): Learn and use ODE (Ordinary Differential Equations)
   ddPlayerPos *= moveAccel;
   ddPlayerPos -= 5.25f * entity->dPos;
 
   vector2D<real32> playerPos = {entity->pos.pX, entity->pos.pY};
-  vector2D<real32> newMove = (((ddPlayerPos * Square(gameInput->secondsToUpdate)) / 2) +
-      (entity->dPos * gameInput->secondsToUpdate) +
-      (playerPos));
-
-  // We calculate the difference
-  vector2D<real32> diff = newMove - playerPos;
+  vector2D<real32> delta = (((ddPlayerPos * Square(gameInput->secondsToUpdate)) / 2) +
+                             (entity->dPos * gameInput->secondsToUpdate));
 
   // We calculate the velocity
   entity->dPos += ddPlayerPos * gameInput->secondsToUpdate;
 
+#if 0
   tile_coordinates proposedCoords = ModifyCoordinates(tileMap, entity->pos, diff.x, diff.y);
-
   tile_coordinates colCoords = {};
   tile_coordinates leftLowerCorner = ModifyCoordinates(tileMap,
       proposedCoords,
@@ -243,6 +272,84 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
       colCoords = rightLowerCorner;
     }
   }
+#endif
+
+  tile_coordinates pos = entity->pos;
+  tile_coordinates proposedCoords = ModifyCoordinates(tileMap, entity->pos, delta.x, delta.y);
+
+#if 1
+  // We need to check all the tiles where we could have collision
+  vector2D<int32> minTile = {MIN(entity->pos.tile.x, proposedCoords.tile.x),
+                             MIN(entity->pos.tile.y, proposedCoords.tile.y)};
+
+  vector2D<int32> maxTile = {MAX(entity->pos.tile.x, proposedCoords.tile.x),
+                             MAX(entity->pos.tile.y, proposedCoords.tile.y)};
+  vector2D<real32> dist = Distance(tileMap, pos, proposedCoords);
+
+  // We check all the tiles
+  bool32 hit = false;
+  int32 tileZ = entity->pos.tile.z;
+  // real32 tRemaining = 1.0f; // The amount of time still left to iterate
+  real32 tMin = 1.0f;       // The minimum collision we detected
+  vector2D<real32> wallNormal = {};
+
+  for(int32 tileY = minTile.y;
+      tileY <= maxTile.y;
+      tileY++)
+  {
+    for(int32 tileX = minTile.x;
+        tileX <= maxTile.x;
+        tileX++)
+    {
+      uint32 tileValue = GetTileValue(tileMap, tileX, tileY, tileZ);
+      if(tileValue != 0)
+      {
+        // We check collision against the left wall
+        tile_coordinates testTile = GenerateCoords(tileX, tileY, tileZ);
+        vector2D<real32> rel = Distance(tileMap, testTile, pos);
+        vector2D<real32> minCorner = {0.0f, 0.0f};
+        vector2D<real32> maxCorner = {tileMap->tileInMeters, tileMap->tileInMeters};
+
+        // We check all four walls
+        // LEFT
+        if(TestWall(minCorner.x, rel.x, rel.y, delta.x, delta.y, minCorner.y, maxCorner.y, &tMin))
+        {
+          wallNormal = vector2D<real32>{-1, 0};
+          hit = true;
+        }
+        // RIGHT
+        if(TestWall(maxCorner.x, rel.x, rel.y, delta.x, delta.y, minCorner.y, maxCorner.y, &tMin))
+        {
+          wallNormal = vector2D<real32>{1, 0};
+          hit = true;
+        }
+        // BOTTOM
+        if(TestWall(minCorner.y, rel.y, rel.x, delta.y, delta.x, minCorner.x, maxCorner.x, &tMin))
+        {
+          wallNormal = vector2D<real32>{0, -1};
+          hit = true;
+        }
+        // TOP
+        if(TestWall(maxCorner.y, rel.y, rel.x, delta.y, delta.x, minCorner.x, maxCorner.x, &tMin))
+        {
+          wallNormal = vector2D<real32>{0, 1};
+          hit = true;
+        }
+      }
+    }
+  }
+  if(!hit)
+  {
+    entity->pos = proposedCoords;
+  }
+  else
+  {
+    entity->pos = ModifyCoordinates(tileMap, entity->pos, tMin * delta.x, tMin * delta.y);
+    entity->dPos = entity->dPos - 1.0f*InnerProduct(entity->dPos, wallNormal)*wallNormal;
+  }
+
+#else
+  uint32 proposedTile = GetTileValue(tileMap, &proposedCoords);
 
   if(proposedTile == 0)
   {
@@ -253,25 +360,26 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
     // We had collision, so we go and do a bounce
     // For this we need to know the movement direction
     vector2D<real32> r = {};
-    if(colCoords.tile.x < entity->pos.tile.x)
+    if(proposedCoords.tile.x < entity->pos.tile.x)
     {
       r = vector2D<real32>{1, 0};
     }
-    if(colCoords.tile.x > entity->pos.tile.x)
+    if(proposedCoords.tile.x > entity->pos.tile.x)
     {
       r = vector2D<real32>{-1, 0};
     }
-    if(colCoords.tile.y < entity->pos.tile.y)
+    if(proposedCoords.tile.y < entity->pos.tile.y)
     {
       r = vector2D<real32>{0, 1};
     }
-    if(colCoords.tile.y > entity->pos.tile.y)
+    if(proposedCoords.tile.y > entity->pos.tile.y)
     {
       r = vector2D<real32>{0, -1};
     }
 
     entity->dPos = entity->dPos - 2 * InnerProduct(entity->dPos, r) * r;
   }
+#endif
 
 }
 
