@@ -352,6 +352,7 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
 
       entity->dPos = entity->dPos - 1.0f*InnerProduct(entity->dPos, wallNormal)*wallNormal;
       delta = delta - 1.0f*InnerProduct(delta, wallNormal)*wallNormal;
+      delta *= (1 - tMin);
     }
     tRemaining -= tMin*tRemaining; // We remove how much of the much left we had left
   }
