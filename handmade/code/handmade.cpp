@@ -154,6 +154,7 @@ TestWall(real32 testValue, real32 relMain, real32 relSub, real32 deltaMain, real
          real32 testMin, real32 testMax, real32* tMin)
 {
   bool32 hit = false;
+  real32 tEpsilon = 0.0000f; // We create this so the player moves a little bit back than the collision
   if(deltaMain != 0.0f)
   {
     real32 t = (testValue - relMain) / deltaMain;
@@ -163,7 +164,7 @@ TestWall(real32 testValue, real32 relMain, real32 relSub, real32 deltaMain, real
       if((sub >= testMin) && (sub <= testMax))
       {
         // We collided
-        *tMin = t;
+        *tMin = t - tEpsilon;
         hit = true;
       }
     }
@@ -285,67 +286,74 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
   vector2D<int32> maxTile = {MAX(entity->pos.tile.x, proposedCoords.tile.x),
                              MAX(entity->pos.tile.y, proposedCoords.tile.y)};
   vector2D<real32> dist = Distance(tileMap, pos, proposedCoords);
-
-  // We check all the tiles
-  bool32 hit = false;
   int32 tileZ = entity->pos.tile.z;
-  // real32 tRemaining = 1.0f; // The amount of time still left to iterate
-  real32 tMin = 1.0f;       // The minimum collision we detected
-  vector2D<real32> wallNormal = {};
+  real32 tRemaining = 1.0f;
 
-  for(int32 tileY = minTile.y;
-      tileY <= maxTile.y;
-      tileY++)
+  // We do four iteration in order to make the entity correctly respond
+  // to a collision and not get "stuck"
+  for(int iteration = 0;
+      ((iteration < 4) && (tRemaining > 0.0f));
+      iteration++)
   {
-    for(int32 tileX = minTile.x;
-        tileX <= maxTile.x;
-        tileX++)
-    {
-      uint32 tileValue = GetTileValue(tileMap, tileX, tileY, tileZ);
-      if(tileValue != 0)
-      {
-        // We check collision against the left wall
-        tile_coordinates testTile = GenerateCoords(tileX, tileY, tileZ);
-        vector2D<real32> rel = Distance(tileMap, testTile, pos);
-        vector2D<real32> minCorner = {0.0f, 0.0f};
-        vector2D<real32> maxCorner = {tileMap->tileInMeters, tileMap->tileInMeters};
+    real32 tMin = 1.0f;       // The minimum collision we detected
 
-        // We check all four walls
-        // LEFT
-        if(TestWall(minCorner.x, rel.x, rel.y, delta.x, delta.y, minCorner.y, maxCorner.y, &tMin))
+    // We check all the tiles
+    vector2D<real32> wallNormal = {};
+    for(int32 tileY = minTile.y;
+        tileY <= maxTile.y;
+        tileY++)
+    {
+      for(int32 tileX = minTile.x;
+          tileX <= maxTile.x;
+          tileX++)
+      {
+        uint32 tileValue = GetTileValue(tileMap, tileX, tileY, tileZ);
+        if(tileValue != 0)
         {
-          wallNormal = vector2D<real32>{-1, 0};
-          hit = true;
-        }
-        // RIGHT
-        if(TestWall(maxCorner.x, rel.x, rel.y, delta.x, delta.y, minCorner.y, maxCorner.y, &tMin))
-        {
-          wallNormal = vector2D<real32>{1, 0};
-          hit = true;
-        }
-        // BOTTOM
-        if(TestWall(minCorner.y, rel.y, rel.x, delta.y, delta.x, minCorner.x, maxCorner.x, &tMin))
-        {
-          wallNormal = vector2D<real32>{0, -1};
-          hit = true;
-        }
-        // TOP
-        if(TestWall(maxCorner.y, rel.y, rel.x, delta.y, delta.x, minCorner.x, maxCorner.x, &tMin))
-        {
-          wallNormal = vector2D<real32>{0, 1};
-          hit = true;
+          // We check collision against the left wall
+          tile_coordinates testTile = GenerateCoords(tileX, tileY, tileZ);
+          vector2D<real32> rel = Distance(tileMap, testTile, pos);
+          vector2D<real32> minCorner = {0.0f, 0.0f};
+          vector2D<real32> maxCorner = {tileMap->tileInMeters, tileMap->tileInMeters};
+
+          // We check all four walls
+          // LEFT
+          if(TestWall(minCorner.x, rel.x, rel.y, delta.x, delta.y, minCorner.y, maxCorner.y, &tMin))
+          {
+            wallNormal = vector2D<real32>{-1, 0};
+          }
+          // RIGHT
+          if(TestWall(maxCorner.x, rel.x, rel.y, delta.x, delta.y, minCorner.y, maxCorner.y, &tMin))
+          {
+            wallNormal = vector2D<real32>{1, 0};
+          }
+          // BOTTOM
+          if(TestWall(minCorner.y, rel.y, rel.x, delta.y, delta.x, minCorner.x, maxCorner.x, &tMin))
+          {
+            wallNormal = vector2D<real32>{0, -1};
+          }
+          // TOP
+          if(TestWall(maxCorner.y, rel.y, rel.x, delta.y, delta.x, minCorner.x, maxCorner.x, &tMin))
+          {
+            wallNormal = vector2D<real32>{0, 1};
+          }
         }
       }
     }
-  }
-  if(!hit)
-  {
-    entity->pos = proposedCoords;
-  }
-  else
-  {
+
     entity->pos = ModifyCoordinates(tileMap, entity->pos, tMin * delta.x, tMin * delta.y);
-    entity->dPos = entity->dPos - 1.0f*InnerProduct(entity->dPos, wallNormal)*wallNormal;
+    if(tMin < 1.0f)
+    {
+      // NOTE(Cristian): If we collide, we move the entity an epsilon back so that we have
+      // a safe margin with floating point imprecision
+      real32 moveEpsilon = -0.001f;
+      vector2D<real32> nDelta = NormalizeVector(delta);
+      entity->pos = ModifyCoordinates(tileMap, entity->pos, moveEpsilon*nDelta.x, moveEpsilon*nDelta.y);
+
+      entity->dPos = entity->dPos - 1.0f*InnerProduct(entity->dPos, wallNormal)*wallNormal;
+      delta = delta - 1.0f*InnerProduct(delta, wallNormal)*wallNormal;
+    }
+    tRemaining -= tMin*tRemaining; // We remove how much of the much left we had left
   }
 
 #else
