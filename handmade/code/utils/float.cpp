@@ -33,6 +33,13 @@ RoundReal32ToUInt32(real32 val)
   return (uint32)(val + offset);
 }
 
+inline int32
+CeilReal32ToInt32(real32 val)
+{
+  int32 result = (int32)ceilf(val);
+  return result;
+}
+
 inline uint32
 FloorReal32ToUInt32(real32 val)
 {

@@ -88,7 +88,7 @@ DEBUGLoadBMP(thread_context* thread,
 }
 
 #define PLAYER_WIDTH 0.6f
-#define PLAYER_HEIGHT 1.0f
+#define PLAYER_HEIGHT 0.6f
 
 internal void
 InitializeEntity(entity_def* entity)
@@ -280,11 +280,14 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
 
 #if 1
   // We need to check all the tiles where we could have collision
-  vector2D<int32> minTile = {MIN(entity->pos.tile.x, proposedCoords.tile.x),
-                             MIN(entity->pos.tile.y, proposedCoords.tile.y)};
+  int32 marginX = UTILS::FLOAT::CeilReal32ToInt32(entity->width / tileMap->tileInMeters);
+  int32 marginY = UTILS::FLOAT::CeilReal32ToInt32(entity->height / tileMap->tileInMeters);
+  vector2D<int32> minTile = {MIN(entity->pos.tile.x, proposedCoords.tile.x) - marginX,
+                             MIN(entity->pos.tile.y, proposedCoords.tile.y) - marginY};
 
-  vector2D<int32> maxTile = {MAX(entity->pos.tile.x, proposedCoords.tile.x),
-                             MAX(entity->pos.tile.y, proposedCoords.tile.y)};
+  vector2D<int32> maxTile = {MAX(entity->pos.tile.x, proposedCoords.tile.x) + marginX,
+                             MAX(entity->pos.tile.y, proposedCoords.tile.y) + marginY};
+
   vector2D<real32> dist = Distance(tileMap, pos, proposedCoords);
   int32 tileZ = entity->pos.tile.z;
   real32 tRemaining = 1.0f;
@@ -313,8 +316,9 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
           // We check collision against the left wall
           tile_coordinates testTile = GenerateCoords(tileX, tileY, tileZ);
           vector2D<real32> rel = Distance(tileMap, testTile, pos);
-          vector2D<real32> minCorner = {0.0f, 0.0f};
-          vector2D<real32> maxCorner = {tileMap->tileInMeters, tileMap->tileInMeters};
+          vector2D<real32> minCorner = {-(entity->width/2), -(entity->height/2)};
+          vector2D<real32> maxCorner = {tileMap->tileInMeters + (entity->width/2),
+                                        tileMap->tileInMeters + (entity->height/2)};
 
           // We check all four walls
           // LEFT
@@ -355,38 +359,6 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
       delta *= (1 - tMin);
     }
     tRemaining -= tMin*tRemaining; // We remove how much of the much left we had left
-  }
-
-#else
-  uint32 proposedTile = GetTileValue(tileMap, &proposedCoords);
-
-  if(proposedTile == 0)
-  {
-    entity->pos = proposedCoords;
-  }
-  else
-  {
-    // We had collision, so we go and do a bounce
-    // For this we need to know the movement direction
-    vector2D<real32> r = {};
-    if(proposedCoords.tile.x < entity->pos.tile.x)
-    {
-      r = vector2D<real32>{1, 0};
-    }
-    if(proposedCoords.tile.x > entity->pos.tile.x)
-    {
-      r = vector2D<real32>{-1, 0};
-    }
-    if(proposedCoords.tile.y < entity->pos.tile.y)
-    {
-      r = vector2D<real32>{0, 1};
-    }
-    if(proposedCoords.tile.y > entity->pos.tile.y)
-    {
-      r = vector2D<real32>{0, -1};
-    }
-
-    entity->dPos = entity->dPos - 2 * InnerProduct(entity->dPos, r) * r;
   }
 #endif
 
@@ -800,9 +772,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // to be able to render multiple bitmaps
     DrawRectangle(offscreenBuffer,
         vector2D<real32>{renderOffsetX - (PLAYER_WIDTH / 2) * metersToPixels,
-        renderOffsetY - PLAYER_HEIGHT * metersToPixels},
+                         renderOffsetY - (PLAYER_HEIGHT / 2) * metersToPixels},
         vector2D<real32>{renderOffsetX + (PLAYER_WIDTH / 2) * metersToPixels,
-        renderOffsetY},
+                         renderOffsetY + (PLAYER_HEIGHT / 2) * metersToPixels},
         1.0f, 1.0f, 0.0f);
 
     hero_bitmap heroBitmap = gameState->heroBitmaps[entity->facingDirection];
