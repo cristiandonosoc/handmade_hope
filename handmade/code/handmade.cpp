@@ -179,7 +179,7 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
     game_input* gameInput, game_state* gameState)
 {
   // NOTE(Cristian): Use digital movement tuning
-  vector2D<real32> ddPlayerPos = {};
+  v2<real32> ddPlayerPos = {};
 
   // TODO(Cristian): Check W+S+RIGHT broken combination
   // Is it the platform layer o a keyboard failure????
@@ -241,8 +241,8 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
   ddPlayerPos *= moveAccel;
   ddPlayerPos -= 5.25f * entity->dPos;
 
-  vector2D<real32> playerPos = {entity->pos.pX, entity->pos.pY};
-  vector2D<real32> delta = (((ddPlayerPos * Square(gameInput->secondsToUpdate)) / 2) +
+  v2<real32> playerPos = {entity->pos.pX, entity->pos.pY};
+  v2<real32> delta = (((ddPlayerPos * Square(gameInput->secondsToUpdate)) / 2) +
                              (entity->dPos * gameInput->secondsToUpdate));
 
   // We calculate the velocity
@@ -282,13 +282,13 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
   // We need to check all the tiles where we could have collision
   int32 marginX = UTILS::FLOAT::CeilReal32ToInt32(entity->width / tileMap->tileInMeters);
   int32 marginY = UTILS::FLOAT::CeilReal32ToInt32(entity->height / tileMap->tileInMeters);
-  vector2D<int32> minTile = {MIN(entity->pos.tile.x, proposedCoords.tile.x) - marginX,
+  v2<int32> minTile = {MIN(entity->pos.tile.x, proposedCoords.tile.x) - marginX,
                              MIN(entity->pos.tile.y, proposedCoords.tile.y) - marginY};
 
-  vector2D<int32> maxTile = {MAX(entity->pos.tile.x, proposedCoords.tile.x) + marginX,
+  v2<int32> maxTile = {MAX(entity->pos.tile.x, proposedCoords.tile.x) + marginX,
                              MAX(entity->pos.tile.y, proposedCoords.tile.y) + marginY};
 
-  vector2D<real32> dist = Distance(tileMap, pos, proposedCoords);
+  v2<real32> dist = Distance(tileMap, pos, proposedCoords);
   int32 tileZ = entity->pos.tile.z;
   real32 tRemaining = 1.0f;
 
@@ -301,7 +301,7 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
     real32 tMin = 1.0f;       // The minimum collision we detected
 
     // We check all the tiles
-    vector2D<real32> wallNormal = {};
+    v2<real32> wallNormal = {};
     for(int32 tileY = minTile.y;
         tileY <= maxTile.y;
         tileY++)
@@ -315,31 +315,31 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
         {
           // We check collision against the left wall
           tile_coordinates testTile = GenerateCoords(tileX, tileY, tileZ);
-          vector2D<real32> rel = Distance(tileMap, testTile, pos);
-          vector2D<real32> minCorner = {-(entity->width/2), -(entity->height/2)};
-          vector2D<real32> maxCorner = {tileMap->tileInMeters + (entity->width/2),
+          v2<real32> rel = Distance(tileMap, testTile, pos);
+          v2<real32> minCorner = {-(entity->width/2), -(entity->height/2)};
+          v2<real32> maxCorner = {tileMap->tileInMeters + (entity->width/2),
                                         tileMap->tileInMeters + (entity->height/2)};
 
           // We check all four walls
           // LEFT
           if(TestWall(minCorner.x, rel.x, rel.y, delta.x, delta.y, minCorner.y, maxCorner.y, &tMin))
           {
-            wallNormal = vector2D<real32>{-1, 0};
+            wallNormal = v2<real32>{-1, 0};
           }
           // RIGHT
           if(TestWall(maxCorner.x, rel.x, rel.y, delta.x, delta.y, minCorner.y, maxCorner.y, &tMin))
           {
-            wallNormal = vector2D<real32>{1, 0};
+            wallNormal = v2<real32>{1, 0};
           }
           // BOTTOM
           if(TestWall(minCorner.y, rel.y, rel.x, delta.y, delta.x, minCorner.x, maxCorner.x, &tMin))
           {
-            wallNormal = vector2D<real32>{0, -1};
+            wallNormal = v2<real32>{0, -1};
           }
           // TOP
           if(TestWall(maxCorner.y, rel.y, rel.x, delta.y, delta.x, minCorner.x, maxCorner.x, &tMin))
           {
-            wallNormal = vector2D<real32>{0, 1};
+            wallNormal = v2<real32>{0, 1};
           }
         }
       }
@@ -351,7 +351,7 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
       // NOTE(Cristian): If we collide, we move the entity an epsilon back so that we have
       // a safe margin with floating point imprecision
       real32 moveEpsilon = -0.001f;
-      vector2D<real32> nDelta = NormalizeVector(delta);
+      v2<real32> nDelta = NormalizeVector(delta);
       entity->pos = ModifyCoordinates(tileMap, entity->pos, moveEpsilon*nDelta.x, moveEpsilon*nDelta.y);
 
       entity->dPos = entity->dPos - 1.0f*InnerProduct(entity->dPos, wallNormal)*wallNormal;
@@ -601,8 +601,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-  // vector2D<int32> tileCoords = GetTileCoordinates(tileMap, &proposedCoords);
-  // vector3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &proposedCoords);
+  // v2<int32> tileCoords = GetTileCoordinates(tileMap, &proposedCoords);
+  // v3<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &proposedCoords);
   // char mbuffer[256];
   // //wsprintf(buffer, "ms / frame: %d ms\n", msPerFrame);
   // sprintf_s(mbuffer,
@@ -635,7 +635,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   DrawBitmap(offscreenBuffer, gameState->background, 0, 0, 0, 0, true);
 
   int totalHeight = TILES_PER_HEIGHT * tileInPixels;
-  vector2D<int32> playerTilePos = GetTileCoordinates(tileMap, &gameState->cameraPos);
+  v2<int32> playerTilePos = GetTileCoordinates(tileMap, &gameState->cameraPos);
 
   real32 offsetX = -30.0f;
   real32 offsetY = 0;
@@ -722,7 +722,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       tile_chunk* tileChunk = GetTileChunk(tileMap, &rectCoords);
       if(tileChunk != nullptr)
       {
-        vector3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &rectCoords);
+        v3<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &rectCoords);
         if(tileChunkCoords.x != tileChunkX ||
            tileChunkCoords.y != tileChunkY ||
            tileChunkCoords.z != tileChunkZ)
@@ -740,12 +740,12 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             gray = 1.0f;
           }
 
-          vector2D<real32> tileChunkMin = {
+          v2<real32> tileChunkMin = {
             renderOffsetX - ((gameState->cameraPos.tile.x - currentTileChunkX) * tileMap->tileInMeters + gameState->cameraPos.pX ) * metersToPixels,
             renderOffsetY + (gameState->cameraPos.tile.y + gameState->cameraPos.pY - currentTileChunkY) * metersToPixels - tileMap->tileSide * tileMap->tileInMeters * metersToPixels,
           };
 
-          vector2D<real32> tileChunkMax = {
+          v2<real32> tileChunkMax = {
             renderOffsetX - ((gameState->cameraPos.tile.x - currentTileChunkX - tileMap->tileSide) + gameState->cameraPos.pX) * metersToPixels,
             renderOffsetY + (gameState->cameraPos.tile.y + gameState->cameraPos.pY - currentTileChunkY) * metersToPixels,
           };
@@ -771,9 +771,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // TODO(Cristian): Do bitmap draw relative to the camera, in order
     // to be able to render multiple bitmaps
     DrawRectangle(offscreenBuffer,
-        vector2D<real32>{renderOffsetX - (PLAYER_WIDTH / 2) * metersToPixels,
+        v2<real32>{renderOffsetX - (PLAYER_WIDTH / 2) * metersToPixels,
                          renderOffsetY - (PLAYER_HEIGHT / 2) * metersToPixels},
-        vector2D<real32>{renderOffsetX + (PLAYER_WIDTH / 2) * metersToPixels,
+        v2<real32>{renderOffsetX + (PLAYER_WIDTH / 2) * metersToPixels,
                          renderOffsetY + (PLAYER_HEIGHT / 2) * metersToPixels},
         1.0f, 1.0f, 0.0f);
 
@@ -792,8 +792,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
  // Draw Mouse
   DrawRectangle(offscreenBuffer,
-               vector2D<real32>{(real32)gameInput->mouseX, (real32)gameInput->mouseY},
-               vector2D<real32>{(real32)(gameInput->mouseX + 10), (real32)(gameInput->mouseY + 10)},
+               v2<real32>{(real32)gameInput->mouseX, (real32)gameInput->mouseY},
+               v2<real32>{(real32)(gameInput->mouseX + 10), (real32)(gameInput->mouseY + 10)},
                1.0f, 1.0f, 1.0f);
 }
 

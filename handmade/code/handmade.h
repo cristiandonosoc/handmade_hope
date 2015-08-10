@@ -129,7 +129,7 @@ struct entity_def
 {
   bool32 exists;
   tile_coordinates pos;
-  MATH::vector2D<real32> dPos;
+  MATH::v2<real32> dPos;
   // LBRU
   uint32 facingDirection;
 

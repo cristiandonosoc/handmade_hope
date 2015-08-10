@@ -17,7 +17,7 @@ GetTileChunkDim(tile_map* tileMap)
 internal tile_chunk*
 GetTileChunk(tile_map* tileMap, int32 x, int32 y, int32 z)
 {
-  vector3D<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, x, y, z);
+  v3<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, x, y, z);
 
   // TODO(Cristian): Find a good way of finding if the tileChunk actually exists!
   if((tileChunkCoords.x >= 0 && tileChunkCoords.x < tileMap->tileChunkCountX) &&
@@ -52,7 +52,7 @@ GetTile(tile_map* tileMap, int32 x, int32 y, int32 z)
   // ASSERT(y >= 0 && y < tileMap->tileChunkCountY * tileMap->tileSide);
   // ASSERT(z >= 0 && z < tileMap->tileChunkCountZ * tileMap->tileSide);
 
-  vector2D<int32> tileCoords = GetTileCoordinates(tileMap, x, y);
+  v2<int32> tileCoords = GetTileCoordinates(tileMap, x, y);
 
   ASSERT(tileCoords.x >= 0 && tileCoords.x < tileMap->tileSide);
   ASSERT(tileCoords.y >= 0 && tileCoords.y < tileMap->tileSide);
@@ -125,7 +125,7 @@ SetTileValue(memory_manager* memoryManager, tile_map* tileMap, tile_coordinates*
     tileChunk->initialized = true;
   }
 
-  vector2D<int32> tileCoords = GetTileCoordinates(tileMap, coords);
+  v2<int32> tileCoords = GetTileCoordinates(tileMap, coords);
   SetTileValue(tileMap, tileChunk, tileCoords.x, tileCoords.y, value);
 }
 

@@ -1,7 +1,7 @@
 #ifndef _MATH_VECTOR2D_H
 
 template<typename T>
-struct vector2D
+struct v2
 {
   T x;
   T y;
@@ -16,10 +16,10 @@ struct vector2D
 
 // + -
 template<typename T>
-inline vector2D<T>
-operator+(vector2D<T> a, vector2D<T> b)
+inline v2<T>
+operator+(v2<T> a, v2<T> b)
 {
-  vector2D<T> result;
+  v2<T> result;
   result.x = a.x + b.x;
   result.y = a.y + b.y;
 
@@ -27,18 +27,18 @@ operator+(vector2D<T> a, vector2D<T> b)
 }
 
 template<typename T>
-inline vector2D<T>&
-operator+=(vector2D<T>& a, vector2D<T> b)
+inline v2<T>&
+operator+=(v2<T>& a, v2<T> b)
 {
   a = a + b;
   return a;
 }
 
 template<typename T>
-inline vector2D<T>
-operator-(vector2D<T> a, vector2D<T> b)
+inline v2<T>
+operator-(v2<T> a, v2<T> b)
 {
-  vector2D<T> result;
+  v2<T> result;
   result.x = a.x - b.x;
   result.y = a.y - b.y;
 
@@ -46,8 +46,8 @@ operator-(vector2D<T> a, vector2D<T> b)
 }
 
 template<typename T>
-inline vector2D<T>&
-operator-=(vector2D<T>& a, vector2D<T> b)
+inline v2<T>&
+operator-=(v2<T>& a, v2<T> b)
 {
   a = a - b;
   return a;
@@ -55,10 +55,10 @@ operator-=(vector2D<T>& a, vector2D<T> b)
 
 // Scalar
 template<typename T>
-inline vector2D<T>
-operator*(vector2D<T> a, T b)
+inline v2<T>
+operator*(v2<T> a, T b)
 {
-  vector2D<T> result;
+  v2<T> result;
 
   result.x = a.x * b;
   result.y = a.y * b;
@@ -67,26 +67,26 @@ operator*(vector2D<T> a, T b)
 }
 
 template<typename T>
-inline vector2D<T>
-operator*(T b, vector2D<T> a)
+inline v2<T>
+operator*(T b, v2<T> a)
 {
-  vector2D<T> result = a * b;
+  v2<T> result = a * b;
   return result;
 }
 
 template<typename T>
-inline vector2D<T>
-operator*=(vector2D<T>& b, T a)
+inline v2<T>
+operator*=(v2<T>& b, T a)
 {
    b = a * b;
    return b;
 }
 
 template<typename T>
-inline vector2D<T>
-operator/(vector2D<T> a, real32 b)
+inline v2<T>
+operator/(v2<T> a, real32 b)
 {
-  vector2D<T> result;
+  v2<T> result;
 
   result.x = a.x / b;
   result.y = a.y / b;
@@ -95,33 +95,33 @@ operator/(vector2D<T> a, real32 b)
 }
 
 template<typename T>
-inline vector2D<T>
-operator/(real32 b, vector2D<T> a)
+inline v2<T>
+operator/(real32 b, v2<T> a)
 {
-  vector2D<T> result = a / b;
+  v2<T> result = a / b;
   return result;
 }
 
 template<typename T>
-inline vector2D<T>
-operator/=(vector2D<T>& b, real32 a)
+inline v2<T>
+operator/=(v2<T>& b, real32 a)
 {
    b = a / b;
    return b;
 }
 
-inline vector2D<real32>
-NormalizeVector(vector2D<real32> v)
+inline v2<real32>
+NormalizeVector(v2<real32> v)
 {
   real32 norm = SquareRoot(Square(v.x) + Square(v.y));
   if(norm == 0.0f) { return v; }
-  vector2D<real32> result = norm / v;
+  v2<real32> result = norm / v;
   return result;
 }
 
 template<typename T>
 inline T
-InnerProduct(vector2D<T> a, vector2D<T> b)
+InnerProduct(v2<T> a, v2<T> b)
 {
   T result = (a.x * b.x) + (a.y * b.y);
   return result;
@@ -129,14 +129,14 @@ InnerProduct(vector2D<T> a, vector2D<T> b)
 
 template<typename T>
 inline T
-LengthSq(vector2D<T> v)
+LengthSq(v2<T> v)
 {
   T result = InnerProduct(v, v);
   return result;
 }
 
 inline real32
-Length(vector2D<real32> v)
+Length(v2<real32> v)
 {
   real32 result = SquareRoot(LengthSq(v));
   return result;

@@ -1,7 +1,7 @@
 #ifndef _MATH_VECTOR4D_H
 
 template<typename T>
-struct vector4D
+struct v4
 {
   T x;
   T y;
@@ -18,10 +18,10 @@ struct vector4D
 
 // + -
 template<typename T>
-inline vector4D<T>
-operator+(vector4D<T> a, vector4D<T> b)
+inline v4<T>
+operator+(v4<T> a, v4<T> b)
 {
-  vector4D<T> result;
+  v4<T> result;
   result.x = a.x + b.x;
   result.y = a.y + b.y;
   result.z = a.z + b.z;
@@ -31,18 +31,18 @@ operator+(vector4D<T> a, vector4D<T> b)
 }
 
 template<typename T>
-inline vector4D<T>&
-operator+=(vector4D<T>& a, vector4D<T> b)
+inline v4<T>&
+operator+=(v4<T>& a, v4<T> b)
 {
   a = a + b;
   return a;
 }
 
 template<typename T>
-inline vector4D<T>
-operator-(vector4D<T> a, vector4D<T> b)
+inline v4<T>
+operator-(v4<T> a, v4<T> b)
 {
-  vector4D<T> result;
+  v4<T> result;
   result.x = a.x - b.x;
   result.y = a.y - b.y;
   result.z = a.z - b.z;
@@ -52,8 +52,8 @@ operator-(vector4D<T> a, vector4D<T> b)
 }
 
 template<typename T>
-inline vector4D<T>&
-operator-=(vector4D<T>& a, vector4D<T> b)
+inline v4<T>&
+operator-=(v4<T>& a, v4<T> b)
 {
   a = a - b;
   return a;
@@ -61,10 +61,10 @@ operator-=(vector4D<T>& a, vector4D<T> b)
 
 // Scalar
 template<typename T>
-inline vector4D<T>
-operator*(vector4D<T> a, T b)
+inline v4<T>
+operator*(v4<T> a, T b)
 {
-  vector4D<T> result;
+  v4<T> result;
 
   result.x = a.x * b;
   result.y = a.y * b;
@@ -75,26 +75,26 @@ operator*(vector4D<T> a, T b)
 }
 
 template<typename T>
-inline vector4D<T>
-operator*(T b, vector4D<T> a)
+inline v4<T>
+operator*(T b, v4<T> a)
 {
-  vector4D<T> result = a * b;
+  v4<T> result = a * b;
   return result;
 }
 
 template<typename T>
-inline vector4D<T>
-operator*=(vector4D<T>& b, T a)
+inline v4<T>
+operator*=(v4<T>& b, T a)
 {
    b = a * b;
    return b;
 }
 
 template<typename T>
-inline vector4D<T>
-operator/(vector4D<T> a, T b)
+inline v4<T>
+operator/(v4<T> a, T b)
 {
-  vector4D<T> result;
+  v4<T> result;
 
   result.x = a.x / b;
   result.y = a.y / b;
@@ -105,38 +105,38 @@ operator/(vector4D<T> a, T b)
 }
 
 template<typename T>
-inline vector4D<T>
-operator/(T b, vector4D<T> a)
+inline v4<T>
+operator/(T b, v4<T> a)
 {
-  vector4D<T> result = a / b;
+  v4<T> result = a / b;
   return result;
 }
 
 template<typename T>
-inline vector4D<T>
-operator/=(vector4D<T>& b, T a)
+inline v4<T>
+operator/=(v4<T>& b, T a)
 {
    b = a / b;
    return b;
 }
 
 
-inline vector4D<real32>
-NormalizeVector(vector4D<real32> v)
+inline v4<real32>
+NormalizeVector(v4<real32> v)
 {
   real32 norm = sqrt(Square(v.x) +
                      Square(v.y) +
                      Square(v.z) +
                      Square(v.w));
   if(norm == 0.0f) { return v; }
-  vector4D<real32> result = norm / v;
+  v4<real32> result = norm / v;
   return result;
 }
 
 
 template<typename T>
 inline T
-InnerProduct(vector4D<T> a, vector4D<T> b)
+InnerProduct(v4<T> a, v4<T> b)
 {
   T result = (a.x * b.x) + (a.y * b.y) +
              (a.z + b.z) + (a.w * b.w);

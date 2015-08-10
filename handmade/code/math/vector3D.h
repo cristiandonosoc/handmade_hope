@@ -1,7 +1,7 @@
 #ifndef _MATH_VECTOR3D_H
 
 template<typename T>
-struct vector3D
+struct v3
 {
   T x;
   T y;
@@ -17,10 +17,10 @@ struct vector3D
 
 // + -
 template<typename T>
-inline vector3D<T>
-operator+(vector3D<T> a, vector3D<T> b)
+inline v3<T>
+operator+(v3<T> a, v3<T> b)
 {
-  vector3D<T> result;
+  v3<T> result;
   result.x = a.x + b.x;
   result.y = a.y + b.y;
   result.z = a.z + b.z;
@@ -29,18 +29,18 @@ operator+(vector3D<T> a, vector3D<T> b)
 }
 
 template<typename T>
-inline vector3D<T>&
-operator+=(vector3D<T>& a, vector3D<T> b)
+inline v3<T>&
+operator+=(v3<T>& a, v3<T> b)
 {
   a = a + b;
   return a;
 }
 
 template<typename T>
-inline vector3D<T>
-operator-(vector3D<T> a, vector3D<T> b)
+inline v3<T>
+operator-(v3<T> a, v3<T> b)
 {
-  vector3D<T> result;
+  v3<T> result;
   result.x = a.x - b.x;
   result.y = a.y - b.y;
   result.z = a.z - b.z;
@@ -49,8 +49,8 @@ operator-(vector3D<T> a, vector3D<T> b)
 }
 
 template<typename T>
-inline vector3D<T>&
-operator-=(vector3D<T>& a, vector3D<T> b)
+inline v3<T>&
+operator-=(v3<T>& a, v3<T> b)
 {
   a = a - b;
   return a;
@@ -58,10 +58,10 @@ operator-=(vector3D<T>& a, vector3D<T> b)
 
 // Scalar
 template<typename T>
-inline vector3D<T>
-operator*(vector3D<T> a, T b)
+inline v3<T>
+operator*(v3<T> a, T b)
 {
-  vector3D<T> result;
+  v3<T> result;
 
   result.x = a.x * b;
   result.y = a.y * b;
@@ -71,26 +71,26 @@ operator*(vector3D<T> a, T b)
 }
 
 template<typename T>
-inline vector3D<T>
-operator*(T b, vector3D<T> a)
+inline v3<T>
+operator*(T b, v3<T> a)
 {
-  vector3D<T> result = a * b;
+  v3<T> result = a * b;
   return result;
 }
 
 template<typename T>
-inline vector3D<T>
-operator*=(vector3D<T>& b, T a)
+inline v3<T>
+operator*=(v3<T>& b, T a)
 {
    b = a * b;
    return b;
 }
 
 template<typename T>
-inline vector3D<T>
-operator/(vector3D<T> a, T b)
+inline v3<T>
+operator/(v3<T> a, T b)
 {
-  vector3D<T> result;
+  v3<T> result;
 
   result.x = a.x / b;
   result.y = a.y / b;
@@ -100,36 +100,36 @@ operator/(vector3D<T> a, T b)
 }
 
 template<typename T>
-inline vector3D<T>
-operator/(T b, vector3D<T> a)
+inline v3<T>
+operator/(T b, v3<T> a)
 {
-  vector3D<T> result = a / b;
+  v3<T> result = a / b;
   return result;
 }
 
 template<typename T>
-inline vector3D<T>
-operator/=(vector3D<T>& b, T a)
+inline v3<T>
+operator/=(v3<T>& b, T a)
 {
    b = a / b;
    return b;
 }
 
 
-inline vector3D<real32>
-NormalizeVector(vector3D<real32> v)
+inline v3<real32>
+NormalizeVector(v3<real32> v)
 {
   real32 norm = sqrt(Square(v.x) +
                      Square(v.y) +
                      Square(v.z));
   if(norm == 0.0f) { return v; }
-  vector3D<real32> result = norm / v;
+  v3<real32> result = norm / v;
   return result;
 }
 
 template<typename T>
 inline T
-InnerProduct(vector3D<T> a, vector3D<T> b)
+InnerProduct(v3<T> a, v3<T> b)
 {
   T result = (a.x * b.x) + (a.y * b.y) + (a.z + b.z);
   return result;

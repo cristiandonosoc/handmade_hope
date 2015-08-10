@@ -14,7 +14,7 @@ internal void
 NormalizeCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
   // We normalize the real coordinates of the point within the tile
-  vector3D<int32> div = {UTILS::FLOAT::FloorReal32ToInt32(coords->pX / tileMap->tileInMeters),
+  v3<int32> div = {UTILS::FLOAT::FloorReal32ToInt32(coords->pX / tileMap->tileInMeters),
                          UTILS::FLOAT::FloorReal32ToInt32(coords->pY / tileMap->tileInMeters)};
   // We move the tile offset
   coords->tile += div;
@@ -27,27 +27,27 @@ NormalizeCoordinates(tile_map* tileMap, tile_coordinates* coords)
 /**
  * Gets the coordinates of a tile relative to it's a tile_chunk
  */
-internal vector2D<int32>
+internal v2<int32>
 GetTileCoordinates(tile_map* tileMap, int32 x, int32 y)
 {
-  vector2D<int32> point = {};
+  v2<int32> point = {};
   point.x = x & tileMap->tileMask;
   point.y = y & tileMap->tileMask;
 
   return point;
 }
 
-internal vector2D<int32>
+internal v2<int32>
 GetTileCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
   auto result = GetTileCoordinates(tileMap, coords->tile.x, coords->tile.y);
   return result;
 }
 
-internal vector3D<int32>
+internal v3<int32>
 GetTileChunkCoordinates(tile_map* tileMap, int32 x, int32 y, int32 z)
 {
-  vector3D<int32> point = {};
+  v3<int32> point = {};
   point.x = x >> tileMap->tileShift;
   point.y = y >> tileMap->tileShift;
   point.z = z;
@@ -55,7 +55,7 @@ GetTileChunkCoordinates(tile_map* tileMap, int32 x, int32 y, int32 z)
   return point;
 }
 
-internal vector3D<int32>
+internal v3<int32>
 GetTileChunkCoordinates(tile_map* tileMap, tile_coordinates* coords)
 {
   auto result = GetTileChunkCoordinates(tileMap, coords->tile.x,
@@ -75,14 +75,14 @@ ModifyCoordinates(tile_map* tileMap, tile_coordinates coords, real32 dX, real32 
   return coords;
 }
 
-inline vector2D<real32>
+inline v2<real32>
 Distance(tile_map* tileMap, tile_coordinates a, tile_coordinates b)
 {
   ASSERT(a.tile.z == b.tile.z);
 
-  vector2D<real32> tileV = {(b.tile.x - a.tile.x) * tileMap->tileInMeters,
+  v2<real32> tileV = {(b.tile.x - a.tile.x) * tileMap->tileInMeters,
                             (b.tile.y - a.tile.y) * tileMap->tileInMeters};
-  vector2D<real32> tileR = {(b.pX - a.pX),
+  v2<real32> tileR = {(b.pX - a.pX),
                             (b.pY - a.pY)};
   auto result = tileV + tileR;
   return result;
