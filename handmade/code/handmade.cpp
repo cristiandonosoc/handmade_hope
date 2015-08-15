@@ -84,7 +84,7 @@ DEBUGLoadBMP(thread_context* thread,
 #define PLAYER_HEIGHT 0.6f
 
 internal void
-InitializeEntity(entity_def* entity)
+InitializePlayer(entity_def* entity)
 {
   *entity = {};
 
@@ -126,7 +126,7 @@ CreateEntity(game_state* gameState, entity_type type)
 }
 
 inline uint32
-AddWall(game_state* gameState, tile_coordinates coords)
+CreateWall(game_state* gameState, tile_coordinates coords)
 {
   uint32 entityIndex = CreateEntity(gameState, entity_type::wall);
   entity_def* entity = GetEntity(gameState, entityIndex);
@@ -138,6 +138,65 @@ AddWall(game_state* gameState, tile_coordinates coords)
   entity->height = gameState->world->tileMap->tileInMeters;
 
   return entityIndex;
+}
+
+internal bool32
+RemoveEntityFromResidence(game_state* gameState, entity_def* entity)
+{
+  // First we remove the entity from it's current residence
+  entity_def** residenceArray = entity->residence == entity_residence::cold ?
+                                  gameState->coldEntities : gameState->hotEntities;
+
+  entity_def** residenceScan = residenceArray;
+  bool32 found = false;
+  for(int32 entityIndex = 0;
+      entityIndex < gameState->entityCount;
+      entityIndex++, residenceScan++)
+  {
+    if(entity == *residenceScan)
+    {
+      found = true;
+      *residenceScan = nullptr;
+      break;
+    }
+  }
+
+  return found;
+}
+
+internal bool32
+AddEntityToResidence(game_state* gameState, entity_def* entity, entity_residence newResidence)
+{
+  ASSERT(entity->residence != newResidence);
+  ASSERT(entity);
+
+  entity_def** residenceArray = newResidence == entity_residence::cold ?
+                                  gameState->coldEntities : gameState->hotEntities;
+
+  entity_def** residenceScan = residenceArray;
+  bool32 found = false;
+  for(int32 entityIndex = 0;
+      entityIndex < gameState->entityCount;
+      entityIndex++, residenceScan++)
+  {
+    if(*residenceScan == nullptr)
+    {
+      found = true;
+      *residenceScan = entity;
+      break;
+    }
+  }
+
+  return found;
+}
+
+internal void
+ChangeEntityResidence(game_state* gameState, entity_def* entity, entity_residence newResidence)
+{
+  bool32 found = RemoveEntityFromResidence(gameState, entity);
+  ASSERT(found);
+  found = AddEntityToResidence(gameState, entity, newResidence);
+  ASSERT(found);
 }
 
 inline bool32
@@ -342,11 +401,13 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
         {
           entity_def* hotEntity = gameState->hotEntities[hotEntityIndex];
           if(!hotEntity) { continue; }
+          if(hotEntity == entity) {
+            continue;
+          }
 
           // We check collision against the left wall
-          tile_coordinates testTile = GenerateCoords(tileX, tileY, tileZ);
-          // v2<real32> rel = Distance(tileMap, testTile, pos);
-          v2<real32> rel = hotEntity->hotPos - entity->hotPos;
+          // TODO(Cristian): Use hot pos!
+          v2<real32> rel = Distance(tileMap, hotEntity->pos, entity->pos);
           v2<real32> minCorner = {-(entity->width/2), -(entity->height/2)};
           v2<real32> maxCorner = {hotEntity->width + (entity->width/2),
             hotEntity->height + (entity->height/2)};
@@ -460,6 +521,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // We create the tileMap
     world->tileMap = PushStruct(&gameState->memoryManager, tile_map);
     tile_map* tileMap = world->tileMap;
+    tileMap->tileInMeters = 1.0f;
     tileMap->tileChunkCountX = 32;
     tileMap->tileChunkCountY = 32;
     tileMap->tileChunkCountZ = 1;
@@ -530,7 +592,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
               if(value == 1)
               {
-                AddWall(gameState, coord);
+                uint32 entityIndex = CreateWall(gameState, coord);
+                entity_def* entity = GetEntity(gameState, entityIndex);
+                AddEntityToResidence(gameState, entity, entity_residence::hot);
               }
             }
           }
@@ -603,7 +667,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         // We create the entity (player comes in to play)
         gameState->entityIndexForController[controllerIndex] = CreateEntity(gameState, entity_type::player);
         entity = GetEntity(gameState, gameState->entityIndexForController[controllerIndex]);
-        InitializeEntity(entity);
+        InitializePlayer(entity);
+        AddEntityToResidence(gameState, entity, entity_residence::hot);
 
         // We attach the camera to the entity
         gameState->cameraFollowingEntityIndex = gameState->entityIndexForController[controllerIndex];
