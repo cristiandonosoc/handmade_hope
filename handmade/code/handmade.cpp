@@ -110,17 +110,34 @@ GetEntity(game_state* gameState, int32 index)
 
 // Returns the index of the entity in out entity array
 inline uint32
-CreateEntity(game_state* gameState)
+CreateEntity(game_state* gameState, entity_type type)
 {
   ASSERT(gameState->entityCount < ARRAY_COUNT(gameState->entities));
 
   entity_def* entity = &gameState->entities[gameState->entityCount];
   *entity = {}; // Safety clear
+  entity->type = type;
+  entity->residence = entity_residence::cold;
 
   uint32 result = gameState->entityCount;
   gameState->entityCount++;
 
   return result;
+}
+
+inline uint32
+AddWall(game_state* gameState, tile_coordinates coords)
+{
+  uint32 entityIndex = CreateEntity(gameState, entity_type::wall);
+  entity_def* entity = GetEntity(gameState, entityIndex);
+  ASSERT(entity);
+
+  entity->exists = true;
+  entity->pos = coords;
+  entity->width = gameState->world->tileMap->tileInMeters;
+  entity->height = gameState->world->tileMap->tileInMeters;
+
+  return entityIndex;
 }
 
 inline bool32
@@ -130,6 +147,50 @@ ValidEntity(entity_def* entity)
 
   bool32 result = entity->exists;
   return result;
+}
+
+internal void
+DrawEntityRelativeToCamera(game_offscreen_buffer* buffer,
+                           game_state* gameState,
+                           entity_def* entity,
+                           v2<real32> centerOffset,
+                           real32 metersToPixels)
+{
+  ASSERT(entity);
+  // TODO(Cristian): Use hot position for this calculations!
+  v2<real32> rel = Distance(gameState->world->tileMap, gameState->cameraPos, entity->pos);
+  rel *= metersToPixels;
+  rel.y = -rel.y; // Inverted axis
+
+  if(entity->type == entity_type::player)
+  {
+    hero_bitmap heroBitmap = gameState->heroBitmaps[entity->facingDirection];
+    DrawBitmapRelativeToCenter(buffer, heroBitmap.torso,
+        centerOffset.x, centerOffset.y,
+        rel.x, rel.y,
+        heroBitmap.offsetX, heroBitmap.offsetY, true);
+    DrawBitmapRelativeToCenter(buffer, heroBitmap.cape,
+        centerOffset.x, centerOffset.y,
+        rel.x, rel.y,
+        heroBitmap.offsetX, heroBitmap.offsetY, true);
+    DrawBitmapRelativeToCenter(buffer, heroBitmap.head,
+        centerOffset.x, centerOffset.y,
+        rel.x, rel.y,
+        heroBitmap.offsetX, heroBitmap.offsetY, true);
+  }
+  else if(entity->type == entity_type::wall)
+  {
+    real32 size = gameState->world->tileMap->tileInMeters*metersToPixels - 1;
+    DrawRectangleRelativeToCenter(buffer,
+        centerOffset.x, centerOffset.y,
+        rel.x, rel.y,
+        size, size,
+        0.4f, 0.5f, 0.9f);
+  }
+  else
+  {
+    ASSERT(entity->type == 0xFFFFFFF); // CRASH
+  }
 }
 
 
@@ -399,9 +460,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // We create the tileMap
     world->tileMap = PushStruct(&gameState->memoryManager, tile_map);
     tile_map* tileMap = world->tileMap;
-    tileMap->tileChunkCountX = 128;
-    tileMap->tileChunkCountY = 128;
-    tileMap->tileChunkCountZ = 2;
+    tileMap->tileChunkCountX = 32;
+    tileMap->tileChunkCountY = 32;
+    tileMap->tileChunkCountZ = 1;
 
     tileMap->tileShift = 4;
     tileMap->tileMask = (1 << tileMap->tileShift) - 1;
@@ -420,7 +481,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
      */
     uint32 tilesPerWidth = TILES_PER_WIDTH;
     uint32 tilesPerHeight = TILES_PER_HEIGHT;
-    uint32 screens = 32;
+    uint32 screens = 2;
     for(int32 screenZ = 0;
         screenZ < tileMap->tileChunkCountZ;
         screenZ++)
@@ -462,21 +523,28 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
               tile_coordinates coord = {};
               coord.tile.x = (screenX * tilesPerWidth) + tileX;
-              coord.tile.y = (screenY * tilesPerHeight) + tileY;
+              coord.tile.y = (0* tilesPerHeight) + tileY;
               coord.tile.z = screenZ;
 
               SetTileValue(&gameState->memoryManager, tileMap, &coord, value);
+
+              if(value == 1)
+              {
+                AddWall(gameState, coord);
+              }
             }
           }
 
-          if(RANDOM::GetRandomUint32() % 2)
-          {
-            screenY++;
-          }
-          else
-          {
-            screenX++;
-          }
+          screenY++;
+          screenX++;
+          // if(RANDOM::GetRandomUint32() % 2)
+          // {
+          //   screenY++;
+          // }
+          // else
+          // {
+          //   screenX++;
+          // }
         }
       }
     }
@@ -502,7 +570,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   tile_map* tileMap = world->tileMap;
   // Outside initialization so we can live-change it
   tileMap->tileInMeters = 1.0f;
-  real32 tileInPixels = 20;
+  real32 tileInPixels = 60;
   real32 metersToPixels = tileInPixels / tileMap->tileInMeters;
 
   // Temporal entity variable to be used throughout the code
@@ -533,9 +601,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       else
       {
         // We create the entity (player comes in to play)
-        gameState->entityIndexForController[controllerIndex] = CreateEntity(gameState);
+        gameState->entityIndexForController[controllerIndex] = CreateEntity(gameState, entity_type::player);
         entity = GetEntity(gameState, gameState->entityIndexForController[controllerIndex]);
-
         InitializeEntity(entity);
 
         // We attach the camera to the entity
@@ -624,7 +691,11 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   int32 maxX = gameState->cameraPos.tile.x + (TILES_PER_WIDTH / 2 + 2 + renderSize);
   int32 minY = gameState->cameraPos.tile.y - (TILES_PER_HEIGHT / 2 + 1 + renderSize);
   int32 maxY = gameState->cameraPos.tile.y + (TILES_PER_HEIGHT / 2 + 2 + renderSize);
-#if 1
+
+  /**
+   * DRAW TILES
+   */
+#if 0
   for(int32 tileY = minY;
       tileY < maxY;
       tileY++)
@@ -673,6 +744,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 #endif
+
+  /**
+   * DRAW TILE CHUNKS
+   */
 
   // We want to draw the tile chunks
   // NOTE(Cristian): This code (dependending on how the passes are made) can
@@ -739,26 +814,19 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     if(!ValidEntity(entity)) { continue; }
 
-    // TODO(Cristian): Do bitmap draw relative to the camera, in order
-    // to be able to render multiple bitmaps
-    DrawRectangle(offscreenBuffer,
-        v2<real32>{renderOffsetX - (PLAYER_WIDTH / 2) * metersToPixels,
-                         renderOffsetY - (PLAYER_HEIGHT / 2) * metersToPixels},
-        v2<real32>{renderOffsetX + (PLAYER_WIDTH / 2) * metersToPixels,
-                         renderOffsetY + (PLAYER_HEIGHT / 2) * metersToPixels},
-        1.0f, 1.0f, 0.0f);
-
-    hero_bitmap heroBitmap = gameState->heroBitmaps[entity->facingDirection];
-    DrawBitmap(offscreenBuffer, heroBitmap.torso,
-        renderOffsetX, renderOffsetY,
-        heroBitmap.offsetX, heroBitmap.offsetY, true);
-    DrawBitmap(offscreenBuffer, heroBitmap.cape,
-        renderOffsetX, renderOffsetY,
-        heroBitmap.offsetX, heroBitmap.offsetY, true);
-    DrawBitmap(offscreenBuffer, heroBitmap.head,
-        renderOffsetX, renderOffsetY,
-        heroBitmap.offsetX, heroBitmap.offsetY, true);
-
+    if(entity->type == entity_type::player)
+    {
+      // TODO(Cristian): Draw this relative to the camera!
+      DrawRectangle(offscreenBuffer,
+          v2<real32>{renderOffsetX - (PLAYER_WIDTH / 2) * metersToPixels,
+                     renderOffsetY - (PLAYER_HEIGHT / 2) * metersToPixels},
+          v2<real32>{renderOffsetX + (PLAYER_WIDTH / 2) * metersToPixels,
+                     renderOffsetY + (PLAYER_HEIGHT / 2) * metersToPixels},
+          1.0f, 1.0f, 0.0f);
+    }
+    DrawEntityRelativeToCamera(offscreenBuffer, gameState, entity,
+                               v2<real32>{renderOffsetX, renderOffsetY},
+                               metersToPixels);
   }
 
  // Draw Mouse
