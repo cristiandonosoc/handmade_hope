@@ -125,11 +125,26 @@ struct hero_bitmap
   int32 offsetY;
 };
 
+enum entity_type
+{
+  player,
+  wall
+};
+
+enum entity_residence
+{
+  cold,
+  hot
+};
+
 struct entity_def
 {
   bool32 exists;
+  entity_type type;
+  entity_residence residence;
   tile_coordinates pos;
   MATH::v2<real32> dPos;
+  MATH::v2<real32> hotPos;
   // LBRU
   uint32 facingDirection;
 
@@ -147,6 +162,9 @@ struct game_state
   entity_def entities[ENTITY_COUNT];
   // Each index maps an controller to a particular entity index
   int32 entityIndexForController[ARRAY_COUNT(((game_input*)0)->controllers)];
+
+  entity_def* hotEntities[ENTITY_COUNT];
+  entity_def* coldEntities[ENTITY_COUNT];
 
   tile_coordinates cameraPos;
   uint32 cameraFollowingEntityIndex;

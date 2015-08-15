@@ -68,18 +68,11 @@ DEBUGLoadBMP(thread_context* thread,
       {
         // We shift down the colors by the shift calculated amount
         // and then place them in the correct value
-#if 0
-        *head++ = ((((*head >> alphaScan.index) & 0xFF) << 24) |
-                   (((*head >> redScan.index) & 0xFF) << 16) |
-                   (((*head >> greenScan.index) & 0xFF) << 8) |
-                   (((*head >> blueScan.index) & 0xFF) << 0));
-#else
         uint32 c = *head;
         *head++ = (UTILS::BIT::RotateLeft(c & header->redMask, redShift) |
                    UTILS::BIT::RotateLeft(c & header->greenMask, greenShift) |
                    UTILS::BIT::RotateLeft(c & header->blueMask, blueShift) |
                    UTILS::BIT::RotateLeft(c & alphaMask, blueShift));
-#endif
       }
     }
   }
@@ -227,7 +220,6 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
     }
   }
 
-
   // We only normalize for bigger vectors. This way we support
   // lower vectors from gamepads
   if(MATH::LengthSq(ddPlayerPos) > 1.0f)
@@ -248,37 +240,9 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
   // We calculate the velocity
   entity->dPos += ddPlayerPos * gameInput->secondsToUpdate;
 
-#if 0
-  tile_coordinates proposedCoords = ModifyCoordinates(tileMap, entity->pos, diff.x, diff.y);
-  tile_coordinates colCoords = {};
-  tile_coordinates leftLowerCorner = ModifyCoordinates(tileMap,
-      proposedCoords,
-      -(entity->width/ 2), 0.0f);
-
-  // We check left-lower corner
-  uint32 proposedTile = GetTileValue(tileMap, &leftLowerCorner);
-  if(proposedTile != 0) // COLLISION
-  {
-    colCoords = leftLowerCorner;
-  }
-  else
-  {
-    tile_coordinates rightLowerCorner = ModifyCoordinates(tileMap,
-        proposedCoords,
-        (entity->width/ 2), 0.0f);
-    // We check ther right-lower corner
-    proposedTile = GetTileValue(tileMap, &rightLowerCorner);
-    if(proposedTile != 0) // COLLISION
-    {
-      colCoords = rightLowerCorner;
-    }
-  }
-#endif
-
   tile_coordinates pos = entity->pos;
   tile_coordinates proposedCoords = ModifyCoordinates(tileMap, entity->pos, delta.x, delta.y);
 
-#if 1
   // We need to check all the tiles where we could have collision
   int32 marginX = UTILS::FLOAT::CeilReal32ToInt32(entity->width / tileMap->tileInMeters);
   int32 marginY = UTILS::FLOAT::CeilReal32ToInt32(entity->height / tileMap->tileInMeters);
@@ -310,15 +274,21 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
           tileX <= maxTile.x;
           tileX++)
       {
-        uint32 tileValue = GetTileValue(tileMap, tileX, tileY, tileZ);
-        if(tileValue != 0)
+        // We iterate over ALL hot entities
+        for(int32 hotEntityIndex = 0;
+            hotEntityIndex < gameState->entityCount;
+            hotEntityIndex++)
         {
+          entity_def* hotEntity = gameState->hotEntities[hotEntityIndex];
+          if(!hotEntity) { continue; }
+
           // We check collision against the left wall
           tile_coordinates testTile = GenerateCoords(tileX, tileY, tileZ);
-          v2<real32> rel = Distance(tileMap, testTile, pos);
+          // v2<real32> rel = Distance(tileMap, testTile, pos);
+          v2<real32> rel = hotEntity->hotPos - entity->hotPos;
           v2<real32> minCorner = {-(entity->width/2), -(entity->height/2)};
-          v2<real32> maxCorner = {tileMap->tileInMeters + (entity->width/2),
-                                        tileMap->tileInMeters + (entity->height/2)};
+          v2<real32> maxCorner = {hotEntity->width + (entity->width/2),
+            hotEntity->height + (entity->height/2)};
 
           // We check all four walls
           // LEFT
@@ -360,7 +330,6 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
     }
     tRemaining -= tMin*tRemaining; // We remove how much of the much left we had left
   }
-#endif
 
 }
 
@@ -533,7 +502,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   tile_map* tileMap = world->tileMap;
   // Outside initialization so we can live-change it
   tileMap->tileInMeters = 1.0f;
-  real32 tileInPixels = 60;
+  real32 tileInPixels = 20;
   real32 metersToPixels = tileInPixels / tileMap->tileInMeters;
 
   // Temporal entity variable to be used throughout the code
@@ -655,6 +624,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   int32 maxX = gameState->cameraPos.tile.x + (TILES_PER_WIDTH / 2 + 2 + renderSize);
   int32 minY = gameState->cameraPos.tile.y - (TILES_PER_HEIGHT / 2 + 1 + renderSize);
   int32 maxY = gameState->cameraPos.tile.y + (TILES_PER_HEIGHT / 2 + 2 + renderSize);
+#if 1
   for(int32 tileY = minY;
       tileY < maxY;
       tileY++)
@@ -702,6 +672,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           currentTile * 0.8f, tile * 0.5f, 0.7f);                       // color data
     }
   }
+#endif
 
   // We want to draw the tile chunks
   // NOTE(Cristian): This code (dependending on how the passes are made) can
