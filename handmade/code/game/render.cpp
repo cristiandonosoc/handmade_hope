@@ -191,6 +191,24 @@ DrawTileRelativeToCenter(game_offscreen_buffer* buffer,
   DrawRectangle(buffer, min, max, R, G, B);
 }
 
+inline void
+DrawRectangleRelativeToCenter(game_offscreen_buffer* buffer,
+                              real32 centerPositionX, real32 centerPositionY,
+                              real32 offsetX, real32 offsetY,
+                              real32 sizeX, real32 sizeY,
+                              real32 R, real32 G, real32 B)
+{
+  v2<real32> min = {
+    centerPositionX + offsetX,
+    centerPositionY + (offsetY - sizeY)
+  };
+  v2<real32> max = {
+    centerPositionX + offsetX + sizeX,
+    centerPositionY + offsetY // Inverted axis
+  };
+  DrawRectangle(buffer, min, max, R, G, B);
+}
+
 internal void
 DrawBitmap(game_offscreen_buffer* buffer, bitmap_definition bitmap,
            real32 screenX, real32 screenY,
@@ -275,6 +293,19 @@ DrawBitmap(game_offscreen_buffer* buffer, bitmap_definition bitmap,
     firstPixelOfBufferRow += buffer->width;
     firstPixelOfBitmapRow += bitmapDiff;
   }
+}
+
+internal void
+DrawBitmapRelativeToCenter(game_offscreen_buffer* buffer, bitmap_definition bitmap,
+                           real32 centerPositionX, real32 centerPositionY,
+                           real32 offsetX, real32 offsetY,
+                           int32 pixelOffsetX, int32 pixelOffsetY,
+                           bool32 inverted)
+{
+  DrawBitmap(buffer, bitmap,
+             centerPositionX + offsetX, centerPositionY + offsetY,
+             pixelOffsetX, pixelOffsetY,
+             inverted);
 }
 
 #define _GAME_RENDER_CPP
