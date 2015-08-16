@@ -522,18 +522,11 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     world->tileMap = PushStruct(&gameState->memoryManager, tile_map);
     tile_map* tileMap = world->tileMap;
     tileMap->tileInMeters = 1.0f;
-    tileMap->tileChunkCountX = 32;
-    tileMap->tileChunkCountY = 32;
-    tileMap->tileChunkCountZ = 1;
 
     tileMap->tileShift = 4;
     tileMap->tileMask = (1 << tileMap->tileShift) - 1;
     tileMap->tileSide = (1 << tileMap->tileShift);
 
-    // We append the tile_chunks
-    tileMap->tileChunks = PushArray(&gameState->memoryManager,
-        tileMap->tileChunkCountZ * tileMap->tileChunkCountX * tileMap->tileChunkCountY,
-        tile_chunk);
 
 #define TILES_PER_WIDTH 17
 #define TILES_PER_HEIGHT 9
@@ -541,11 +534,12 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     /**
      * We set the tile_chunk data for SOME tile_chunk
      */
+    v3<int32> initialWorld{20, 20, 1};
     uint32 tilesPerWidth = TILES_PER_WIDTH;
     uint32 tilesPerHeight = TILES_PER_HEIGHT;
-    uint32 screens = 2;
+    uint32 screens = 5;
     for(int32 screenZ = 0;
-        screenZ < tileMap->tileChunkCountZ;
+        screenZ < initialWorld.z;
         screenZ++)
     {
       for(uint32 screenY = 0;
@@ -585,16 +579,16 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
               tile_coordinates coord = {};
               coord.tile.x = (screenX * tilesPerWidth) + tileX;
-              coord.tile.y = (0* tilesPerHeight) + tileY;
+              coord.tile.y = (screenY* tilesPerHeight) + tileY;
               coord.tile.z = screenZ;
 
               SetTileValue(&gameState->memoryManager, tileMap, &coord, value);
 
               if(value == 1)
               {
-                uint32 entityIndex = CreateWall(gameState, coord);
-                entity_def* entity = GetEntity(gameState, entityIndex);
-                AddEntityToResidence(gameState, entity, entity_residence::hot);
+                // uint32 entityIndex = CreateWall(gameState, coord);
+                // entity_def* entity = GetEntity(gameState, entityIndex);
+                // AddEntityToResidence(gameState, entity, entity_residence::hot);
               }
             }
           }
@@ -634,7 +628,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   tile_map* tileMap = world->tileMap;
   // Outside initialization so we can live-change it
   tileMap->tileInMeters = 1.0f;
-  real32 tileInPixels = 60;
+  real32 tileInPixels = 10;
   real32 metersToPixels = tileInPixels / tileMap->tileInMeters;
 
   // Temporal entity variable to be used throughout the code
@@ -747,9 +741,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   real32 renderOffsetX = offsetX + centerX;
   real32 renderOffsetY = offsetY + centerY;
 
-  int32 tileChunkX = 0xFFFFFFFF;
-  int32 tileChunkY = 0xFFFFFFFF;
-  int32 tileChunkZ = 0xFFFFFFFF;
 
   int32 renderSize = 1;
   int32 minX = gameState->cameraPos.tile.x - (TILES_PER_WIDTH / 2 + 1 + renderSize);
@@ -760,7 +751,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   /**
    * DRAW TILES
    */
-#if 0
+#if 1
   for(int32 tileY = minY;
       tileY < maxY;
       tileY++)
@@ -817,6 +808,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // We want to draw the tile chunks
   // NOTE(Cristian): This code (dependending on how the passes are made) can
   // render many times the same tile chunk
+  //
+  v3<int32> testTileChunk = {(int32)0x80000000, (int32)0x80000000, (int32)0x80000000};
   for(int32 tileY = minY;
       tileY < maxY;
       tileY++)
@@ -834,13 +827,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       if(tileChunk != nullptr)
       {
         v3<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &rectCoords);
-        if(tileChunkCoords.x != tileChunkX ||
-           tileChunkCoords.y != tileChunkY ||
-           tileChunkCoords.z != tileChunkZ)
+        if(tileChunkCoords != testTileChunk)
         {
-          tileChunkX = tileChunkCoords.x;
-          tileChunkY = tileChunkCoords.y;
-          tileChunkZ = tileChunkCoords.z;
+          testTileChunk = tileChunkCoords;
           int32 currentTileChunkX = tileChunkCoords.x << tileMap->tileShift;
           int32 currentTileChunkY = tileChunkCoords.y << tileMap->tileShift;
           int32 currentTileChunkZ = tileChunkCoords.z;

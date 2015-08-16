@@ -14,26 +14,30 @@ GetTileChunkDim(tile_map* tileMap)
   return result;
 }
 
+inline uint32
+TileChunkHashSlot(int32 x, int32 y, int32 z)
+{
+  // TODO(Cristian): BETTER HASH FUNCTION :)
+  uint32 result = 19*z + 5*y + 11*x;
+  result %= TILE_CHUNK_HASH_SIZE;
+  return result;
+}
+
 internal tile_chunk*
 GetTileChunk(tile_map* tileMap, int32 x, int32 y, int32 z)
 {
   v3<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, x, y, z);
 
-  // TODO(Cristian): Find a good way of finding if the tileChunk actually exists!
-  if((tileChunkCoords.x >= 0 && tileChunkCoords.x < tileMap->tileChunkCountX) &&
-     (tileChunkCoords.y >= 0 && tileChunkCoords.y < tileMap->tileChunkCountY) &&
-     (tileChunkCoords.z >= 0 && tileChunkCoords.z < tileMap->tileChunkCountZ))
-
+  uint32 hashSlot = TileChunkHashSlot(x, y, z);
+  tile_chunk** tileChunk = tileMap->tileChunkHash + hashSlot;
+  while(*tileChunk)
   {
-    tile_chunk* result =
-      tileMap->tileChunks +
-      (tileChunkCoords.z * tileMap->tileChunkCountY * tileMap->tileChunkCountX) +
-      (tileChunkCoords.y * tileMap->tileChunkCountX) +
-      tileChunkCoords.x;
-    return result;
+    if((*tileChunk)->tileChunkCoords == tileChunkCoords) { break; }
+    tileChunk = &((*tileChunk)->nextTileChunkInHash);
   }
 
-  return nullptr;
+  tile_chunk* result = *tileChunk;
+  return result;
 }
 
 internal tile_chunk*
@@ -48,10 +52,6 @@ GetTileChunk(tile_map* tileMap, tile_coordinates* coords)
 internal uint32*
 GetTile(tile_map* tileMap, int32 x, int32 y, int32 z)
 {
-  // ASSERT(x >= 0 && x < tileMap->tileChunkCountX * tileMap->tileSide);
-  // ASSERT(y >= 0 && y < tileMap->tileChunkCountY * tileMap->tileSide);
-  // ASSERT(z >= 0 && z < tileMap->tileChunkCountZ * tileMap->tileSide);
-
   v2<int32> tileCoords = GetTileCoordinates(tileMap, x, y);
 
   ASSERT(tileCoords.x >= 0 && tileCoords.x < tileMap->tileSide);
@@ -114,15 +114,22 @@ SetTileValue(memory_manager* memoryManager, tile_map* tileMap, tile_coordinates*
   tile_chunk* tileChunk = GetTileChunk(tileMap, coords);
 
   // TODO(Cristian): On-demand tile_chunk creation
-  ASSERT(tileChunk != nullptr);
-
-  // If the tile_chunk is not initialized, we require the memory for it
-  if(!tileChunk->initialized)
+  if(!tileChunk)
   {
-    tileChunk->tiles = PushArray(memoryManager,
-                                 GetTileChunkDim(tileMap),
-                                 uint32);
+    uint32 hashSlot = TileChunkHashSlot(coords->tile.x, coords->tile.y, coords->tile.z);
+
+    tile_chunk** tileChunkPtr = tileMap->tileChunkHash + hashSlot;
+    while(*tileChunkPtr)
+    {
+      tileChunk = &(*tileChunk->nextTileChunkInHash);
+    }
+
+    *tileChunkPtr = PushStruct(memoryManager, tile_chunk);
+    tileChunk = *tileChunkPtr;
+    tileChunk->tiles = PushArray(memoryManager, GetTileChunkDim(tileMap), uint32);
+    tileChunk->tileChunkCoords = GetTileChunkCoordinates(tileMap, coords);
     tileChunk->initialized = true;
+
   }
 
   v2<int32> tileCoords = GetTileCoordinates(tileMap, coords);
