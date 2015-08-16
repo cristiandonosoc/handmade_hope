@@ -16,6 +16,30 @@ struct v4
   }
 };
 
+template<typename T>
+inline bool32
+operator==(v4<T> a, v4<T> b)
+{
+  bool32 result = ((a.x == b.x) &&
+                   (a.y == b.y) &&
+                   (a.z == b.z) &&
+                   (a.w == b.w));
+  return result;
+}
+
+template<typename T>
+inline bool32
+operator!=(v4<T> a, v4<T> b)
+{
+  bool32 result = ((a.x != b.x) ||
+                   (a.y != b.y) ||
+                   (a.z != b.z) ||
+                   (a.w != b.w));
+  return result;
+}
+
+
+
 // + -
 template<typename T>
 inline v4<T>

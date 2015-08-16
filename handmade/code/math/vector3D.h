@@ -10,10 +10,32 @@ struct v3
   T operator[](int index)
   {
     ASSERT(index >= 0);
-    ASSERT(index < 2);
+    ASSERT(index < 3);
     return &(this->x)[index];
   }
 };
+
+template<typename T>
+inline bool32
+operator==(v3<T> a, v3<T> b)
+{
+  bool32 result = ((a.x == b.x) &&
+                   (a.y == b.y) &&
+                   (a.z == b.z));
+  return result;
+}
+
+template<typename T>
+inline bool32
+operator!=(v3<T> a, v3<T> b)
+{
+  bool32 result = ((a.x != b.x) ||
+                   (a.y != b.y) ||
+                   (a.z != b.z));
+  return result;
+}
+
+
 
 // + -
 template<typename T>

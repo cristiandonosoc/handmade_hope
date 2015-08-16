@@ -14,6 +14,24 @@ struct v2
   }
 };
 
+template<typename T>
+inline bool32
+operator==(v2<T> a, v2<T> b)
+{
+  bool32 result = ((a.x == b.x) &&
+                   (a.y == by));
+  return result;
+}
+
+template<typename T>
+inline bool32
+operator!=(v2<T> a, v2<T> b)
+{
+  bool32 result = ((a.x != b.x) ||
+                   (a.y != by));
+  return result;
+}
+
 // + -
 template<typename T>
 inline v2<T>
