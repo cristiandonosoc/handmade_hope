@@ -42,11 +42,11 @@ GetTileChunk(tile_map* tileMap, int32 x, int32 y, int32 z)
 }
 
 internal tile_chunk*
-GetTileChunk(tile_map* tileMap, tile_coordinates* coords)
+GetTileChunk(tile_map* tileMap, const tile_coordinates& coords)
 {
-  auto result = GetTileChunk(tileMap, coords->tile.x,
-                                      coords->tile.y,
-                                      coords->tile.z);
+  auto result = GetTileChunk(tileMap, coords.tile.x,
+                                      coords.tile.y,
+                                      coords.tile.z);
   return result;
 }
 
@@ -128,7 +128,7 @@ SetTileValue(memory_manager* memoryManager, tile_map* tileMap, tile_coordinates*
     *tileChunkPtr = PushStruct(memoryManager, tile_chunk);
     tileChunk = *tileChunkPtr;
     tileChunk->tiles = PushArray(memoryManager, GetTileChunkDim(tileMap), uint32);
-    tileChunk->tileChunkCoords = GetTileChunkCoordinates(tileMap, coords);
+    tileChunk->tileChunkCoords = GetTileChunkCoordinates(tileMap, *coords);
     tileChunk->initialized = true;
 
   }

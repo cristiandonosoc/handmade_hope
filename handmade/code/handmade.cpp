@@ -710,8 +710,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //     );
   // OutputDebugStringA(mbuffer);
 
-
-
   // We update the camera position to the plater Position
   entity_def* cameraFollowingEntity = GetEntity(gameState, gameState->cameraFollowingEntityIndex);
   if(ValidEntity(cameraFollowingEntity))
@@ -721,7 +719,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
 
   // We get the current tileChunk from the camera
-  tile_chunk* currentTileMap = GetTileChunk(tileMap, &gameState->cameraPos);
+  tile_chunk* currentTileMap = GetTileChunk(tileMap, gameState->cameraPos);
 
   /*** RENDERING ***/
 

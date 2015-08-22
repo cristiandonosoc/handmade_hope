@@ -56,11 +56,11 @@ GetTileChunkCoordinates(tile_map* tileMap, int32 x, int32 y, int32 z)
 }
 
 internal v3<int32>
-GetTileChunkCoordinates(tile_map* tileMap, tile_coordinates* coords)
+GetTileChunkCoordinates(tile_map* tileMap, const tile_coordinates& coords)
 {
-  auto result = GetTileChunkCoordinates(tileMap, coords->tile.x,
-                                                 coords->tile.y,
-                                                 coords->tile.z);
+  auto result = GetTileChunkCoordinates(tileMap, coords.tile.x,
+                                                 coords.tile.y,
+                                                 coords.tile.z);
   return result;
 }
 
