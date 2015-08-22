@@ -152,7 +152,8 @@ struct entity_def
   real32 height;
 };
 
-#define ENTITY_COUNT 256
+#define ENTITY_COUNT 4096
+#define HOT_ENTITY_COUNT 256
 struct game_state
 {
   memory_manager memoryManager;
@@ -163,8 +164,7 @@ struct game_state
   // Each index maps an controller to a particular entity index
   int32 entityIndexForController[ARRAY_COUNT(((game_input*)0)->controllers)];
 
-  entity_def* hotEntities[ENTITY_COUNT];
-  entity_def* coldEntities[ENTITY_COUNT];
+  entity_def* hotEntities[HOT_ENTITY_COUNT];
 
   tile_coordinates cameraPos;
   uint32 cameraFollowingEntityIndex;

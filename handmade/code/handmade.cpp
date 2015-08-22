@@ -16,6 +16,8 @@
 #include "game/memory.cpp"
 #include "game/random.cpp"
 
+#include "math/rectangle.h"
+
 #include "utils/float.cpp"
 #include "utils/bit.cpp"
 
@@ -143,11 +145,9 @@ CreateWall(game_state* gameState, tile_coordinates coords)
 internal bool32
 RemoveEntityFromResidence(game_state* gameState, entity_def* entity)
 {
-  // First we remove the entity from it's current residence
-  entity_def** residenceArray = entity->residence == entity_residence::cold ?
-                                  gameState->coldEntities : gameState->hotEntities;
-
-  entity_def** residenceScan = residenceArray;
+  if(entity->residence != entity_residence::hot) { return false; }
+  // NOTE(Cristian): For now we only got a hot residence
+  entity_def** residenceScan = gameState->hotEntities;
   bool32 found = false;
   for(int32 entityIndex = 0;
       entityIndex < gameState->entityCount;
@@ -157,10 +157,13 @@ RemoveEntityFromResidence(game_state* gameState, entity_def* entity)
     {
       found = true;
       *residenceScan = nullptr;
+      entity->residence = entity_residence::cold;
       break;
     }
   }
 
+  // TODO(Cristian): Remove this assertion when this case is correctly handled!
+  ASSERT(found);
   return found;
 }
 
@@ -168,25 +171,25 @@ internal bool32
 AddEntityToResidence(game_state* gameState, entity_def* entity, entity_residence newResidence)
 {
   ASSERT(entity->residence != newResidence);
-  ASSERT(entity);
 
-  entity_def** residenceArray = newResidence == entity_residence::cold ?
-                                  gameState->coldEntities : gameState->hotEntities;
-
-  entity_def** residenceScan = residenceArray;
+  // NOTE(Cristian): For now we only got a hot residence
+  entity_def** residenceScan = gameState->hotEntities;
   bool32 found = false;
   for(int32 entityIndex = 0;
-      entityIndex < gameState->entityCount;
+      entityIndex < ARRAY_COUNT(gameState->hotEntities);
       entityIndex++, residenceScan++)
   {
-    if(*residenceScan == nullptr)
+    if(!(*residenceScan))
     {
       found = true;
       *residenceScan = entity;
+      entity->residence = entity_residence::hot;
       break;
     }
   }
 
+  // TODO(Cristian): Remove this assertion when this case is correctly handled!
+  ASSERT(found);
   return found;
 }
 
@@ -206,6 +209,44 @@ ValidEntity(entity_def* entity)
 
   bool32 result = entity->exists;
   return result;
+}
+
+internal void
+CalculateEntitiesResidence(game_state* gameState, tile_coordinates tileChunkCoords)
+{
+  tile_map* tileMap = gameState->world->tileMap;
+  v3<int32> tileChunkPos = GetTileChunkCoordinates(tileMap, tileChunkCoords);
+  v3<int32> min = tileChunkPos - v3<int32>{1,1,0};
+  v3<int32> max = tileChunkPos + v3<int32>{1,1,0};
+
+  // We swap out entities
+  entity_def** entityPtrPtr = gameState->hotEntities;
+  for(int32 entityIndex = 0;
+      entityIndex < ARRAY_COUNT(gameState->hotEntities);
+      entityIndex++, entityPtrPtr++)
+  {
+    entity_def* hotEntity = *entityPtrPtr;
+    if(!hotEntity) { continue; }
+    v3<int32> hotTileChunkCoords = GetTileChunkCoordinates(tileMap, hotEntity->pos);
+    if(!IsWithinRectangle2D(min.x, min.y, max.x, max.y, hotTileChunkCoords.x, hotTileChunkCoords.y))
+    {
+      RemoveEntityFromResidence(gameState, hotEntity);
+    }
+  }
+
+  // We need to swap in entities
+  entity_def* coldEntity = gameState->entities;
+  for(int32 entityIndex = 0;
+      entityIndex < gameState->entityCount;
+      entityIndex++, coldEntity++)
+  {
+    if(coldEntity->residence == entity_residence::hot) { continue; }
+    v3<int32> coldTileChunkPos = GetTileChunkCoordinates(tileMap, coldEntity->pos);
+    if(IsWithinRectangle2D(min.x, min.y, max.x, max.y, coldTileChunkPos.x, coldTileChunkPos.y))
+    {
+      AddEntityToResidence(gameState, coldEntity, entity_residence::hot);
+    }
+  }
 }
 
 internal void
@@ -293,6 +334,7 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
 {
   // NOTE(Cristian): Use digital movement tuning
   v2<real32> ddPlayerPos = {};
+  tile_coordinates initialTileChunkCoords = entity->pos;
 
   // TODO(Cristian): Check W+S+RIGHT broken combination
   // Is it the platform layer o a keyboard failure????
@@ -453,6 +495,14 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
     tRemaining -= tMin*tRemaining; // We remove how much of the much left we had left
   }
 
+  // TODO(Cristian): Should we support more residences?
+  // Now that we checked were the controlled entity will be, we check if we changed tileChunk
+  v3<int32> initialTileChunk = GetTileChunkCoordinates(tileMap, initialTileChunkCoords);
+  v3<int32> currentTileChunk = GetTileChunkCoordinates(tileMap, entity->pos);
+  if(currentTileChunk != initialTileChunk)
+  {
+    CalculateEntitiesResidence(gameState, entity->pos);
+  }
 }
 
 // void
@@ -586,8 +636,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
               if(value == 1)
               {
-                // uint32 entityIndex = CreateWall(gameState, coord);
-                // entity_def* entity = GetEntity(gameState, entityIndex);
+                uint32 entityIndex = CreateWall(gameState, coord);
+                entity_def* entity = GetEntity(gameState, entityIndex);
                 // AddEntityToResidence(gameState, entity, entity_residence::hot);
               }
             }
@@ -666,6 +716,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         // We attach the camera to the entity
         gameState->cameraFollowingEntityIndex = gameState->entityIndexForController[controllerIndex];
+
+        // We create the initial coldSwap
+        CalculateEntitiesResidence(gameState, entity->pos);
       }
     }
 
@@ -859,11 +912,12 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
    * ENTITY DRAW
    */
 
-  entity = gameState->entities;
+  entity_def** entityPtr = gameState->hotEntities;
   for(int32 entityIndex = 0;
-      entityIndex < gameState->entityCount;
-      entityIndex++, entity++)
+      entityIndex < HOT_ENTITY_COUNT;
+      entityIndex++, entityPtr++)
   {
+    entity = *entityPtr; // TODO(Cristian): See if this double-indirection is too much overhead
     if(!ValidEntity(entity)) { continue; }
 
     if(entity->type == entity_type::player)
