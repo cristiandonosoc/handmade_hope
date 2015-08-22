@@ -802,7 +802,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   /**
    * DRAW TILES
    */
-#if 1
+#if 0
   for(int32 tileY = minY;
       tileY < maxY;
       tileY++)
@@ -861,50 +861,44 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // render many times the same tile chunk
   //
   v3<int32> testTileChunk = {(int32)0x80000000, (int32)0x80000000, (int32)0x80000000};
-  for(int32 tileY = minY;
-      tileY < maxY;
-      tileY++)
+  v3<int32> cameraTileChunkPos = GetTileChunkCoordinates(tileMap, gameState->cameraPos);
+  v3<int32> boundMin = cameraTileChunkPos - v3<int32>{1,1,0};
+  v3<int32> boundMax = cameraTileChunkPos + v3<int32>{1,1,0};
+  v3<int32> minTileChunkPos = cameraTileChunkPos - v3<int32>{1,1,0}*2;
+  v3<int32> maxTileChunkPos = cameraTileChunkPos + v3<int32>{1,1,0}*2;
+  for(int32 tileChunkY = minTileChunkPos.y;
+      tileChunkY <= maxTileChunkPos.y;
+      tileChunkY++)
   {
-    for(int32 tileX = minX;
-        tileX < maxX;
-        tileX++)
+    for(int32 tileChunkX = minTileChunkPos.x;
+        tileChunkX <= maxTileChunkPos.x;
+        tileChunkX++)
     {
+      int32 tileChunkZ = gameState->cameraPos.tile.z;
       tile_coordinates rectCoords = {};
-      rectCoords.tile.x = tileX;
-      rectCoords.tile.y = tileY;
-      rectCoords.tile.z = gameState->cameraPos.tile.z;
+      rectCoords.tile.x = tileChunkX*tileMap->tileSide;
+      rectCoords.tile.y = tileChunkY*tileMap->tileSide;
+      rectCoords.tile.z = tileChunkZ;
 
-      tile_chunk* tileChunk = GetTileChunk(tileMap, &rectCoords);
-      if(tileChunk != nullptr)
+      tile_chunk* tileChunk = GetTileChunk(tileMap, rectCoords);
+      if(tileChunk)
       {
-        v3<int32> tileChunkCoords = GetTileChunkCoordinates(tileMap, &rectCoords);
-        if(tileChunkCoords != testTileChunk)
+        real32 RG = 1.0f;
+        if(IsWithinRectangle2D(boundMin.x, boundMin.y, boundMax.x, boundMax.y,
+                               tileChunkX, tileChunkY))
         {
-          testTileChunk = tileChunkCoords;
-          int32 currentTileChunkX = tileChunkCoords.x << tileMap->tileShift;
-          int32 currentTileChunkY = tileChunkCoords.y << tileMap->tileShift;
-          int32 currentTileChunkZ = tileChunkCoords.z;
-
-          real32 gray = 0.0f;
-          if(tileChunk->initialized)
-          {
-            gray = 1.0f;
-          }
-
-          v2<real32> tileChunkMin = {
-            renderOffsetX - ((gameState->cameraPos.tile.x - currentTileChunkX) * tileMap->tileInMeters + gameState->cameraPos.pX ) * metersToPixels,
-            renderOffsetY + (gameState->cameraPos.tile.y + gameState->cameraPos.pY - currentTileChunkY) * metersToPixels - tileMap->tileSide * tileMap->tileInMeters * metersToPixels,
-          };
-
-          v2<real32> tileChunkMax = {
-            renderOffsetX - ((gameState->cameraPos.tile.x - currentTileChunkX - tileMap->tileSide) + gameState->cameraPos.pX) * metersToPixels,
-            renderOffsetY + (gameState->cameraPos.tile.y + gameState->cameraPos.pY - currentTileChunkY) * metersToPixels,
-          };
-
-          // TODO(Cristian): Pass this draw call to a DrawTileRelativeToCenter call
-          DrawHollowRectangle(offscreenBuffer, tileChunkMin, tileChunkMax, gray, gray, gray);
+          RG = 0.0f;
         }
-      }
+
+        // TODO(Cristian): Pass this draw call to a DrawTileRelativeToCenter call
+        DrawHollowRectangleRelativeToCenter(offscreenBuffer,
+            renderOffsetX, renderOffsetY,
+            ((tileChunkX*tileMap->tileSide - gameState->cameraPos.tile.x)*tileMap->tileInMeters - gameState->cameraPos.pX)*metersToPixels,
+            -((tileChunkY*tileMap->tileSide - gameState->cameraPos.tile.y)*tileMap->tileInMeters - gameState->cameraPos.pY)*metersToPixels,
+            tileMap->tileSide*tileMap->tileInMeters*metersToPixels,
+            tileMap->tileSide*tileMap->tileInMeters*metersToPixels,
+            1.0f, 1.0f, RG);
+        }
     }
   }
 
