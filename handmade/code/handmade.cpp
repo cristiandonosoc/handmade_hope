@@ -215,7 +215,7 @@ internal void
 CalculateEntitiesResidence(game_state* gameState, tile_coordinates tileChunkCoords)
 {
   tile_map* tileMap = gameState->world->tileMap;
-  v3<int32> tileChunkPos = GetTileChunkCoordinates(tileMap, tileChunkCoords);
+  v3<int32> tileChunkPos = GetTileChunkCoordinates(*tileMap, tileChunkCoords);
   v3<int32> min = tileChunkPos - v3<int32>{1,1,0};
   v3<int32> max = tileChunkPos + v3<int32>{1,1,0};
 
@@ -227,7 +227,7 @@ CalculateEntitiesResidence(game_state* gameState, tile_coordinates tileChunkCoor
   {
     entity_def* hotEntity = *entityPtrPtr;
     if(!hotEntity) { continue; }
-    v3<int32> hotTileChunkCoords = GetTileChunkCoordinates(tileMap, hotEntity->pos);
+    v3<int32> hotTileChunkCoords = GetTileChunkCoordinates(*tileMap, hotEntity->pos);
     if(!IsWithinRectangle2D(min.x, min.y, max.x, max.y, hotTileChunkCoords.x, hotTileChunkCoords.y))
     {
       RemoveEntityFromResidence(gameState, hotEntity);
@@ -241,7 +241,7 @@ CalculateEntitiesResidence(game_state* gameState, tile_coordinates tileChunkCoor
       entityIndex++, coldEntity++)
   {
     if(coldEntity->residence == entity_residence::hot) { continue; }
-    v3<int32> coldTileChunkPos = GetTileChunkCoordinates(tileMap, coldEntity->pos);
+    v3<int32> coldTileChunkPos = GetTileChunkCoordinates(*tileMap, coldEntity->pos);
     if(IsWithinRectangle2D(min.x, min.y, max.x, max.y, coldTileChunkPos.x, coldTileChunkPos.y))
     {
       AddEntityToResidence(gameState, coldEntity, entity_residence::hot);
@@ -258,7 +258,7 @@ DrawEntityRelativeToCamera(game_offscreen_buffer* buffer,
 {
   ASSERT(entity);
   // TODO(Cristian): Use hot position for this calculations!
-  v2<real32> rel = Distance(gameState->world->tileMap, gameState->cameraPos, entity->pos);
+  v2<real32> rel = Distance(*(gameState->world->tileMap), gameState->cameraPos, entity->pos);
   rel *= metersToPixels;
   rel.y = -rel.y; // Inverted axis
 
@@ -403,7 +403,7 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
   entity->dPos += ddPlayerPos * gameInput->secondsToUpdate;
 
   tile_coordinates pos = entity->pos;
-  tile_coordinates proposedCoords = ModifyCoordinates(tileMap, entity->pos, delta.x, delta.y);
+  tile_coordinates proposedCoords = ModifyCoordinates(*tileMap, entity->pos, delta.x, delta.y);
 
   // We need to check all the tiles where we could have collision
   int32 marginX = UTILS::FLOAT::CeilReal32ToInt32(entity->width / tileMap->tileInMeters);
@@ -414,7 +414,7 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
   v2<int32> maxTile = {MAX(entity->pos.tile.x, proposedCoords.tile.x) + marginX,
                              MAX(entity->pos.tile.y, proposedCoords.tile.y) + marginY};
 
-  v2<real32> dist = Distance(tileMap, pos, proposedCoords);
+  v2<real32> dist = Distance(*tileMap, pos, proposedCoords);
   int32 tileZ = entity->pos.tile.z;
   real32 tRemaining = 1.0f;
 
@@ -449,7 +449,7 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
 
           // We check collision against the left wall
           // TODO(Cristian): Use hot pos!
-          v2<real32> rel = Distance(tileMap, hotEntity->pos, entity->pos);
+          v2<real32> rel = Distance(*tileMap, hotEntity->pos, entity->pos);
           v2<real32> minCorner = {-(entity->width/2), -(entity->height/2)};
           v2<real32> maxCorner = {hotEntity->width + (entity->width/2),
             hotEntity->height + (entity->height/2)};
@@ -479,14 +479,14 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
       }
     }
 
-    entity->pos = ModifyCoordinates(tileMap, entity->pos, tMin * delta.x, tMin * delta.y);
+    entity->pos = ModifyCoordinates(*tileMap, entity->pos, tMin * delta.x, tMin * delta.y);
     if(tMin < 1.0f)
     {
       // NOTE(Cristian): If we collide, we move the entity an epsilon back so that we have
       // a safe margin with floating point imprecision
       real32 moveEpsilon = -0.001f;
       v2<real32> nDelta = NormalizeVector(delta);
-      entity->pos = ModifyCoordinates(tileMap, entity->pos, moveEpsilon*nDelta.x, moveEpsilon*nDelta.y);
+      entity->pos = ModifyCoordinates(*tileMap, entity->pos, moveEpsilon*nDelta.x, moveEpsilon*nDelta.y);
 
       entity->dPos = entity->dPos - 1.0f*InnerProduct(entity->dPos, wallNormal)*wallNormal;
       delta = delta - 1.0f*InnerProduct(delta, wallNormal)*wallNormal;
@@ -497,8 +497,8 @@ UpdateControlledEntity(entity_def* entity, game_controller_input* input,
 
   // TODO(Cristian): Should we support more residences?
   // Now that we checked were the controlled entity will be, we check if we changed tileChunk
-  v3<int32> initialTileChunk = GetTileChunkCoordinates(tileMap, initialTileChunkCoords);
-  v3<int32> currentTileChunk = GetTileChunkCoordinates(tileMap, entity->pos);
+  v3<int32> initialTileChunk = GetTileChunkCoordinates(*tileMap, initialTileChunkCoords);
+  v3<int32> currentTileChunk = GetTileChunkCoordinates(*tileMap, entity->pos);
   if(currentTileChunk != initialTileChunk)
   {
     CalculateEntitiesResidence(gameState, entity->pos);
@@ -632,7 +632,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
               coord.tile.y = (screenY* tilesPerHeight) + tileY;
               coord.tile.z = screenZ;
 
-              SetTileValue(&gameState->memoryManager, tileMap, &coord, value);
+              SetTileValue(&gameState->memoryManager, *tileMap, &coord, value);
 
               if(value == 1)
               {
@@ -772,7 +772,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
 
   // We get the current tileChunk from the camera
-  tile_chunk* currentTileMap = GetTileChunk(tileMap, gameState->cameraPos);
+  tile_chunk* currentTileMap = GetTileChunk(*tileMap, gameState->cameraPos);
 
   /*** RENDERING ***/
 
@@ -781,7 +781,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   DrawBitmap(offscreenBuffer, gameState->background, 0, 0, 0, 0, true);
 
   int totalHeight = TILES_PER_HEIGHT * tileInPixels;
-  v2<int32> playerTilePos = GetTileCoordinates(tileMap, &gameState->cameraPos);
+  v2<int32> playerTilePos = GetTileCoordinates(*tileMap, &gameState->cameraPos);
 
   real32 offsetX = -30.0f;
   real32 offsetY = 0;
@@ -861,7 +861,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // render many times the same tile chunk
   //
   v3<int32> testTileChunk = {(int32)0x80000000, (int32)0x80000000, (int32)0x80000000};
-  v3<int32> cameraTileChunkPos = GetTileChunkCoordinates(tileMap, gameState->cameraPos);
+  v3<int32> cameraTileChunkPos = GetTileChunkCoordinates(*tileMap, gameState->cameraPos);
   v3<int32> boundMin = cameraTileChunkPos - v3<int32>{1,1,0};
   v3<int32> boundMax = cameraTileChunkPos + v3<int32>{1,1,0};
   v3<int32> minTileChunkPos = cameraTileChunkPos - v3<int32>{1,1,0}*2;
@@ -880,7 +880,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       rectCoords.tile.y = tileChunkY*tileMap->tileSide;
       rectCoords.tile.z = tileChunkZ;
 
-      tile_chunk* tileChunk = GetTileChunk(tileMap, rectCoords);
+      tile_chunk* tileChunk = GetTileChunk(*tileMap, rectCoords);
       if(tileChunk)
       {
         real32 RG = 1.0f;
