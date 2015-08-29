@@ -110,6 +110,73 @@ GetEntity(game_state* gameState, int32 index)
   return result;
 }
 
+inline void
+RemoveEntityFromTileChunk(tile_chunk& tileChunk, const entity_def& entity)
+{
+  bool32 found = false;
+  entity_def** tileChunkEntityPtr = tileChunk.entities;
+  for(int entityIndex = 0;
+      entityIndex < ENTITIES_PER_CHUNK;
+      entityIndex++, tileChunkEntityPtr++)
+  {
+    if(*tileChunkEntityPtr == &entity)
+    {
+      found = true;
+      tileChunk.entities[entityIndex] = 0;
+      break;
+    }
+  }
+  ASSERT(found);
+}
+
+inline void
+AddEntityToTileChunk(tile_chunk& tileChunk, const entity_def& entity)
+{
+  bool32 found = false;
+  entity_def** tileChunkEntityPtr = tileChunk.entities;
+  for(int entityIndex = 0;
+      entityIndex < ENTITIES_PER_CHUNK;
+      entityIndex++, tileChunkEntityPtr++)
+  {
+    if(*tileChunkEntityPtr == 0)
+    {
+      found = true;
+      // BS(Cristian): THIRD APPEREANCE OF const BULLSHIT
+      tileChunk.entities[entityIndex] = (entity_def*)&entity;
+      break;
+    }
+  }
+  // NOTE(Cristian): If we didn't find it, means the tileChunk is full!
+  ASSERT(found);
+}
+
+
+
+inline void
+MoveEntity(const tile_map& tileMap, entity_def& entity)
+{
+  // First we check to see if we have to remove it from the current tile chunk
+  v3<int32> tileChunkPos = GetTileChunkCoordinates(tileMap, entity.pos);
+  if(entity.tileChunk)
+  {
+    if(tileChunkPos == entity.tileChunk->tileChunkCoords)
+    {
+      // The entity is in the same tile_chunk
+      return;
+    }
+    else
+    {
+      RemoveEntityFromTileChunk(*(entity.tileChunk), entity);
+    }
+  }
+
+  // Add entity to new tile_chunk
+  tile_chunk* tileChunk = GetTileChunk(tileMap, entity.pos);
+  entity.tileChunk = tileChunk;
+  AddEntityToTileChunk(*tileChunk, entity);
+  return;
+}
+
 // Returns the index of the entity in out entity array
 inline uint32
 CreateEntity(game_state* gameState, entity_type type)
