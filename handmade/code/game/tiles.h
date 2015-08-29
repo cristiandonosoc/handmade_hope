@@ -1,13 +1,16 @@
 #ifndef _GAME_TILES_H
 
 #include "math/vector.h"
+#include "game/entity.h"
 
+#define ENTITIES_PER_CHUNK 32
 struct tile_chunk
 {
   MATH::v3<int32> tileChunkCoords;
   bool32 initialized;
   uint32* tiles;
 
+  entity_def* entities[ENTITIES_PER_CHUNK];
   tile_chunk* nextTileChunkInHash;
 };
 

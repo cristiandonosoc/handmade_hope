@@ -24,6 +24,7 @@
 #include "handmade_platform.h"
 #include "game/coordinates.h"
 #include "game/tiles.h"
+#include "game/entity.h"
 #include "math/vector.h"
 
 /**
@@ -123,33 +124,6 @@ struct hero_bitmap
   bitmap_definition head;
   int32 offsetX;
   int32 offsetY;
-};
-
-enum entity_type
-{
-  player,
-  wall
-};
-
-enum entity_residence
-{
-  cold,
-  hot
-};
-
-struct entity_def
-{
-  bool32 exists;
-  entity_type type;
-  entity_residence residence;
-  tile_coordinates pos;
-  MATH::v2<real32> dPos;
-  MATH::v2<real32> hotPos;
-  // LBRU
-  uint32 facingDirection;
-
-  real32 width;
-  real32 height;
 };
 
 #define ENTITY_COUNT 4096
